@@ -8,7 +8,7 @@ from PySide6.QtWidgets import (
     QComboBox, QSizePolicy, QScrollArea, QGraphicsOpacityEffect, QProgressBar
 )
 
-from src.gui.ios.components import IOSCard, IOSPrimaryButton, IOSDangerButton
+from src.gui.ios.components import IOSCard, IOSPrimaryButton
 from src.gui.theme import t, ColorThemeManager, theme_icon, theme_pixmap
 from src.tweaks.tweaks import tweaks
 
@@ -267,8 +267,8 @@ class IOSHomePage(QWidget):
         self.device_combo.currentIndexChanged.connect(self.on_device_changed)
         header.addWidget(self.device_combo)
 
-        # Keep the device's storage at a glance in the same top bar as the
-        # device picker, instead of using a full-width card above the tiles.
+        # One of these two cards shows in the top bar, chosen by the
+        # "home_widget" setting: device storage or the preset shortcut.
         self.storage_card = IOSCard()
         self.storage_card.setFixedWidth(220)
         self.storage_card.setFixedHeight(64)
@@ -289,6 +289,26 @@ class IOSHomePage(QWidget):
         self.storage_lbl.setWordWrap(False)
         storage_layout.addWidget(self.storage_lbl)
         header.addWidget(self.storage_card)
+
+        # Presets card in the same top bar as the device picker: shows the
+        # active preset and opens the preset manager on click.
+        self.presets_card = IOSCard()
+        self.presets_card.setFixedWidth(220)
+        self.presets_card.setFixedHeight(64)
+        self.presets_card.setCursor(Qt.PointingHandCursor)
+        self.presets_card.mousePressEvent = lambda e: self.open_presets_section()
+        presets_layout = QVBoxLayout(self.presets_card)
+        presets_layout.setContentsMargins(10, 7, 10, 7)
+        presets_layout.setSpacing(3)
+        self.presets_title = QLabel(QCoreApplication.translate("Nugget", "Presets"))
+        self.presets_title.setStyleSheet(t("home_tile_title"))
+        presets_layout.addWidget(self.presets_title)
+        self.presets_lbl = QLabel(QCoreApplication.translate("Nugget", "Manage presets"))
+        self.presets_lbl.setStyleSheet(t("home_tile_subtitle"))
+        self.presets_lbl.setWordWrap(False)
+        presets_layout.addWidget(self.presets_lbl)
+        header.addWidget(self.presets_card)
+        self._apply_home_widget()
 
         self._refresh_btn = QPushButton(self)
         self._refresh_btn.setFixedSize(36, 36)
@@ -373,10 +393,6 @@ class IOSHomePage(QWidget):
         apply_btn.clicked.connect(self.open_apply_classic)
         actions.addWidget(apply_btn, 1)
 
-        reset_btn = IOSDangerButton(QCoreApplication.translate("Nugget", "Reset Tweaks"))
-        reset_btn.clicked.connect(self.reset_tweaks)
-        actions.addWidget(reset_btn, 1)
-
         layout.addLayout(actions)
 
         self.process_status_lbl = QLabel("", self)
@@ -441,6 +457,8 @@ class IOSHomePage(QWidget):
             QProgressBar {{ background: {c.bg_input}; border: none; border-radius: 4px; }}
             QProgressBar::chunk {{ background: {c.accent}; border-radius: 4px; }}
         """)
+        self.presets_title.setStyleSheet(t("home_tile_title"))
+        self.presets_lbl.setStyleSheet(t("home_tile_subtitle"))
         self.process_status_lbl.setStyleSheet(t("process_status_green"))
         self.update_status()
         # Feature tiles: recolor the icon and restyle the two labels
@@ -553,6 +571,8 @@ class IOSHomePage(QWidget):
         self._refresh_storage()
 
     def _refresh_storage(self):
+        # Also feeds the pre-apply warnings in MainWindow, so always collect
+        # the figures even while the storage card is not the active widget.
         if self._storage_thread is not None and self._storage_thread.isRunning():
             return
         udid = self.window.device_manager.get_current_device_udid()
@@ -602,9 +622,48 @@ class IOSHomePage(QWidget):
     def refresh_device_combo(self):
         self.populate_device_picker()
 
+    def _home_widget_mode(self) -> str:
+        """Which top-bar widget to show: "storage" or "presets"."""
+        try:
+            mode = self.window.settings.value("home_widget", "presets", type=str)
+        except Exception:
+            mode = "presets"
+        return mode if mode in ("storage", "presets") else "presets"
+
+    def _apply_home_widget(self):
+        """Show the selected top-bar card and hide the other one."""
+        mode = self._home_widget_mode()
+        self.storage_card.setVisible(mode == "storage")
+        self.presets_card.setVisible(mode == "presets")
+
+    def set_home_widget(self, mode: str):
+        """Switch the top-bar widget at runtime (from Settings / first run)."""
+        if mode not in ("storage", "presets"):
+            return
+        try:
+            self.window.settings.setValue("home_widget", mode)
+            self.window._sync_settings()
+        except Exception:
+            pass
+        self._apply_home_widget()
+        if mode == "presets":
+            self.refresh_preset_widget()
+        else:
+            self._refresh_storage()
+
     def refresh_preset_widget(self):
-        # Kept as a compatibility hook for MainWindow; presets now live on
-        # their own page and are intentionally absent from Home.
+        """Keep the top-bar preset card's subtitle in sync."""
+        try:
+            autosave = self.window.autosave_enabled()
+        except Exception:
+            autosave = True
+        name = self.window.settings.value("last_loaded_preset", "", type=str) or ""
+        if name:
+            self.presets_lbl.setText(name)
+        elif autosave:
+            self.presets_lbl.setText(QCoreApplication.translate("Nugget", "AutoSave"))
+        else:
+            self.presets_lbl.setText(QCoreApplication.translate("Nugget", "Manage presets"))
         self.refresh_summary()
 
     def refresh_summary(self):

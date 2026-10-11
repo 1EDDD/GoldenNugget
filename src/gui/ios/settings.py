@@ -61,6 +61,25 @@ class IOSSettingsPage(QWidget):
         accent_row.addWidget(self._accent_picker)
         self.content_layout.addWidget(accent_row_card)
 
+        # Choose which widget the home screen shows next to the device picker.
+        home_widget_card = QWidget()
+        home_widget_row = QHBoxLayout(home_widget_card)
+        home_widget_row.setContentsMargins(16, 10, 16, 10)
+        home_widget_row.setSpacing(12)
+        home_widget_label = QLabel(QCoreApplication.translate("Nugget", "Home Widget"))
+        home_widget_row.addWidget(home_widget_label, 1)
+        self._home_widget_combo = QComboBox()
+        self._home_widget_combo.addItem(
+            QCoreApplication.translate("Nugget", "Device Storage"), "storage")
+        self._home_widget_combo.addItem(
+            QCoreApplication.translate("Nugget", "Presets"), "presets")
+        _current_widget = self.window.settings.value("home_widget", "presets", type=str)
+        _widget_index = self._home_widget_combo.findData(_current_widget)
+        self._home_widget_combo.setCurrentIndex(_widget_index if _widget_index >= 0 else 1)
+        self._home_widget_combo.activated.connect(self._on_home_widget_changed)
+        home_widget_row.addWidget(self._home_widget_combo)
+        self.content_layout.addWidget(home_widget_card)
+
         # TEMP: Classic UI removed — the "iOS-style Interface" switch is hidden;
         # the app is pinned to the iOS-style interface until Classic returns.
 
@@ -195,6 +214,8 @@ class IOSSettingsPage(QWidget):
         self._accent_picker.setStyleSheet(
             f"background-color: {c.bg_primary};"
         )
+        if hasattr(self, '_home_widget_combo'):
+            self._retheme_home_widget_dropdown()
         if hasattr(self, '_lang_drp'):
             self._retheme_lang_dropdown()
         if hasattr(self, '_saved_ids_list'):
@@ -205,6 +226,29 @@ class IOSSettingsPage(QWidget):
             self._retheme_preset_list()
         if hasattr(self, 'history_count_lbl'):
             self.history_count_lbl.setStyleSheet(t("value_label"))
+
+    def _retheme_home_widget_dropdown(self):
+        c = self._tm.colors
+        self._home_widget_combo.setStyleSheet(f"""
+            QComboBox {{
+                background-color: {c.bg_input};
+                border: none;
+                border-radius: 10px;
+                color: {c.text_primary};
+                font-size: 10.5pt;
+                padding: 8px 12px;
+                min-width: 140px;
+            }}
+            QComboBox::drop-down {{ border: none; width: 24px; }}
+            QComboBox::down-arrow {{ image: none; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid {c.text_secondary}; margin-right: 10px; }}
+            QComboBox QAbstractItemView {{
+                background-color: {c.bg_tertiary};
+                border: 1px solid {c.border};
+                border-radius: 10px;
+                color: {c.text_primary};
+                selection-background-color: {c.accent};
+            }}
+        """)
 
     def _retheme_lang_dropdown(self):
         c = self._tm.colors
@@ -305,6 +349,12 @@ class IOSSettingsPage(QWidget):
         def handler(checked: bool):
             self._hotload.set_enabled(checked)
         return handler
+
+    def _on_home_widget_changed(self, index: int):
+        """Switch the home top-bar widget between storage and presets."""
+        mode = self._home_widget_combo.itemData(index)
+        if mode:
+            self.window.ios_home.set_home_widget(mode)
 
     def _on_autosave_toggled(self, checked: bool):
         """Persist the AutoSave option and re-label the home preset banner.

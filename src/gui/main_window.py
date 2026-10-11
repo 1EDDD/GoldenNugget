@@ -50,6 +50,7 @@ from src.gui.ios.presets import IOSPresetsPage
 from src.gui.ios.statusbar import IOSStatusBarPage
 from src.gui.ios.icon_themes import IOSIconThemesPage
 from src.gui.ios.passcode_theme import IOSPasscodeThemePage
+from src.gui.ios.connect_placeholder import ConnectDevicePlaceholder
 from src.tweaks.registry import Section
 
 from src.gui.theme import ColorThemeManager, t, theme_icon, themed_stylesheet
@@ -243,6 +244,9 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.content_stack.addWidget(self.ui.homePage)   # 0 = classic home
         self.content_stack.addWidget(ios_root)           # 1 = iOS pages
         self.content_stack.addWidget(self.ui.daemonsPage)  # 2 = classic daemons
+        # 3 = no-device placeholder (shown while no iPhone is connected)
+        self.connect_placeholder = ConnectDevicePlaceholder(self)
+        self.content_stack.addWidget(self.connect_placeholder)
         shell = QtWidgets.QWidget(self)
         shell.setProperty("cls", "central")  # picks up the global #1e1e1e background
         self.shell_layout = QtWidgets.QVBoxLayout(shell)
@@ -282,6 +286,9 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         
         ## DEVICE BAR
         self.refresh_devices()
+        # No device known yet (the refresh above runs on a thread) -> show the
+        # connect placeholder right away instead of an empty iOS home.
+        self._update_device_gate()
 
         self.ui.refreshBtn.clicked.connect(self.refresh_devices)
         self.ui.devicePicker.currentIndexChanged.connect(self.change_selected_device)
@@ -315,6 +322,15 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         if not self.theme_manager.settings.contains("ui/theme"):
             self.theme_manager.save_theme(ThemeManager.IOS)
             self.apply_theme(ThemeManager.IOS)
+
+        # First launch: choose the home top-bar widget (storage vs presets).
+        if not self.settings.contains("home_widget"):
+            from src.gui.interface_picker import HomeWidgetPickerDialog
+            picker = HomeWidgetPickerDialog(self)
+            picker.exec()
+            self.settings.setValue("home_widget", picker.choice or "presets")
+            self._sync_settings()
+            self.ios_home.set_home_widget(picker.choice or "presets")
 
         # First launch: remind the user to back up the device before tweaking
         # (keeps asking until they confirm a backup was made)

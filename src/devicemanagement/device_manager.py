@@ -35,6 +35,7 @@ MAX_TENDIES_PER_RESTORE = 5
 
 from src.devicemanagement.constants import Device, Version, is_supported_by_fork
 from src.devicemanagement.data_singleton import DataSingleton
+from src.devicemanagement.eta import ProgressEta
 from .preference_manager import PreferenceManager
 
 from src.utils.alerts import ApplyAlertMessage
@@ -132,6 +133,9 @@ class DeviceManager:
         # Set when the user chose to continue without data protection (e.g.
         # out of disk space) — Phase 1 must not re-run the protective backup.
         self._protective_backup_skipped = False
+
+        # ETA estimator for the three-phase restore (reset before each restore).
+        self._restore_eta = ProgressEta()
         
         # Test mode
         self._test_mode = "--test-mode" in sys.argv
@@ -394,6 +398,7 @@ class DeviceManager:
         # hard-block any restore on an unsupported (old) iOS version
         self._raise_if_unsupported()
         self.update_label = update_label
+        self._restore_eta.reset()
         self.do_not_unplug = ""
         if self.data_singleton.current_device.connected_via_usb:
             self.do_not_unplug = "\n" + QCoreApplication.tr("DO NOT UNPLUG")
@@ -441,6 +446,9 @@ class DeviceManager:
         prog = ""
         if progress != None:
             prog = f" ({progress:6.1f}% )"
+            remaining = self._restore_eta.update(progress)
+            if remaining:
+                prog += " " + QCoreApplication.tr("ETA {0}").format(remaining)
         self.update_label(QCoreApplication.tr("Restoring to device...{0}{1}").format(prog, self.do_not_unplug))
     def _backup_progress(self, update_label):
         """Progress callback for the pre-restore device backups.
@@ -450,13 +458,19 @@ class DeviceManager:
         restore has started. Status strings pass through as labels; anything
         that is not a number is dropped so the bar never sees garbage.
         """
+        eta = ProgressEta()
+
         def _cb(progress):
             if isinstance(progress, str):
                 update_label(progress)
                 return
             if isinstance(progress, bool) or not isinstance(progress, (int, float)):
                 return
-            update_label(QCoreApplication.tr("Backing up device... ({0:.1f}%)").format(progress))
+            label = QCoreApplication.tr("Backing up device... ({0:.1f}%)").format(progress)
+            remaining = eta.update(progress)
+            if remaining:
+                label += " " + QCoreApplication.tr("ETA {0}").format(remaining)
+            update_label(label)
         return _cb
     def apply_changes(self, update_label=lambda x: None, show_alert=lambda x: None, prompt_password=None, prompt_choice=None):
         asyncio.run(self._apply_changes(update_label, show_alert, prompt_password, prompt_choice))

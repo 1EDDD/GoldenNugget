@@ -171,6 +171,7 @@ class RestoreCacheThread(QThread):
     def __init__(self, manager):
         super().__init__()
         self.manager = manager
+        self._eta = None
 
     def prompt_user_choice(self, title: str, text: str) -> str:
         """Ask the user for a two-way decision on the main thread.
@@ -193,6 +194,8 @@ class RestoreCacheThread(QThread):
     def run(self):
         import logging
         from src.controllers.nugget_logger import log_context
+        from src.devicemanagement.eta import ProgressEta
+        self._eta = ProgressEta()
         log = logging.getLogger("GoldenNugget.restore_cache")
         try:
             log_context("START restore-cache",
@@ -360,7 +363,13 @@ class RestoreCacheThread(QThread):
         if isinstance(value, str):
             self.update_label(value)
         elif isinstance(value, (int, float)) and not isinstance(value, bool):
-            self.update_label(f"Restoring... {value:.1f}%")
+            label = f"Restoring... {value:.1f}%"
+            eta = getattr(self, "_eta", None)
+            if eta is not None:
+                remaining = eta.update(value)
+                if remaining:
+                    label += " " + QCoreApplication.tr("ETA {0}").format(remaining)
+            self.update_label(label)
 
     def _backup_password(self) -> str:
         try:

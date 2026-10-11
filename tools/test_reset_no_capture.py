@@ -243,6 +243,18 @@ def test_ios26_status_bar_still_resets_the_classic_file():
           FileLocation.statusBarOverridesArchive.value not in fake.written)
 
 
+def test_status_bar_is_always_resettable():
+    print("\nResettable pages: Status Bar is offered on every version")
+    from src.utils.pages import get_resettable_pages
+    for version in ("26.2", "27.0", "27.1"):
+        pages = get_resettable_pages(FakeDeviceManager(version))
+        check(f"{version} reset offers Status Bar",
+              Page.StatusBar in pages, repr([p.getPageName() for p in pages]))
+        check(f"{version} reset keeps the other sections",
+              {Page.Springboard, Page.InternalOptions, Page.Daemons} <= set(pages),
+              repr([p.getPageName() for p in pages]))
+
+
 # =============================================================================
 test_capture_is_gone()
 test_ios27_writes_valid_empty_plists()
@@ -252,5 +264,6 @@ test_ios26_leaves_app_mirrors_alone()
 test_ios26_daemons_page_still_written()
 test_ios27_status_bar_resets_the_archive()
 test_ios26_status_bar_still_resets_the_classic_file()
+test_status_bar_is_always_resettable()
 
 print(f"\nALL {PASS} CHECKS PASSED")

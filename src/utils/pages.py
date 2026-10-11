@@ -7,9 +7,6 @@ backend (``device_manager`` reset pass) no longer imports the GUI package.
 
 from enum import Enum
 
-from src.devicemanagement.constants import Version
-
-
 class Page(Enum):
     Home = 0
     Gestalt = 1
@@ -48,12 +45,9 @@ class Page(Enum):
         return name_map[self.value]
 
 def get_resettable_pages(device_manager) -> list[Page]:
-    device_ver = Version(device_manager.get_current_device_version())
-    page_list: list[Page] = [Page.Springboard, Page.InternalOptions, Page.Daemons]
-
-    # Status Bar is broken on iOS 27 (no write permissions for Speakeasy flags)
-    # so the feature is hidden on iOS 27+
-    if device_ver < Version("27.0"):
-        page_list.insert(0, Page.StatusBar)
-
-    return page_list
+    # Status Bar is resettable on every supported version. On iOS 27 the
+    # carrier override lives in StatusBarOverrides.archive and the reset record
+    # SpringBoard unlinks brings the stock carrier name back, so the old
+    # "no write permissions for Speakeasy flags" exclusion is stale. The
+    # parameter is kept for callers (GUI/CLI) that still pass a device manager.
+    return [Page.StatusBar, Page.Springboard, Page.InternalOptions, Page.Daemons]

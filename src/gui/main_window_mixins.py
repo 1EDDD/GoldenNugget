@@ -36,6 +36,24 @@ from src.tweaks.tweaks import tweaks, TweakID
 class DeviceBarMixin:
     """Device refresh, selection and per-device interface updates."""
 
+    def _update_device_gate(self):
+        """Show the connect-device placeholder while no iPhone is available.
+
+        The placeholder lives on its own in ``content_stack`` (index 3), so it
+        replaces the whole iOS shell — no nav bar, no feature cards — until a
+        supported device shows up. It auto-dismisses back to the iOS home.
+        """
+        placeholder = getattr(self, "connect_placeholder", None)
+        stack = getattr(self, "content_stack", None)
+        if placeholder is None or stack is None:
+            return
+        if len(self.device_manager.devices) == 0:
+            stack.setCurrentWidget(placeholder)
+        elif stack.currentWidget() is placeholder:
+            stack.setCurrentIndex(1)
+            self.set_ios_page(0, animate=False)
+            self._update_shared_nav(0)
+
     def updateInterfaceForNewDevice(self):
         # update the home page
         self.pages[Page.Home].updatePhoneInfo()
@@ -182,6 +200,8 @@ class DeviceBarMixin:
         self.ios_home.refresh_device_combo()
         self.ios_home.update_device_info()
         self.ios_home.update_status()
+        # no device -> gate the whole iOS shell behind the connect placeholder
+        self._update_device_gate()
 
 
     def change_selected_device(self, index):

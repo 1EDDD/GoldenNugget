@@ -712,13 +712,25 @@ def modernize_main_caml(text: str, role: str, doc_width: float, doc_height: floa
 
 
 def _plane_units(index: dict, logical_width: int) -> bool:
+    """Whether a legacy plane is a pixel canvas.
+
+    ``unitsInPixelsInPlayer`` is authoritative when present; otherwise a plane
+    whose ``documentWidth`` is clearly larger than the logical width is a pixel
+    canvas (e.g. an iOS 17 "flow" 3174x3174 canvas). Anything else defaults to
+    points: legacy third-party tendies author their CAML in the logical screen
+    space and often ship an index without either key — treating those as pixels
+    makes ``_fit_scale`` divide the point-space ``bounds`` by the pixel scale
+    and blow the artwork up (a 390x844 canvas "becomes" 130x281 points, scale 3).
+    The rebuild path classifies the same way (a missing flag is a non-pixel
+    logical poster).
+    """
     value = index.get("unitsInPixelsInPlayer")
     if isinstance(value, bool):
         return value
     doc_width = index.get("documentWidth")
     if isinstance(doc_width, (int, float)) and logical_width:
         return float(doc_width) > float(logical_width) + 1.0
-    return True
+    return False
 
 
 def modernize_plane(plane_dir: str, role: str, doc_width: float, doc_height: float,

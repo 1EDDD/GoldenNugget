@@ -291,6 +291,30 @@ def test_root_id_rewritten_without_breaking_states():
     check("points canvas not re-scaled", "transform=" not in tag, tag)
 
 
+# --- legacy points canvas with a bare index is not zoomed --------------------
+def test_undefined_units_index_not_zoomed():
+    print("\nPoints canvas with a bare index (no units/document keys) is not zoomed")
+    root = os.path.join(TMP, "bareindex")
+    desc, wallpaper = make_descriptor(
+        root, "BARE0000-0000-0000-0000-000000000000",
+        ["BG-bare.ca"],
+        {},  # index.xml with neither unitsInPixelsInPlayer nor documentWidth
+        {"family": "Marble", "name": "Bare", "identifier": 7405,
+         "logicalScreenClass": "390w-844h@3x~iphone"},
+        caml=FLAT_CAML,  # 390x844 point-space canvas
+    )
+    pc.convert_tree(root)
+    plane = os.path.join(wallpaper, "BG-bare.ca")
+    tag, text = root_tag(plane)
+    check("plane still published", 'id="Background"' in tag, tag)
+    check("points canvas gets no fit scale", "transform=" not in tag, tag)
+    check("artwork untouched", 'bounds="0 0 390 844"' in tag, tag)
+    index = read_index(plane)
+    check("converted index declares points",
+          index.get("unitsInPixelsInPlayer") is False)
+    check("no fit transform on the content", "transform=" not in text)
+
+
 # --- a color-only Background gets a real image -------------------------------
 def test_color_only_background_gets_image():
     print("\nColor-only Background is rendered to an image (depth trap guard)")
@@ -624,6 +648,7 @@ try:
     test_flow_oversized()
     test_root_id_rewritten_without_breaking_states()
     test_color_only_background_gets_image()
+    test_undefined_units_index_not_zoomed()
     test_legacy_families()
     test_flatten_legacy_plane()
     test_flatten_modern_plane()
