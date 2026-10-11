@@ -187,6 +187,19 @@ async def check_disk_space_for_backup(lockdown_client=None, path: str = None,
 # Importing this module applies it process-wide.
 _sc.DEFAULT_SSL_HANDSHAKE_TIMEOUT = 60
 
+# Fix for Python 3.15 lazy imports: ensure ThreadPoolExecutor is resolved
+# Otherwise asyncio.to_thread() fails with "'lazy_import' object is not callable"
+try:
+    import concurrent.futures as _cf
+    try:
+        from concurrent.futures import ThreadPoolExecutor as _TPE
+        _cf.__dict__['ThreadPoolExecutor'] = _TPE
+    except Exception:
+        pass
+    _ = _cf.ThreadPoolExecutor  # force resolution
+except Exception:
+    pass
+
 from src.utils.log_util import log_info, log_warn, log_error, log_debug
 
 # --- DeviceLink protocol constants (from pymobiledevice3.services.device_link) ---

@@ -8,11 +8,7 @@ on:
         required: false
         default: true
         type: boolean
-      build_for_macos_intel_legacy:
-        description: 'Build macOS Intel (legacy: macOS 12 min)'
-        required: false
-        default: false
-        type: boolean
+
       build_for_macos_arm:
         description: 'Build macOS ARM'
         required: false
@@ -74,38 +70,7 @@ jobs:
           if-no-files-found: error
           archive: false
 
-  build-macos-intel-legacy:
-    if: ${{ github.event_name == 'push' || github.event.inputs.build_for_macos_intel_legacy == 'true' }}
-    runs-on: macos-15-intel
 
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Setup Python
-        uses: actions/setup-python@v6
-        with:
-          python-version: '3.10'
-
-      - name: Create venv and install requirements
-        run: |
-          python3 -m venv .env
-          source .env/bin/activate
-          python -m pip install -U pip setuptools wheel
-          pip install --no-binary sslpsk_pmd3 -r requirements-legacy.txt
-
-      - name: Build macOS Intel Legacy
-        run: |
-          source .env/bin/activate
-          python3 compile.py
-
-      - name: Upload macOS Intel Legacy
-        uses: actions/upload-artifact@v6
-        with:
-          name: Nugget_macOS_intel_legacy
-          path: dist/Nugget-macOS-*.zip
-          if-no-files-found: error
-          archive: false
 
   build-macos-arm:
     if: ${{ github.event_name == 'push' || github.event.inputs.build_for_macos_arm == 'true' }}
