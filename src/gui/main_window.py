@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING
 
-from PySide6 import QtCore, QtWidgets
+from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import QCoreApplication
 
 try:
@@ -76,6 +76,7 @@ _CLASSIC_THEMED_ICONS = {
     "liquidGlassPageBtn": ":/icon/liquid-glass.svg",
     "daemonsPageBtn": ":/icon/toggles.svg",
     "iconThemesPageBtn": ":/icon/brush.svg",
+    "presetsPageBtn": ":/icon/folder.svg",
     "applyPageBtn": ":/icon/check-circle.svg",
     "posterboardPageBtn": ":/icon/wallpaper.svg",
     "settingsPageBtn": ":/icon/gear.svg",
@@ -256,6 +257,20 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.shell_layout.addLayout(self.body_row)
         self.setCentralWidget(shell)
 
+        # Presets are a first-class page, separate from Settings.  The
+        # generated Designer UI predates this page, so add its sidebar item
+        # here instead of editing the generated file.
+        self.ui.presetsPageBtn = QtWidgets.QToolButton(self.ui.sidebar)
+        self.ui.presetsPageBtn.setObjectName("presetsPageBtn")
+        self.ui.presetsPageBtn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self.ui.presetsPageBtn.setIcon(QtGui.QIcon(":/icon/folder.svg"))
+        self.ui.presetsPageBtn.setText(QCoreApplication.translate("Nugget", "Presets"))
+        self.ui.presetsPageBtn.setCheckable(True)
+        self.ui.presetsPageBtn.setAutoExclusive(True)
+        self.ui.presetsPageBtn.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.ui.presetsPageBtn.setProperty("cls", "sidebarBtn")
+        self.ui.verticalLayout.insertWidget(self.ui.verticalLayout.indexOf(self.ui.sidebarDiv2), self.ui.presetsPageBtn)
+
         self.apply_theme(self.theme_manager.current_theme)
 
         # Back navigation: ESC key and mouse back button go to the home page
@@ -282,6 +297,8 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.ui.posterboardPageBtn.clicked.connect(self.on_posterboardPageBtn_clicked)
         self.ui.applyPageBtn.clicked.connect(self.on_applyPageBtn_clicked)
         self.ui.settingsPageBtn.clicked.connect(self.on_settingsPageBtn_clicked)
+
+        self.ui.presetsPageBtn.clicked.connect(self.on_presetsPageBtn_clicked)
 
         # Apply the initial themed global stylesheet
         self._apply_global_stylesheet()

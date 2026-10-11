@@ -463,7 +463,8 @@ class NavigationMixin:
             self.ui.springboardOptionsPageBtn, self.ui.internalOptionsPageBtn,
             self.ui.liquidGlassPageBtn, self.ui.daemonsPageBtn,
             self.ui.applyPageBtn, self.ui.settingsPageBtn,
-            self.ui.statusBarPageBtn, self.ui.iconThemesPageBtn)
+            self.ui.statusBarPageBtn, self.ui.iconThemesPageBtn,
+            self.ui.presetsPageBtn)
         page_to_btn = {
             0: 0,   # home
             2: 1,   # posterboard
@@ -475,6 +476,7 @@ class NavigationMixin:
             4: 7,   # settings
             5: 8,   # status bar
             10: 9,  # icon themes
+            12: 10, # presets
         }
         idx = None
         if self.theme_manager.current_theme == ThemeManager.CLASSIC:
@@ -688,6 +690,11 @@ class NavigationMixin:
 
     def on_settingsPageBtn_clicked(self):
         self.show_ios_page(4)
+        self._sync_sidebar_selection()
+
+
+    def on_presetsPageBtn_clicked(self):
+        self.show_ios_page(12)
         self._sync_sidebar_selection()
 
 
