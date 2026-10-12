@@ -1094,6 +1094,7 @@ class ApplyMixin:
                 return
             if reset_pages is None:
                 self._prepare_rollback_preset()
+            self.dismiss_operation_result()
             self.apply_in_progress = True
             self.toggle_thread_btns(disabled=True)
             self.worker_thread = ApplyThread(manager=self.device_manager, settings=self.settings, reset_pages=reset_pages)
@@ -1285,17 +1286,17 @@ class ApplyMixin:
             pass
         worker = getattr(self, 'worker_thread', None)
         is_reset = worker is not None and worker.reset_pages is not None
+        from src.gui.ios.operation_result import result_text
+        text = result_text(success, error_msg,
+            reset_pages=worker.reset_pages if is_reset else None,
+            preview=getattr(self.device_manager, '_last_operation_preview', None))
+        self.ios_home._hide_timer.stop()
+        self.ios_home.hide_process_status()
+        self.ios_home.result_card.show_result(success, text, is_reset)
+        self.ios_apply.result_card.show_result(success, text, is_reset)
+        self.ios_apply.set_status("")
+        self.ios_home.refresh_summary()
         # Show completion indicator on the iOS home page
-        try:
-            if success:
-                self.ios_home.show_process_status(
-                    QCoreApplication.tr("Reset complete!") if is_reset else QCoreApplication.tr("Apply complete!"),
-                    success=True)
-            else:
-                self.ios_home.show_process_status(
-                    QCoreApplication.tr("Operation failed"), success=False)
-        except Exception:
-            pass
         if success:
             if worker is not None and not is_reset:
                 self._save_last_applied_preset()
@@ -1309,6 +1310,10 @@ class ApplyMixin:
                     icon=QtWidgets.QMessageBox.Critical
                 ), log_to_console=False)
 
+
+    def dismiss_operation_result(self):
+        self.ios_home.result_card.hide()
+        self.ios_apply.result_card.hide()
 
     def prompt_star_on_github(self):
         if self.settings.value("star_prompt_done", False, type=bool):

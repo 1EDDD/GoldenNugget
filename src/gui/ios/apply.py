@@ -152,6 +152,11 @@ class IOSApplyPage(QWidget):
         status_layout.addWidget(self.progress_hint_lbl)
         content_layout.addWidget(status_card)
 
+        from src.gui.ios.operation_result import OperationResultCard
+        self.result_card = OperationResultCard(
+            self.window.ios_home.open_logs, self.window.dismiss_operation_result)
+        content_layout.addWidget(self.result_card)
+
         content_layout.addStretch()
 
     def set_status(self, text: str):

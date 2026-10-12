@@ -473,10 +473,11 @@ class DeviceManager:
             update_label(label)
         return _cb
     def apply_changes(self, update_label=lambda x: None, show_alert=lambda x: None, prompt_password=None, prompt_choice=None):
-        asyncio.run(self._apply_changes(update_label, show_alert, prompt_password, prompt_choice))
+        return asyncio.run(self._apply_changes(update_label, show_alert, prompt_password, prompt_choice))
     async def _apply_changes(self, update_label=lambda x: None, show_alert=lambda x: None, prompt_password=None, prompt_choice=None):
         files_to_restore: list[FileToRestore] = []
         final_alert = None
+        self._last_operation_preview = None
         pb = tweaks[TweakID.PosterBoard]
         original_tendies = list(pb.tendies)
         try:
@@ -586,9 +587,14 @@ class DeviceManager:
             if udid:
                 write_lastapply(udid, sparse_signature(files_to_restore))
             write_preview(preview_udid, preview_version, preview)
+            self._last_operation_preview = preview
+            if preview is not None:
+                preview['skipped_packages'] = [item.name for item in original_tendies[MAX_TENDIES_PER_RESTORE:]]
             update_label(QCoreApplication.tr("Success!"))
+            return True
         except Exception as e:
             final_alert = show_apply_error(e, update_label, files_list=files_to_restore)
+            return False
         finally:
             pb.tendies = original_tendies
             show_alert(final_alert)
@@ -1135,8 +1141,10 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
 
     ## RESETTING TWEAKS
     def reset_tweaks(self, reset_pages: list[Page], settings: QSettings, update_label=lambda x: None, show_alert=lambda x: None, prompt_choice=None):
-        asyncio.run(self._reset_tweaks(reset_pages, settings, update_label, show_alert, prompt_choice))
+        return asyncio.run(self._reset_tweaks(reset_pages, settings, update_label, show_alert, prompt_choice))
     async def _reset_tweaks(self, reset_pages: list[Page], settings: QSettings, update_label=lambda x: None, show_alert=lambda x: None, prompt_choice=None):
+        final_alert = None
+        files_to_restore = []
         try:
             self._raise_if_unsupported()
             # create the restore file list
@@ -1274,7 +1282,9 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                 from src.controllers.apply_preview import clear_preview
                 clear_preview(udid)
             update_label(QCoreApplication.tr("Success!"))
+            return True
         except Exception as e:
             final_alert = show_apply_error(e, update_label, files_list=files_to_restore)
+            return False
         finally:
             show_alert(final_alert)

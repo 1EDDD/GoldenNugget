@@ -340,6 +340,8 @@ class IOSHomePage(QWidget):
         self.status_lbl = QLabel("", self)
         self.status_lbl.setWordWrap(True)
         self.status_lbl.setTextFormat(Qt.RichText)
+        self.status_lbl.setOpenExternalLinks(False)
+        self.status_lbl.linkActivated.connect(self._show_device_support)
         layout.addWidget(self.status_lbl)
 
         # Compact configuration summary: the home page should answer what is
@@ -412,6 +414,10 @@ class IOSHomePage(QWidget):
         self._hide_timer = QTimer(self)
         self._hide_timer.setSingleShot(True)
         self._hide_timer.timeout.connect(self.hide_process_status)
+
+        from src.gui.ios.operation_result import OperationResultCard
+        self.result_card = OperationResultCard(self.open_logs, self.window.dismiss_operation_result)
+        layout.addWidget(self.result_card)
 
         layout.addStretch()
 
@@ -544,7 +550,9 @@ class IOSHomePage(QWidget):
             f"font-size: 14px; font-weight: 600; color: {color};")
         self.process_status_lbl.setText(text)
         self.process_status_lbl.show()
-        self._hide_timer.start(6000)
+        self._hide_timer.stop()
+        if success is not False:
+            self._hide_timer.start(6000)
 
     def hide_process_status(self):
         self.process_status_lbl.hide()
@@ -571,7 +579,22 @@ class IOSHomePage(QWidget):
         except AttributeError:
             status_text = QCoreApplication.translate("Nugget", "Not connected")
             color = c.text_primary
-        self.status_lbl.setText(f"<span style='color:{color};'>{status_text}</span>")
+        if self.window.device_manager.get_current_device_udid():
+            self.status_lbl.setText(
+                f"<a href='support' style='color:{color};'>{status_text} ⓘ</a>")
+            self.status_lbl.setToolTip(QCoreApplication.translate(
+                "Nugget", "View device compatibility and safety restrictions"))
+        else:
+            self.status_lbl.setText(f"<span style='color:{color};'>{status_text}</span>")
+            self.status_lbl.setToolTip("")
+
+    def _show_device_support(self, _link=None):
+        if not self.window.device_manager.get_current_device_udid():
+            return
+        from src.gui.dialogs.device_support import DeviceSupportDialog
+        dialog = DeviceSupportDialog(self.window.device_manager, self.window)
+        dialog.exec()
+        dialog.deleteLater()
 
     def update_device_info(self):
         try:

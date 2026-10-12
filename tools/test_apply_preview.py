@@ -114,10 +114,10 @@ class PreviewTests(unittest.TestCase):
              patch('src.restore.lastapply.write_lastapply'), \
              patch.object(dm, 'show_apply_error', return_value=None):
             manager._apply_tweak_pass = AsyncMock(side_effect=RuntimeError('restore failed'))
-            asyncio.run(dm.DeviceManager._apply_changes(manager))
+            self.assertFalse(asyncio.run(dm.DeviceManager._apply_changes(manager)))
             write.assert_not_called()
             manager._apply_tweak_pass = AsyncMock(return_value=(None, []))
-            asyncio.run(dm.DeviceManager._apply_changes(manager))
+            self.assertTrue(asyncio.run(dm.DeviceManager._apply_changes(manager)))
             write.assert_called_once_with('one', '26.2', self.state)
 
     def test_preview_button_does_not_accept_summary(self):

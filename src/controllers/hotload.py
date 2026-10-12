@@ -192,9 +192,14 @@ class HotLoad:
         setup. These features are removed from the UI entirely and their tweaks
         never apply — the whole point is to keep broken/dangerous features out
         of sight so nobody can enable them accidentally."""
+        return set(self.hidden_feature_reasons(device_version, device_model, app_version))
+
+    def hidden_feature_reasons(self, device_version=None, device_model=None,
+                               app_version=None) -> dict:
+        """Matching hidden pages and their reasons, for the compatibility UI."""
         if not self.is_enabled():
-            return set()
-        hidden = set()
+            return {}
+        hidden = {}
         for rule in self._rules.get("rules", []):
             try:
                 if rule.get("action") != HIDE_ACTION:
@@ -203,7 +208,7 @@ class HotLoad:
                     continue
                 feature = rule.get("feature")
                 if feature and feature in FEATURE_TWEAKS:
-                    hidden.add(feature)
+                    hidden.setdefault(feature, rule.get("reason") or "")
             except Exception:
                 continue
         return hidden

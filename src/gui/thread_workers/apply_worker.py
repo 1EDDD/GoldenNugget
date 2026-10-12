@@ -104,7 +104,15 @@ class ApplyThread(QThread):
                         ios=self.manager.get_current_device_version() or "unknown",
                         build=self.manager.get_current_device_build() or "unknown",
                         udid=self.manager.get_current_device_udid() or "unknown")
-            self._do_work()
+            completed = self._do_work()
+            if completed is not True:
+                from src.controllers.apply_history import record_operation
+                self.success = False
+                self._error_msg = self._error_msg or QCoreApplication.translate(
+                    "Nugget", "Operation stopped before completion. See the application log for details.")
+                record_operation(self.manager, mode, False, self._error_msg)
+                self.finished_with_result.emit(False, self._error_msg)
+                return
             self.success = True
             self._error_msg = ""
             log_context(f"FINISH {mode} OK")
@@ -137,15 +145,17 @@ class ApplyThread(QThread):
 
     def alert_window(self, msg: ApplyAlertMessage):
         if msg is not None:
+            if msg.icon in (None, QMessageBox.Critical) or msg.exc_value is not None:
+                self._error_msg = msg.txt
             self._log.info("alert: %s | %s", getattr(msg, "title", ""), getattr(msg, "txt", ""))
         self.alert.emit(msg)
 
     def _do_work(self):
         if self.reset_pages is None:
-            self.manager.apply_changes(self.update_label, self.alert_window,
+            return self.manager.apply_changes(self.update_label, self.alert_window,
                                        self.prompt_password, self.prompt_user_choice)
         else:
-            self.manager.reset_tweaks(self.reset_pages, self.settings, self.update_label,
+            return self.manager.reset_tweaks(self.reset_pages, self.settings, self.update_label,
                                       self.alert_window, self.prompt_user_choice)
 
 
