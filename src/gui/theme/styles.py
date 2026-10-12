@@ -313,6 +313,12 @@ STYLES = {
         QScrollArea, QWidget#tweakInfoContent {{ background-color: {bg_elevated}; border: none; }}
     """,
 
+    "tweak_favorite_button": """
+        QPushButton {{ background: transparent; color: {text_secondary}; border: none; border-radius: 15px; font-size: 20px; }}
+        QPushButton:checked {{ color: {accent}; }}
+        QPushButton:hover, QPushButton:focus {{ background: {surface_hover}; }}
+    """,
+
     "tweak_info_button": """
         QPushButton {{
             background: transparent;

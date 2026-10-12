@@ -494,14 +494,18 @@ class IOSHomePage(QWidget):
                 for device in devices:
                     tag = " (@ USB)" if device.connected_via_usb else " (@ WiFi)"
                     self.device_combo.addItem(f"{device.name}{tag}")
+                    self.device_combo.setItemData(self.device_combo.count() - 1,
+                                                  f"{device.name}{tag}", Qt.ToolTipRole)
             else:
                 self.device_combo.addItem(QCoreApplication.translate("QCoreApplication", "No Device"))
         except Exception:
             self.device_combo.addItem(QCoreApplication.translate("QCoreApplication", "No Device"))
         self.device_combo.blockSignals(False)
+        self.device_combo.setToolTip(self.device_combo.currentText())
 
     @Slot()
     def on_device_changed(self, index):
+        self.device_combo.setToolTip(self.device_combo.currentText())
         if len(self.window.device_manager.devices) > 0 and index >= 0:
             self.window.change_selected_device(index)
             self.update_device_info()

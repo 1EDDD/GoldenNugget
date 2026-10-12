@@ -81,4 +81,7 @@
         <file>translations/Nugget_zh_CN.qm</file>
         <file>translations/Nugget_zh_TW.qm</file>
     </qresource>
+    <qresource prefix="/ui_translations">
+        <file>translations/GoldenNuggetUI_ru.qm</file>
+    </qresource>
 </RCC>

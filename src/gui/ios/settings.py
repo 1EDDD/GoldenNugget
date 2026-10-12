@@ -2,13 +2,13 @@ from PySide6.QtCore import Qt, QCoreApplication, QTimer, QPropertyAnimation, QEa
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea,
     QComboBox, QLineEdit, QListWidget, QListWidgetItem, QMessageBox, QInputDialog,
-    QFileDialog, QDialog, QProgressDialog, QGraphicsOpacityEffect
+    QFileDialog, QDialog, QProgressDialog, QGraphicsOpacityEffect, QAbstractButton
 )
 from pathlib import Path
 
 from src.exceptions.nugget_exception import NuggetException
 from src.gui.ios.components import (
-    IOSSectionHeader, IOSSwitch, IOSPrimaryButton
+    IOSSectionHeader, IOSSwitch, IOSPrimaryButton, IOSSearchField, IOSSearchEmpty
 )
 from src.gui.pages.main.settings import available_languages
 from src.controllers.video_handler import set_ignore_frame_limit
@@ -36,6 +36,17 @@ class IOSSettingsPage(QWidget):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
+
+        self.search = IOSSearchField(self)
+        self.search.setPlaceholderText(QCoreApplication.translate("Nugget", "Search settings…"))
+        self.search.setAccessibleName(self.search.placeholderText())
+        search_wrap = QWidget(self)
+        search_layout = QVBoxLayout(search_wrap)
+        search_layout.setContentsMargins(16, 16, 16, 0)
+        search_layout.addWidget(self.search)
+        layout.addWidget(search_wrap)
+        self.search_empty = IOSSearchEmpty(self)
+        layout.addWidget(self.search_empty)
 
         self._scroll = QScrollArea()
         self._scroll.setWidgetResizable(True)
@@ -203,8 +214,42 @@ class IOSSettingsPage(QWidget):
 
         self.content_layout.addStretch()
 
+        self._index_search_rows()
+        self.search.textChanged.connect(self._filter_settings)
+
         self._retheme()
         self._tm.theme_changed.connect(self._retheme)
+
+    def _index_search_rows(self):
+        """Index static labels/actions, excluding editable values and history entries."""
+        self._search_groups = []
+        section = None
+        for index in range(self.content_layout.count()):
+            item = self.content_layout.itemAt(index)
+            widget = item.widget()
+            if isinstance(widget, IOSSectionHeader):
+                section = (widget, [])
+                self._search_groups.append(section)
+            elif widget is not None and section is not None:
+                labels = widget.findChildren(QLabel) + widget.findChildren(QAbstractButton)
+                if isinstance(widget, (QLabel, QAbstractButton)):
+                    labels.append(widget)
+                text = ' '.join(label.text() for label in labels)
+                section[1].append((widget, text))
+
+    def _filter_settings(self, *_args):
+        searching = bool(self.search.text().strip())
+        matches = 0
+        for header, rows in self._search_groups:
+            section_matches = self.search.matches(header.text())
+            visible_rows = 0
+            for widget, text in rows:
+                visible = not searching or section_matches or self.search.matches(text)
+                widget.setVisible(visible)
+                visible_rows += visible
+            header.setVisible(not searching or visible_rows > 0)
+            matches += visible_rows
+        self.search_empty.setVisible(searching and matches == 0)
 
     def _retheme(self):
         c = self._tm.colors

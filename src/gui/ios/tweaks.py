@@ -81,6 +81,8 @@ class IOSSectionContent(QWidget):
         self.sections = sections
         self._switch_labels = []
         self._solarium_visible: bool = None
+        from src.controllers.favorites import TweakFavorites
+        self._favorites = TweakFavorites.instance()
 
         # Load tweaks (idempotent) so the sections below actually populate
         load_plist_tweaks()
@@ -95,7 +97,9 @@ class IOSSectionContent(QWidget):
             QCoreApplication.translate("Nugget", "All tweaks"), "all")
         self.filter_combo.addItem(
             QCoreApplication.translate("Nugget", "Enabled only"), "enabled")
-        self.filter_combo.setFixedWidth(132)
+        self.filter_combo.addItem(
+            QCoreApplication.translate("Nugget", "Favorites"), "favorites")
+        self.filter_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
         self.filter_combo.setAccessibleName(
             QCoreApplication.translate("Nugget", "Tweak filter"))
         search_row = QHBoxLayout()
@@ -109,6 +113,7 @@ class IOSSectionContent(QWidget):
         self.rebuild()
         self.search.textChanged.connect(self._apply_search)
         self.filter_combo.currentIndexChanged.connect(self._apply_search)
+        self._favorites.changed.connect(self._refresh_favorites)
 
     def rebuild(self):
         """(Re)build the section controls for the currently selected device.
@@ -136,6 +141,7 @@ class IOSSectionContent(QWidget):
 
         self._switch_labels = []
         self._info_buttons = []
+        self._favorite_buttons = {}
         self._search_rows = []
         self._search_sections = []
         self._search_expanded = {}
@@ -171,9 +177,11 @@ class IOSSectionContent(QWidget):
 
             c = ColorThemeManager.instance().colors
             label = QLabel(title)
+            label.setWordWrap(True)
             label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
             self._switch_labels.append(label)
             row_layout.addWidget(label, 1)
+            row_layout.addWidget(self._make_favorite_button(tweak_id, title))
             row_layout.addWidget(self._make_info_button(tweak_id, title))
 
             switch = IOSSwitch(tweak.enabled)
@@ -208,6 +216,7 @@ class IOSSectionContent(QWidget):
                 row.setText(f"{title}  ({current})")
             row.clicked.connect(lambda: self._show_text_input_dialog(tweak_id, title, current, row))
             card_layout.addWidget(row, 1)
+            card_layout.addWidget(self._make_favorite_button(tweak_id, title))
             card_layout.addWidget(self._make_info_button(tweak_id, title))
             (target or layout).addWidget(card)
             self._search_rows.append((card, tweak_id, title, description, True))
@@ -237,6 +246,7 @@ class IOSSectionContent(QWidget):
             row.clicked.connect(lambda: self._show_number_input_dialog(
                 tweak_id, title, current, row, min_val, max_val, step))
             card_layout.addWidget(row, 1)
+            card_layout.addWidget(self._make_favorite_button(tweak_id, title))
             card_layout.addWidget(self._make_info_button(tweak_id, title))
             (target or layout).addWidget(card)
             self._search_rows.append((card, tweak_id, title, description, True))
@@ -299,6 +309,8 @@ class IOSSectionContent(QWidget):
     def _apply_search(self, *_args):
         searching = bool(self.search.text().strip())
         filter_mode = self.filter_combo.currentData()
+        filtering = searching or filter_mode != "all"
+        favorites = self._favorites.names()
         matches = 0
         for card, tid, title, description, compatible in self._search_rows:
             enabled = bool(getattr(tweaks.get(tid), "enabled", False))
@@ -306,22 +318,24 @@ class IOSSectionContent(QWidget):
                 tid == TweakID.ForceSolariumFallback and self._solarium_visible is False)
             if filter_mode == "enabled" and not enabled:
                 available = False
+            if filter_mode == "favorites" and tid.name not in favorites:
+                available = False
             visible = available and self.search.matches(title, description, tid.name)
             card.setVisible(visible)
             matches += visible
         for section, rows in self._search_sections:
             section.setVisible(any(not row[0].isHidden() for row in rows))
-            if searching and section not in self._search_expanded:
+            if filtering and section not in self._search_expanded:
                 self._search_expanded[section] = section.expanded
             # Temporary expansion must not overwrite the user's saved collapse state.
             section.blockSignals(True)
-            if searching:
+            if filtering:
                 section.set_expanded(True)
             elif section in self._search_expanded:
                 section.set_expanded(self._search_expanded.pop(section))
             section.blockSignals(False)
-            section.header.setEnabled(not searching)
-        self.search_empty.setVisible(searching and matches == 0)
+            section.header.setEnabled(not filtering)
+        self.search_empty.setVisible((searching or filter_mode != "all") and matches == 0)
 
     def refresh_section_counts(self):
         """Update enabled counts after a switch changes without rebuilding."""
@@ -337,6 +351,30 @@ class IOSSectionContent(QWidget):
         # remember the intended state so a rebuild re-applies it (the card
         # pointer is recreated by rebuild())
         self._solarium_visible = visible
+        self._apply_search()
+
+    def _make_favorite_button(self, tweak_id, title):
+        button = QPushButton(self)
+        button.setFixedSize(30, 30)
+        button.setCheckable(True)
+        button.setChecked(tweak_id.name in self._favorites.names())
+        button.setText("★" if button.isChecked() else "☆")
+        button.setCursor(Qt.PointingHandCursor)
+        button.setAccessibleName(QCoreApplication.translate("Nugget", "Favorite: {0}").format(title))
+        button.setToolTip(QCoreApplication.translate("Nugget", "Add or remove from favorites"))
+        button.setStyleSheet(t("tweak_favorite_button"))
+        button.toggled.connect(lambda selected: self._favorites.set_favorite(tweak_id.name, selected))
+        self._favorite_buttons[tweak_id] = button
+        return button
+
+    def _refresh_favorites(self):
+        names = self._favorites.names()
+        for tid, button in self._favorite_buttons.items():
+            selected = tid.name in names
+            button.blockSignals(True)
+            button.setChecked(selected)
+            button.setText("★" if selected else "☆")
+            button.blockSignals(False)
         self._apply_search()
 
     def _make_info_button(self, tweak_id, title):
@@ -380,6 +418,8 @@ class IOSSectionContent(QWidget):
             lbl.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
         for button in self._info_buttons:
             button.setStyleSheet(t("tweak_info_button"))
+        for button in self._favorite_buttons.values():
+            button.setStyleSheet(t("tweak_favorite_button"))
 
     def _show_text_input_dialog(self, tweak_id: TweakID, title: str, current: str, row: IOSSettingsRow):
         dialog = TextInputDialog(title, current, self)

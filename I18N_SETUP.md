@@ -27,6 +27,16 @@ language dropped upstream disappears here too. The submodule pointer is
 checked out detached rather than merged, because translators regularly
 rebase/amend upstream and the commit recorded here then becomes unreachable.
 
+## Local UI additions
+
+`src/qt/translations/GoldenNuggetUI_ru.ts` supplements the upstream Russian
+catalog for local UI additions. Its different filename and separate
+`/ui_translations` resource block keep it intact during upstream sync.
+The translator loads it after the main catalog so these strings take priority.
+Compile updates with `pyside6-lrelease src/qt/translations/GoldenNuggetUI_ru.ts
+-qm src/qt/translations/GoldenNuggetUI_ru.qm`, then regenerate `resources_rc.py`.
+Keep placeholders such as `{0}` unchanged.
+
 ## Required Secrets
 
 In **gNugget-i18n** repo:

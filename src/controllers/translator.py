@@ -15,6 +15,7 @@ class Translator:
     def __init__(self, app: QApplication, settings: QSettings):
         self.app = app
         self.settings = settings
+        self._installed_translators = []
 
     def get_saved_locale_code(self) -> str:
         saved = self.settings.value("locale_code", "", type=str)
@@ -46,16 +47,27 @@ class Translator:
             os.execl(sys.executable, sys.executable, *sys.argv)
 
     def load_translations(self):
+        for previous in self._installed_translators:
+            self.app.removeTranslator(previous)
+            previous.deleteLater()
+        self._installed_translators = []
         qt_path = QLibraryInfo.path(QLibraryInfo.LibraryPath.TranslationsPath)
         qt_base = QTranslator(self.app)
         if qt_base.load(QLocale(), 'qtbase', '_', qt_path):
             self.app.installTranslator(qt_base)
+            self._installed_translators.append(qt_base)
 
         app_tr = self._load_app_translations()
         if app_tr is not None:
             self.app.installTranslator(app_tr)
+            self._installed_translators.append(app_tr)
+        # UI additions are kept apart from catalogs replaced by i18n sync.
+        ui_tr = self._load_app_translations('GoldenNuggetUI', ':/ui_translations')
+        if ui_tr is not None:
+            self.app.installTranslator(ui_tr)
+            self._installed_translators.append(ui_tr)
 
-    def _load_app_translations(self) -> "QTranslator":
+    def _load_app_translations(self, prefix='Nugget', resource_prefix=':/translations') -> "QTranslator":
         """Load the app's own ``translations/Nugget_<locale>.qm``.
 
         Tries the on-disk translations folder first (bundled by PyInstaller
@@ -69,13 +81,13 @@ class Translator:
             try:
                 # Files live as ``Nugget_<locale>.qm`` directly inside the
                 # directory (no extra "translations/" prefix component).
-                if translator.load(QLocale(), 'Nugget', '_', disk):
+                if translator.load(QLocale(), prefix, '_', disk):
                     return translator
             except Exception:
                 pass
         try:
             # Compiled-in resource: ``:/translations/translations/Nugget_<loc>.qm``
-            if translator.load(QLocale(), 'translations/Nugget', '_', ':/translations'):
+            if translator.load(QLocale(), 'translations/' + prefix, '_', resource_prefix):
                 return translator
         except Exception:
             pass

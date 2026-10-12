@@ -5,6 +5,7 @@ The constraints themselves live in the tweak registry
 only evaluates them.
 """
 import re
+from PySide6.QtCore import QCoreApplication
 
 from src.devicemanagement.constants import Version
 from src.tweaks.registry import SPECS_BY_ID
@@ -36,29 +37,30 @@ def compatibility_reasons(tweak_id, device_version: str, model: str = "",
         return []
 
     reasons = []
+    tr = lambda text: QCoreApplication.translate("Compatibility", text)
     parsed_device = None
     if device_version:
         try:
             parsed_device = _parse_version(device_version)
         except ValueError:
-            reasons.append("the iOS version could not be verified")
+            reasons.append(tr("the iOS version could not be verified"))
 
     if parsed_device is not None and spec.min_version:
         minimum = _parse_version(spec.min_version)
         if parsed_device < minimum:
-            reasons.append(f"requires iOS {spec.min_version} or newer")
+            reasons.append(tr("requires iOS {0} or newer").format(spec.min_version))
     if parsed_device is not None and spec.max_version:
         maximum = _parse_version(spec.max_version)
         if parsed_device > maximum:
-            reasons.append(f"supports iOS {spec.max_version} or older")
+            reasons.append(tr("supports iOS {0} or older").format(spec.max_version))
 
     family = device_family(model)
     if family is None and is_iphone is not None:
         family = "iphone" if is_iphone else "ipad"
     if spec.ipad_only and family != "ipad":
-        reasons.append("is for iPad only")
+        reasons.append(tr("is for iPad only"))
     if spec.iphone_only and family != "iphone":
-        reasons.append("is for iPhone only")
+        reasons.append(tr("is for iPhone only"))
     return reasons
 
 

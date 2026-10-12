@@ -1,9 +1,31 @@
 """Scrollable read-only preview, opened without accepting the apply summary."""
-from PySide6.QtCore import QCoreApplication
+from PySide6.QtCore import QCoreApplication, Qt, QRect, QSize
 from PySide6.QtWidgets import (QDialog, QLabel, QPlainTextEdit, QPushButton,
-    QVBoxLayout, QTreeWidget, QTreeWidgetItem, QAbstractItemView, QHeaderView)
+    QVBoxLayout, QTreeWidget, QTreeWidgetItem, QAbstractItemView, QHeaderView, QStyledItemDelegate)
 
 from src.gui.theme import ColorThemeManager, t
+
+
+class _WrappedPreviewDelegate(QStyledItemDelegate):
+    def sizeHint(self, option, index):
+        size = super().sizeHint(option, index)
+        table = self.parent()
+        item = table.itemFromIndex(index)
+        if item is not None and item.isFirstColumnSpanned():
+            width = table.viewport().width()
+        else:
+            width = table.columnWidth(index.column())
+        if index.column() == 0:
+            depth = 1
+            parent = index.parent()
+            while parent.isValid():
+                depth += 1
+                parent = parent.parent()
+            width -= depth * table.indentation()
+        width = max(40, width - 20)
+        height = option.fontMetrics.boundingRect(
+            QRect(0, 0, width, 10000), Qt.TextWordWrap, str(index.data() or '')).height()
+        return QSize(size.width(), max(size.height(), height + 16))
 
 
 class ApplyPreviewDialog(QDialog):
@@ -49,6 +71,8 @@ class ApplyPreviewDialog(QDialog):
         table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         table.setSelectionMode(QAbstractItemView.SingleSelection)
         table.setWordWrap(True)
+        table.setTextElideMode(Qt.ElideNone)
+        table.setItemDelegate(_WrappedPreviewDelegate(table))
         table.setColumnWidth(0, 360)
         table.setColumnWidth(1, 180)
         table.header().setSectionResizeMode(QHeaderView.Interactive)
