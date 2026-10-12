@@ -302,6 +302,23 @@ STYLES = {
         }}
     """,
 
+    "tweak_info_scroll": """
+        QScrollArea, QWidget#tweakInfoContent {{ background-color: {bg_elevated}; border: none; }}
+    """,
+
+    "tweak_info_button": """
+        QPushButton {{
+            background: transparent;
+            color: {text_secondary};
+            border: none;
+            border-radius: 15px;
+            font-size: 20px;
+        }}
+        QPushButton:hover, QPushButton:focus {{
+            background: {surface_hover}; color: {accent};
+        }}
+    """,
+
     "mini_button": """
         QPushButton {{
             background-color: {bg_tertiary};

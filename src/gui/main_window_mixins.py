@@ -36,6 +36,15 @@ from src.tweaks.tweaks import tweaks, TweakID
 class DeviceBarMixin:
     """Device refresh, selection and per-device interface updates."""
 
+    def continue_without_device(self):
+        """Allow browsing for this session, without creating a mock device."""
+        self._browse_without_device = True
+        self.content_stack.setCurrentIndex(1)
+        self.set_ios_page(0, animate=False)
+        self._update_shared_nav(0)
+        self._refresh_preset_widgets()
+        self._update_device_gate()
+
     def _update_device_gate(self):
         """Show the connect-device placeholder while no iPhone is available.
 
@@ -47,7 +56,9 @@ class DeviceBarMixin:
         stack = getattr(self, "content_stack", None)
         if placeholder is None or stack is None:
             return
-        if len(self.device_manager.devices) == 0:
+        if hasattr(self, "ios_apply"):
+            self.ios_apply.set_busy(self.apply_in_progress)
+        if len(self.device_manager.devices) == 0 and not getattr(self, "_browse_without_device", False):
             stack.setCurrentWidget(placeholder)
         elif stack.currentWidget() is placeholder:
             stack.setCurrentIndex(1)
@@ -742,6 +753,8 @@ class ApplyMixin:
 
 
     def remove_tweaks_clicked(self):
+        if not self.device_manager.get_current_device_udid():
+            return
         dialog = ResetDialog(device_manager=self.device_manager, apply_reset=self.apply_changes)
         dialog.exec()
 
@@ -1070,6 +1083,11 @@ class ApplyMixin:
 
 
     def apply_changes(self, reset_pages: list=None):
+        if not self.device_manager.get_current_device_udid():
+            QtWidgets.QMessageBox.information(
+                self, QCoreApplication.translate("Nugget", "No device connected"),
+                QCoreApplication.translate("Nugget", "Connect a device before applying or removing tweaks."))
+            return
         if not self.apply_in_progress:
             # Applies (not resets) get a what-will-change summary first.
             if reset_pages is None and not self._confirm_apply_summary():

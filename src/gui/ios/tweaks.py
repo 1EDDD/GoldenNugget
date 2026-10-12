@@ -1,6 +1,6 @@
-from PySide6.QtCore import QCoreApplication
+from PySide6.QtCore import QCoreApplication, Qt
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QScrollArea, QDialog, QLabel, QHBoxLayout, QComboBox
+    QWidget, QVBoxLayout, QScrollArea, QDialog, QLabel, QHBoxLayout, QComboBox, QPushButton
 )
 
 from src.gui.ios.components import (
@@ -9,7 +9,7 @@ from src.gui.ios.components import (
     IOSSearchField, IOSSearchEmpty,
 )
 from src.gui.ios.compat import device_family, is_tweak_compatible
-from src.gui.theme import ColorThemeManager
+from src.gui.theme import ColorThemeManager, t
 from src.tweaks.tweaks import tweaks, TweakID
 from src.tweaks.registry import SPECS_BY_SECTION, SECTION_FEATURES, Kind, Section
 from src.tweaks.tweak_loader import load_plist_tweaks
@@ -135,6 +135,7 @@ class IOSSectionContent(QWidget):
         self.layout().addWidget(inner)
 
         self._switch_labels = []
+        self._info_buttons = []
         self._search_rows = []
         self._search_sections = []
         self._search_expanded = {}
@@ -173,6 +174,7 @@ class IOSSectionContent(QWidget):
             label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
             self._switch_labels.append(label)
             row_layout.addWidget(label, 1)
+            row_layout.addWidget(self._make_info_button(tweak_id, title))
 
             switch = IOSSwitch(tweak.enabled)
             switch.toggled.connect(lambda checked: tweak.set_enabled(checked))
@@ -195,7 +197,7 @@ class IOSSectionContent(QWidget):
                 return
             tweak = tweaks[tweak_id]
             card = IOSCard()
-            card_layout = QVBoxLayout(card)
+            card_layout = QHBoxLayout(card)
             card_layout.setContentsMargins(0, 0, 0, 0)
             row = IOSSettingsRow(title)
             if description:
@@ -205,7 +207,8 @@ class IOSSectionContent(QWidget):
                 current = str(tweak.value)
                 row.setText(f"{title}  ({current})")
             row.clicked.connect(lambda: self._show_text_input_dialog(tweak_id, title, current, row))
-            card_layout.addWidget(row)
+            card_layout.addWidget(row, 1)
+            card_layout.addWidget(self._make_info_button(tweak_id, title))
             (target or layout).addWidget(card)
             self._search_rows.append((card, tweak_id, title, description, True))
 
@@ -219,7 +222,7 @@ class IOSSectionContent(QWidget):
                 return
             tweak = tweaks[tweak_id]
             card = IOSCard()
-            card_layout = QVBoxLayout(card)
+            card_layout = QHBoxLayout(card)
             card_layout.setContentsMargins(0, 0, 0, 0)
             row = IOSSettingsRow(title)
             if description:
@@ -233,7 +236,8 @@ class IOSSectionContent(QWidget):
                 row.setText(f"{title}  ({_fmt_number(current)})")
             row.clicked.connect(lambda: self._show_number_input_dialog(
                 tweak_id, title, current, row, min_val, max_val, step))
-            card_layout.addWidget(row)
+            card_layout.addWidget(row, 1)
+            card_layout.addWidget(self._make_info_button(tweak_id, title))
             (target or layout).addWidget(card)
             self._search_rows.append((card, tweak_id, title, description, True))
 
@@ -335,6 +339,25 @@ class IOSSectionContent(QWidget):
         self._solarium_visible = visible
         self._apply_search()
 
+    def _make_info_button(self, tweak_id, title):
+        button = QPushButton("ⓘ", self)
+        button.setFixedSize(30, 30)
+        button.setCursor(Qt.PointingHandCursor)
+        help_text = QCoreApplication.translate("Nugget", "About {0}").format(title)
+        button.setToolTip(help_text)
+        button.setAccessibleName(help_text)
+        button.setStyleSheet(t("tweak_info_button"))
+        button.clicked.connect(lambda: self._show_tweak_info(tweak_id))
+        self._info_buttons.append(button)
+        return button
+
+    def _show_tweak_info(self, tweak_id):
+        from src.tweaks.registry import SPECS_BY_ID
+        from src.gui.dialogs.tweak_info import TweakInfoDialog
+        dialog = TweakInfoDialog(SPECS_BY_ID[tweak_id], self)
+        dialog.exec()
+        dialog.deleteLater()
+
     def _retheme(self):
         c = ColorThemeManager.instance().colors
         self.filter_combo.setStyleSheet(f"""
@@ -355,6 +378,8 @@ class IOSSectionContent(QWidget):
         """)
         for lbl in self._switch_labels:
             lbl.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        for button in self._info_buttons:
+            button.setStyleSheet(t("tweak_info_button"))
 
     def _show_text_input_dialog(self, tweak_id: TweakID, title: str, current: str, row: IOSSettingsRow):
         dialog = TextInputDialog(title, current, self)

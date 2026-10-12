@@ -1,5 +1,5 @@
 from PySide6.QtCore import Qt, QCoreApplication
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton
 
 from src.gui.ios.components import IOSPrimaryButton
 from src.gui.theme import t, theme_pixmap, ColorThemeManager
@@ -49,6 +49,12 @@ class ConnectDevicePlaceholder(QWidget):
         self._refresh_btn.clicked.connect(self._refresh)
         layout.addWidget(self._refresh_btn, 0, Qt.AlignHCenter)
 
+        self._continue_btn = QPushButton(
+            QCoreApplication.translate("Nugget", "Continue without a device"), self)
+        self._continue_btn.setCursor(Qt.PointingHandCursor)
+        self._continue_btn.clicked.connect(self.window.continue_without_device)
+        layout.addWidget(self._continue_btn, 0, Qt.AlignHCenter)
+
         self._retheme()
         ColorThemeManager.instance().theme_changed.connect(self._retheme)
 
@@ -66,3 +72,4 @@ class ConnectDevicePlaceholder(QWidget):
             self.devicePixelRatioF()))
         self._title.setStyleSheet(t("home_title"))
         self._message.setStyleSheet(t("home_subtitle"))
+        self._continue_btn.setStyleSheet(t("mini_button"))

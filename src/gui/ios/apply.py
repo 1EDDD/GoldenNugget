@@ -192,8 +192,9 @@ class IOSApplyPage(QWidget):
                 label.hide()
 
     def set_busy(self, busy: bool):
-        self.apply_btn.setEnabled(not busy)
-        self.remove_btn.setEnabled(not busy)
+        connected = bool(self.window.device_manager.get_current_device_udid())
+        self.apply_btn.setEnabled(not busy and connected)
+        self.remove_btn.setEnabled(not busy and connected)
 
     def _retheme(self):
         c = ColorThemeManager.instance().colors
