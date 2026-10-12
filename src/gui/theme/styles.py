@@ -302,6 +302,13 @@ STYLES = {
         }}
     """,
 
+    "apply_preview_table": """
+        QTreeWidget {{ background: {bg_input}; color: {text_primary}; border: 1px solid {border}; border-radius: 10px; }}
+        QTreeWidget::item {{ padding: 8px 4px; }}
+        QTreeWidget::item:selected {{ background: {surface_hover}; color: {text_primary}; }}
+        QHeaderView::section {{ background: {bg_tertiary}; color: {text_secondary}; border: none; padding: 10px; }}
+    """,
+
     "tweak_info_scroll": """
         QScrollArea, QWidget#tweakInfoContent {{ background-color: {bg_elevated}; border: none; }}
     """,

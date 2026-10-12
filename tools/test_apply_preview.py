@@ -66,6 +66,45 @@ class PreviewTests(unittest.TestCase):
         self.state['blocked'] = ['Blocked']
         self.assertEqual(preview.selection_change_count(self.state, self.state['entries']), 0)
 
+    def test_table_rows_preserve_unknown_history_and_deselections(self):
+        old = {'Example': dict(self.entry, value=False), 'Removed': self.entry}
+        rows = preview.preview_rows(self.state, old)
+        self.assertEqual(len(rows), 2)
+        self.assertFalse(rows[0]['removed'])
+        self.assertEqual(preview.preview_value(rows[0]['before']), 'Off')
+        self.assertEqual(preview.preview_value(rows[0]['after']), 'On')
+        self.assertTrue(rows[1]['removed'])
+        self.assertIsNone(rows[1]['after'])
+        self.assertIsNone(preview.preview_rows(self.state, None)[0]['before'])
+        self.assertEqual(preview.preview_rows(self.state, self.state['entries']), [])
+
+    def test_table_groups_queue_safety_and_changes_without_editing(self):
+        from src.gui.dialogs.apply_preview import ApplyPreviewDialog
+        from PySide6.QtWidgets import QTreeWidgetItemIterator, QAbstractItemView
+        app = QApplication.instance() or QApplication([])
+        old = {'Example': dict(self.entry, value=False), 'Removed': dict(self.entry, title='Removed')}
+        self.state['queued'] = [['PosterBoard', '<wallpaper>.tendies']]
+        self.state['blocked'] = ['Blocked tweak']
+        self.state['forced'] = ['forced.service']
+        dialog = ApplyPreviewDialog(preview=self.state, previous=old, conflicts=['Conflict example'])
+        dialog.show()
+        app.processEvents()
+        iterator = QTreeWidgetItemIterator(dialog.details)
+        values = []
+        while iterator.value():
+            values.append([iterator.value().text(i) for i in range(3)])
+            iterator += 1
+        self.assertIn(['Example', 'Off', 'On'], values)
+        self.assertTrue(any(row[2] == 'Not reapplied (not a reset)' for row in values))
+        self.assertIn(['PosterBoard', '', '<wallpaper>.tendies'], values)
+        self.assertIn(['Blocked tweak', '', 'Will not be applied'], values)
+        self.assertIn(['forced.service', '', 'Disable service'], values)
+        self.assertIn(['Conflict example', '', ''], values)
+        self.assertEqual(dialog.details.editTriggers(), QAbstractItemView.NoEditTriggers)
+        from src.gui.theme import ColorThemeManager
+        ColorThemeManager.instance().theme_changed.emit()
+        dialog.reject()
+
     def test_capture_applies_safety_rules_without_mutation(self):
         spec = next(s for s in SPECS if not s.disabled and s.factory is None)
         tweak = _build_spec(spec)

@@ -178,6 +178,37 @@ def selection_change_count(preview, previous):
     ) + sum(key not in entries for key in previous)
 
 
+def preview_value(entry):
+    """Human-readable value shared by text and tabular previews."""
+    tr = lambda text: QCoreApplication.translate("ApplyPreview", text)
+    if "display" in entry:
+        return entry["display"]
+    raw = entry["value"]
+    if entry["section"] == "Daemons":
+        return tr("Disable service") if raw else tr("Enable service")
+    if raw is None:
+        return tr("Default")
+    if isinstance(raw, bool):
+        return tr("On") if raw else tr("Off")
+    return str(raw) if not isinstance(raw, (dict, list)) else json.dumps(raw, ensure_ascii=False, sort_keys=True)
+
+
+def preview_rows(preview, previous):
+    """Structured selection differences; queues and safety stay separate."""
+    rows = []
+    entries = preview['entries']
+    for key, entry in entries.items():
+        old = previous.get(key) if previous is not None else None
+        if old is None or old['value'] != entry['value']:
+            rows.append(dict(section=entry['section'], title=entry['title'],
+                             before=old, after=entry, removed=False))
+    for key, entry in (previous or {}).items():
+        if key not in entries:
+            rows.append(dict(section=entry['section'], title=entry['title'],
+                             before=entry, after=None, removed=True))
+    return rows
+
+
 def preview_lines(preview, previous):
     """Describe selection differences, never promise an implicit reset."""
     q = lambda text: QCoreApplication.translate("Nugget", text)
@@ -186,16 +217,7 @@ def preview_lines(preview, previous):
         return f"{q(entry['section'])} — {q(entry['title'])}"
 
     def value(entry):
-        if "display" in entry:
-            return entry["display"]
-        raw = entry["value"]
-        if entry["section"] == "Daemons":
-            return QCoreApplication.translate("ApplyPreview", "Disable service") if raw else QCoreApplication.translate("ApplyPreview", "Enable service")
-        if raw is None:
-            return QCoreApplication.translate("ApplyPreview", "Default")
-        if isinstance(raw, bool):
-            return QCoreApplication.translate("ApplyPreview", "On") if raw else QCoreApplication.translate("ApplyPreview", "Off")
-        return str(raw) if not isinstance(raw, (dict, list)) else json.dumps(raw, ensure_ascii=False, sort_keys=True)
+        return preview_value(entry)
 
     lines = []
     entries = preview["entries"]

@@ -997,23 +997,22 @@ class ApplyMixin:
         return dialog.clickedButton() is proceed
 
     def _show_apply_preview(self, parent):
-        from src.controllers.apply_preview import load_preview, preview_lines, safe_capture_preview
+        from src.controllers.apply_preview import load_preview, safe_capture_preview
         from src.gui.dialogs.apply_preview import ApplyPreviewDialog
         manager = self.device_manager
         preview = safe_capture_preview(manager)
+        previous = None
+        conflicts = []
+        lines = []
         if preview is None:
             lines = [QCoreApplication.translate(
                 "ApplyPreview", "The preview could not be built. See the session log for details.")]
         else:
             previous = load_preview(manager.get_current_device_udid(),
                                     manager.get_current_device_version())
-            lines = preview_lines(preview, previous)
             from src.controllers.tweak_conflicts import current_conflicts
-            conflicts = current_conflicts(manager)
-            if conflicts:
-                lines = [QCoreApplication.translate("TweakConflicts", "Conflicting tweaks")] + [
-                    item.description() for item in conflicts] + lines
-        dialog = ApplyPreviewDialog(lines, parent)
+            conflicts = [item.description() for item in current_conflicts(manager)]
+        dialog = ApplyPreviewDialog(lines, parent, preview=preview, previous=previous, conflicts=conflicts)
         dialog.exec()
         dialog.deleteLater()
 
