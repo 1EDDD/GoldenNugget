@@ -41,6 +41,9 @@ class Translator:
             code = self.system_locale_code()
         else:
             self.settings.setValue("locale_code", code)
+        # exec replaces this process without running QSettings destructors.
+        # Flush the explicit choice (or removal for System) before restarting.
+        self.settings.sync()
         self.set_default_locale(code)
         self.load_translations()
         if restart:

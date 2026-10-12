@@ -757,7 +757,7 @@ class IOSSettingsPage(QWidget):
             self.lang_drp.addItem(QCoreApplication.translate("Nugget", language))
         if self.window.settings.contains("locale_code"):
             try:
-                idx = self.lang_indexes.index(self.window.translator.get_saved_locale_code())
+                idx = self.lang_indexes.index(self.window.settings.value('locale_code', '', type=str) or '')
             except ValueError:
                 idx = 0
         else:
@@ -770,10 +770,8 @@ class IOSSettingsPage(QWidget):
 
     def _on_lang_selected(self, index: int):
         new_lang = self.lang_indexes[index]
-        currently_system = not self.window.settings.contains("locale_code")
-        if new_lang == "" and currently_system:
-            return
-        if new_lang != self.window.translator.get_saved_locale_code():
+        current_choice = self.window.settings.value('locale_code', '', type=str) or ''
+        if new_lang != current_choice:
             self.window.translator.set_new_language(new_lang, restart=True)
 
     def _make_pb_setup_section(self):
