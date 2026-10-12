@@ -122,13 +122,24 @@ class DeviceBarMixin:
     def refresh_devices(self):
         if not self.refresh_in_progress:
             self.refresh_in_progress = True
+            self._last_connection_error = ""
+            self.connect_placeholder.set_scan_status(
+                QCoreApplication.translate("Nugget", "Checking connected devices…"), busy=True)
             self.ui.refreshBtn.setDisabled(True)
             self.refresh_worker_thread = RefreshDevicesThread(manager=self.device_manager, settings=self.settings)
-            self.refresh_worker_thread.alert.connect(self.alert_message)
+            self.refresh_worker_thread.alert.connect(self._connection_alert)
             self.refresh_worker_thread.finished.connect(self.refresh_devices_finished)
             self.refresh_worker_thread.finished.connect(self.refresh_worker_thread.deleteLater)
             self.refresh_worker_thread.start()
 
+
+    def _connection_alert(self, alert):
+        if alert is None:
+            return
+        import logging
+        self._last_connection_error = alert.txt
+        logging.getLogger('GoldenNugget.refresh').warning('%s\n%s', alert.txt, alert.detailed_txt or '')
+        self.connect_placeholder.set_scan_status(alert.txt, busy=True)
 
     def warn_for_dev_beta(self):
         ver = self.device_manager.get_current_device_version()
@@ -143,6 +154,10 @@ class DeviceBarMixin:
 
     def refresh_devices_finished(self):
         self.refresh_in_progress = False
+        self.connect_placeholder.set_scan_status(
+            QCoreApplication.translate("Nugget", "Device found.") if self.device_manager.devices else
+            getattr(self, '_last_connection_error', '') or QCoreApplication.translate(
+                "Nugget", "No device found. Check the cable, unlock the device and confirm Trust on its screen."), busy=False)
         # The thread's own ``finished -> deleteLater`` already freed the C++
         # object; drop our reference so closeEvent never probes a dead wrapper.
         try:
@@ -1299,7 +1314,6 @@ class ApplyMixin:
         if success:
             if worker is not None and not is_reset:
                 self._save_last_applied_preset()
-                self.prompt_star_on_github()
         else:
             # Show error notification if not already shown via alert
             if error_msg and "timed out" not in error_msg.lower():

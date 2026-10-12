@@ -505,6 +505,8 @@ class IOSHomePage(QWidget):
 
     @Slot()
     def on_device_changed(self, index):
+        if getattr(self, '_support_dialog', None) is not None:
+            self._support_dialog.close()
         self.device_combo.setToolTip(self.device_combo.currentText())
         if len(self.window.device_manager.devices) > 0 and index >= 0:
             self.window.change_selected_device(index)
@@ -596,11 +598,20 @@ class IOSHomePage(QWidget):
         if not self.window.device_manager.get_current_device_udid():
             return
         from src.gui.dialogs.device_support import DeviceSupportDialog
+        previous = getattr(self, '_support_dialog', None)
+        if previous is not None:
+            previous.raise_()
+            previous.activateWindow()
+            return
         dialog = DeviceSupportDialog(self.window.device_manager, self.window)
-        dialog.exec()
-        dialog.deleteLater()
+        dialog.setAttribute(Qt.WA_DeleteOnClose)
+        self._support_dialog = dialog
+        dialog.finished.connect(lambda: setattr(self, '_support_dialog', None))
+        dialog.show()
 
     def update_device_info(self):
+        if getattr(self, '_support_dialog', None) is not None:
+            self._support_dialog.close()
         try:
             ver = self.window.device_manager.get_current_device_version() or "—"
             build = self.window.device_manager.get_current_device_build() or "—"
@@ -735,7 +746,7 @@ class IOSHomePage(QWidget):
         self.summary_detail.setToolTip(QCoreApplication.translate(
             "ApplyPreview", "Compared with the last successful apply through GoldenNugget. "
             "Current device settings are not read. Deselecting a tweak does not reset it; "
-            "use Reset Tweaks to restore defaults."))
+            "use Restore Defaults to restore original values."))
         self.summary_preview_btn.setEnabled(bool(udid))
 
         manager = getattr(self.window.device_manager, "pref_manager", None)

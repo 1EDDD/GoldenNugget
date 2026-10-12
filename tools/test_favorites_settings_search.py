@@ -13,7 +13,7 @@ from PySide6.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineE
 from src.controllers.favorites import TweakFavorites
 from src.gui.ios.tweaks import IOSSectionContent
 from src.gui.ios.settings import IOSSettingsPage
-from src.gui.ios.components import IOSSectionHeader, IOSSearchField, IOSSearchEmpty
+from src.gui.ios.components import IOSSectionHeader, IOSSearchField, IOSSearchEmpty, IOSCollapsibleSection
 from src.tweaks.tweaks import tweaks
 
 
@@ -84,6 +84,31 @@ class FavoritesSearchTests(unittest.TestCase):
         IOSSettingsPage._filter_settings(page)
         self.assertFalse(other.isHidden())
         self.assertEqual(value.text(), 'private user value')
+
+    def test_advanced_search_temporarily_expands_and_filters_rows(self):
+        page = QWidget()
+        page.content_layout = QVBoxLayout(page)
+        page.search = IOSSearchField()
+        page.search_empty = IOSSearchEmpty()
+        page._advanced_search_state = None
+        advanced = IOSCollapsibleSection('Advanced', expanded=False)
+        advanced.body_layout.addWidget(IOSSectionHeader('Backup options'))
+        cache = QLabel('Encrypted backup')
+        advanced.body_layout.addWidget(cache)
+        advanced.body_layout.addWidget(IOSSectionHeader('Setup'))
+        setup = QLabel('Supervision')
+        advanced.body_layout.addWidget(setup)
+        page.content_layout.addWidget(advanced)
+        IOSSettingsPage._index_search_rows(page)
+        page.search.setText('encrypted')
+        IOSSettingsPage._filter_settings(page)
+        self.assertTrue(advanced.expanded)
+        self.assertFalse(cache.isHidden())
+        self.assertTrue(setup.isHidden())
+        page.search.clear()
+        IOSSettingsPage._filter_settings(page)
+        self.assertFalse(advanced.expanded)
+        self.assertFalse(setup.isHidden())
 
 
 if __name__ == '__main__':

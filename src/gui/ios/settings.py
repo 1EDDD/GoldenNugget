@@ -8,7 +8,7 @@ from pathlib import Path
 
 from src.exceptions.nugget_exception import NuggetException
 from src.gui.ios.components import (
-    IOSSectionHeader, IOSSwitch, IOSPrimaryButton, IOSSearchField, IOSSearchEmpty
+    IOSSectionHeader, IOSSwitch, IOSPrimaryButton, IOSSearchField, IOSSearchEmpty, IOSCollapsibleSection
 )
 from src.gui.pages.main.settings import available_languages
 from src.controllers.video_handler import set_ignore_frame_limit
@@ -123,6 +123,14 @@ class IOSSettingsPage(QWidget):
         reset_pairing_btn.clicked.connect(self._on_reset_pairing_clicked)
         self.content_layout.addWidget(reset_pairing_btn)
 
+        standard_layout = self.content_layout
+        self.advanced_section = IOSCollapsibleSection(
+            QCoreApplication.translate("Nugget", "Advanced"),
+            expanded=self.window.settings.value('advanced_settings_expanded', False, type=bool))
+        self.advanced_section.header.setFocusPolicy(Qt.StrongFocus)
+        self.advanced_section.toggled.connect(self._on_advanced_toggled)
+        self._advanced_search_state = None
+        self.content_layout = self.advanced_section.body_layout
         # PosterBoard
         self.content_layout.addWidget(IOSSectionHeader(QCoreApplication.translate("Nugget", "PosterBoard")))
 
@@ -150,8 +158,12 @@ class IOSSettingsPage(QWidget):
 
         self._make_pb_setup_section()
 
+        self.content_layout = standard_layout
+
         # Backup
         self.content_layout.addWidget(IOSSectionHeader(QCoreApplication.translate("Nugget", "Backup")))
+        self.content_layout = self.advanced_section.body_layout
+        self.content_layout.addWidget(IOSSectionHeader(QCoreApplication.translate("Nugget", "Backup options")))
 
         cache_switch = self._make_switch(
             QCoreApplication.translate("Nugget", "Use Fast Backup Cache (Experimental)"),
@@ -171,6 +183,7 @@ class IOSSettingsPage(QWidget):
             lambda checked: self._on_afc_media_toggled(checked, afc_media_switch),
         )
 
+        self.content_layout = standard_layout
         self._make_backup_location_row()
 
         restore_btn = IOSPrimaryButton(
@@ -184,6 +197,7 @@ class IOSSettingsPage(QWidget):
 
         self._make_history_section()
 
+        self.content_layout = self.advanced_section.body_layout
         # Setup
         self.content_layout.addWidget(IOSSectionHeader(QCoreApplication.translate("Nugget", "Setup")))
 
@@ -205,6 +219,8 @@ class IOSSettingsPage(QWidget):
             self._on_org_name_edited,
         )
 
+        self.content_layout = standard_layout
+        self.content_layout.addWidget(self.advanced_section)
         # About
         self.content_layout.addWidget(IOSSectionHeader(QCoreApplication.translate("Nugget", "About")))
 
@@ -220,6 +236,10 @@ class IOSSettingsPage(QWidget):
         self._retheme()
         self._tm.theme_changed.connect(self._retheme)
 
+    def _on_advanced_toggled(self, expanded):
+        self.window.settings.setValue('advanced_settings_expanded', expanded)
+        self.window.settings.sync()
+
     def _index_search_rows(self):
         """Index static labels/actions, excluding editable values and history entries."""
         self._search_groups = []
@@ -230,6 +250,23 @@ class IOSSettingsPage(QWidget):
             if isinstance(widget, IOSSectionHeader):
                 section = (widget, [])
                 self._search_groups.append(section)
+            elif isinstance(widget, IOSCollapsibleSection):
+                self._advanced_search_groups = []
+                advanced_group = None
+                for inner_index in range(widget.body_layout.count()):
+                    child = widget.body_layout.itemAt(inner_index).widget()
+                    if isinstance(child, IOSSectionHeader):
+                        advanced_group = (child, [])
+                        self._advanced_search_groups.append(advanced_group)
+                    elif child is not None and advanced_group is not None:
+                        labels = child.findChildren(QLabel) + child.findChildren(QAbstractButton)
+                        if isinstance(child, (QLabel, QAbstractButton)):
+                            labels.append(child)
+                        advanced_group[1].append((child, ' '.join(label.text() for label in labels)))
+                text = ' '.join(label.text() for label in widget.body.findChildren(QLabel)
+                                + widget.body.findChildren(QAbstractButton))
+                self._search_groups.append((widget, [(widget.body, text)]))
+                section = None
             elif widget is not None and section is not None:
                 labels = widget.findChildren(QLabel) + widget.findChildren(QAbstractButton)
                 if isinstance(widget, (QLabel, QAbstractButton)):
@@ -241,13 +278,36 @@ class IOSSettingsPage(QWidget):
         searching = bool(self.search.text().strip())
         matches = 0
         for header, rows in self._search_groups:
-            section_matches = self.search.matches(header.text())
+            section_matches = self.search.matches(header._title if isinstance(header, IOSCollapsibleSection)
+                                                  else header.text())
             visible_rows = 0
+            if isinstance(header, IOSCollapsibleSection):
+                for inner_header, inner_rows in self._advanced_search_groups:
+                    inner_matches = section_matches or self.search.matches(inner_header.text())
+                    inner_count = 0
+                    for widget, text in inner_rows:
+                        visible = not searching or inner_matches or self.search.matches(text)
+                        widget.setVisible(visible)
+                        inner_count += visible
+                    inner_header.setVisible(not searching or inner_count > 0)
+                    visible_rows += inner_count
+                rows = []
             for widget, text in rows:
                 visible = not searching or section_matches or self.search.matches(text)
                 widget.setVisible(visible)
                 visible_rows += visible
             header.setVisible(not searching or visible_rows > 0)
+            if isinstance(header, IOSCollapsibleSection):
+                if searching and self._advanced_search_state is None:
+                    self._advanced_search_state = header.expanded
+                header.blockSignals(True)
+                if searching:
+                    header.set_expanded(True)
+                elif self._advanced_search_state is not None:
+                    header.set_expanded(self._advanced_search_state)
+                    self._advanced_search_state = None
+                header.blockSignals(False)
+                header.header.setEnabled(not searching)
             matches += visible_rows
         self.search_empty.setVisible(searching and matches == 0)
 

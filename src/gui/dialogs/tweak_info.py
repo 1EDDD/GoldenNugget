@@ -53,7 +53,7 @@ class TweakInfoDialog(QDialog):
             label(tr("Range: {0} – {1}").format(f"{spec.min_value:g}", f"{spec.max_value:g}"))
         label(tr("How to restore defaults"), "confirmTitle")
         label(tr("Turning off a tweak only removes it from the next apply. "
-                 "To restore original values, open Apply, choose Remove Tweaks, "
+                 "To restore original values, open Apply, choose Restore Defaults, "
                  "and select the relevant tweak page."), "confirmMuted")
         body.addStretch()
         scroll.setWidget(content)

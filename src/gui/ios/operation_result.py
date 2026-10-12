@@ -65,7 +65,7 @@ class OperationResultCard(IOSCard):
     def show_result(self, success, text, is_reset=False):
         self._success = success
         self.title.setText(QCoreApplication.translate("Nugget",
-            "Reset complete!" if success and is_reset else "Apply complete!" if success else "Operation failed or stopped"))
+            "Defaults restored!" if success and is_reset else "Apply complete!" if success else "Operation failed or stopped"))
         self.details.setPlainText(text)
         self._retheme()
         self.show()

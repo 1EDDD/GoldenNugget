@@ -39,7 +39,7 @@ class ApplyPreviewDialog(QDialog):
         note = QLabel(QCoreApplication.translate(
             "ApplyPreview", "Compared with the last successful apply through GoldenNugget. "
             "Current device settings are not read. Deselecting a tweak does not reset it; "
-            "use Reset Tweaks to restore defaults."), self)
+            "use Restore Defaults to restore original values."), self)
         note.setObjectName("confirmMuted")
         note.setWordWrap(True)
         layout.addWidget(note)

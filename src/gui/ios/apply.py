@@ -64,7 +64,7 @@ class IOSApplyPage(QWidget):
 
         # --- Remove ---
         content_layout.addWidget(IOSSectionHeader(
-            QCoreApplication.translate("Nugget", "Remove Tweaks")))
+            QCoreApplication.translate("Nugget", "Restore Defaults")))
 
         remove_card = IOSCard()
         remove_layout = QVBoxLayout(remove_card)
@@ -80,11 +80,11 @@ class IOSApplyPage(QWidget):
         remove_layout.addWidget(remove_desc)
 
         self.remove_btn = IOSDangerButton(QCoreApplication.translate(
-            "Nugget", "Remove Tweaks"))
+            "Nugget", "Restore Defaults"))
         self.remove_btn.setToolTip(QCoreApplication.translate(
             "Nugget", "Restore the stock values for the selected tweak pages."))
         self.remove_btn.setAccessibleName(QCoreApplication.translate(
-            "Nugget", "Remove selected tweaks"))
+            "Nugget", "Restore defaults for selected sections"))
         self.remove_btn.clicked.connect(self.window.remove_tweaks_clicked)
         remove_layout.addWidget(self.remove_btn)
         content_layout.addWidget(remove_card)

@@ -392,9 +392,14 @@ class IOSSectionContent(QWidget):
     def _show_tweak_info(self, tweak_id):
         from src.tweaks.registry import SPECS_BY_ID
         from src.gui.dialogs.tweak_info import TweakInfoDialog
+        previous = getattr(self, '_tweak_info_dialog', None)
+        if previous is not None:
+            previous.close()
         dialog = TweakInfoDialog(SPECS_BY_ID[tweak_id], self)
-        dialog.exec()
-        dialog.deleteLater()
+        dialog.setAttribute(Qt.WA_DeleteOnClose)
+        self._tweak_info_dialog = dialog
+        dialog.finished.connect(lambda: setattr(self, '_tweak_info_dialog', None))
+        dialog.show()
 
     def _retheme(self):
         c = ColorThemeManager.instance().colors

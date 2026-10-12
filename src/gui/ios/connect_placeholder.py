@@ -1,5 +1,5 @@
 from PySide6.QtCore import Qt, QCoreApplication
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QScrollArea, QHBoxLayout
 
 from src.gui.ios.components import IOSPrimaryButton
 from src.gui.theme import t, theme_pixmap, ColorThemeManager
@@ -20,7 +20,14 @@ class ConnectDevicePlaceholder(QWidget):
         self.window = window
         self.setObjectName("iosContainer")
 
-        layout = QVBoxLayout(self)
+        root = QVBoxLayout(self)
+        root.setContentsMargins(0, 0, 0, 0)
+        self._scroll = QScrollArea(self)
+        self._scroll.setWidgetResizable(True)
+        content = QWidget()
+        self._scroll.setWidget(content)
+        root.addWidget(self._scroll)
+        layout = QVBoxLayout(content)
         layout.setContentsMargins(40, 40, 40, 40)
         layout.setSpacing(18)
         layout.setAlignment(Qt.AlignCenter)
@@ -43,11 +50,50 @@ class ConnectDevicePlaceholder(QWidget):
         self._message.setWordWrap(True)
         layout.addWidget(self._message)
 
+        self._steps = QLabel(QCoreApplication.translate("Nugget",
+            "1. Connect your iPhone or iPad using a data cable.\n"
+            "2. Unlock it and keep the screen awake.\n"
+            "3. Tap Trust on the device if prompted, then check again."))
+        self._steps.setWordWrap(True)
+        self._steps.setFixedWidth(650)
+        self._steps.setTextFormat(Qt.PlainText)
+        layout.addWidget(self._steps, 0, Qt.AlignHCenter)
+
         self._refresh_btn = IOSPrimaryButton(
-            QCoreApplication.translate("Nugget", "Refresh"), self)
-        self._refresh_btn.setFixedWidth(200)
+            QCoreApplication.translate("Nugget", "Check connection"), self)
+        self._refresh_btn.setMinimumWidth(240)
         self._refresh_btn.clicked.connect(self._refresh)
         layout.addWidget(self._refresh_btn, 0, Qt.AlignHCenter)
+
+        actions = QHBoxLayout()
+        actions.addStretch()
+        self._diagnostics_btn = QPushButton(QCoreApplication.translate("Nugget", "Connection help"))
+        self._diagnostics_btn.setCheckable(True)
+        self._diagnostics_btn.toggled.connect(lambda shown: self._help_detail.setVisible(shown))
+        self._logs_btn = QPushButton(QCoreApplication.translate("Nugget", "Open application log"))
+        self._logs_btn.clicked.connect(lambda: self.window.ios_home.open_logs())
+        actions.addWidget(self._diagnostics_btn)
+        actions.addWidget(self._logs_btn)
+        actions.addStretch()
+        layout.addLayout(actions)
+        import sys
+        platform_hint = QCoreApplication.translate("Nugget",
+            "Linux: install usbmuxd and libimobiledevice and make sure usbmuxd is running.") if sys.platform.startswith('linux') else QCoreApplication.translate("Nugget",
+            "Windows: install Apple Devices or Apple's iTunes and reconnect the device.") if sys.platform == 'win32' else QCoreApplication.translate("Nugget",
+            "macOS: check whether the device appears in Finder and confirm Trust.")
+        self._help_detail = QLabel(platform_hint + "\n" + QCoreApplication.translate("Nugget",
+            "Try another data cable or USB port. Charging alone does not confirm a data connection. Open the log for the exact scan error."))
+        self._help_detail.setFixedWidth(650)
+        self._help_detail.setWordWrap(True)
+        self._help_detail.setTextFormat(Qt.PlainText)
+        self._help_detail.hide()
+        layout.addWidget(self._help_detail, 0, Qt.AlignHCenter)
+        self._scan_status = QLabel()
+        self._scan_status.setTextFormat(Qt.PlainText)
+        self._scan_status.setWordWrap(True)
+        self._scan_status.setFixedWidth(650)
+        self._scan_status.hide()
+        layout.addWidget(self._scan_status, 0, Qt.AlignHCenter)
 
         self._continue_btn = QPushButton(
             QCoreApplication.translate("Nugget", "Continue without a device"), self)
@@ -61,15 +107,34 @@ class ConnectDevicePlaceholder(QWidget):
     def _refresh(self):
         try:
             self.window.refresh_devices()
-        except Exception:
-            pass
+        except Exception as error:
+            self.set_scan_status(str(error), busy=False)
+
+    def set_scan_status(self, text, busy=False):
+        self._scan_status.setText(text)
+        self._fit_help_labels()
+        self._scan_status.setVisible(bool(text))
+        self._refresh_btn.setEnabled(not busy)
+
+    def _fit_help_labels(self):
+        # QLabel's default minimum hint may allow wrapped text to be clipped
+        # instead of making the scroll content taller.
+        for label in (self._steps, self._help_detail, self._scan_status):
+            label.setMinimumHeight(max(0, label.heightForWidth(650)) + 4)
 
     def _retheme(self):
         c = ColorThemeManager.instance().colors
         self.setStyleSheet(t("page_bg"))
+        self._scroll.setStyleSheet(t("scroll_area"))
         self._icon_lbl.setPixmap(theme_pixmap(
             ":/icon/phone.svg", c.text_secondary, self.ICON_PX,
             self.devicePixelRatioF()))
         self._title.setStyleSheet(t("home_title"))
         self._message.setStyleSheet(t("home_subtitle"))
         self._continue_btn.setStyleSheet(t("mini_button"))
+        self._diagnostics_btn.setStyleSheet(t("mini_button"))
+        self._logs_btn.setStyleSheet(t("mini_button"))
+        self._steps.setStyleSheet(t("home_subtitle"))
+        self._help_detail.setStyleSheet(t("home_subtitle"))
+        self._scan_status.setStyleSheet(t("home_subtitle"))
+        self._fit_help_labels()
