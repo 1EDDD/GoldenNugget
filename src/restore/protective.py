@@ -193,7 +193,9 @@ try:
     import concurrent.futures as _cf
     try:
         from concurrent.futures import ThreadPoolExecutor as _TPE
+        # Replace both dict entry and ensure it's callable via attribute
         _cf.__dict__['ThreadPoolExecutor'] = _TPE
+        setattr(_cf, 'ThreadPoolExecutor', _TPE)
     except Exception:
         pass
     _ = _cf.ThreadPoolExecutor  # force resolution
@@ -301,8 +303,14 @@ ADDRESS_BOOK_PATH_PREFIXES = (
 
 # Files/dirs inside the protective HomeDomain scope that tweaks write
 # themselves — restoring the stale copies would undo the applied tweaks.
+# NOTE the archive keeps a capital "S" (StatusBarOverrides.archive): the
+# lowercase classic prefix does NOT match it (Python compares case-sensitively
+# and the device filesystem does too), so it needs its own entry. Without it the
+# applied carrier override was captured by Phase 1 and handed straight back by
+# Phase 3, i.e. a status bar reset looked like it did nothing on iOS 27.
 _SKIP_PATH_PREFIXES = (
-    "Library/SpringBoard/statusBarOverrides",  # Not captured stale; re-injected with fresh tweak content
+    "Library/SpringBoard/statusBarOverrides",          # iOS ≤26 classic binary struct
+    "Library/SpringBoard/StatusBarOverrides.archive",  # iOS 27+ NSKeyedArchiver record
 )
 
 # App-domain mirrors of the managed-preference targets (mcxd copies each

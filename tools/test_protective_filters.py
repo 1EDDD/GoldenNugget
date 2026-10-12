@@ -105,4 +105,17 @@ check("IconState prefs kept",
 check("com.apple.Preferences kept",
       _is_protective_file("HomeDomain", "Library/Preferences/com.apple.Preferences.plist"))
 
+print("== Status bar override files stay out of the backup (both spellings) ==")
+# Phase 3 restores Library/SpringBoard AFTER the sparse reset rewrote the
+# status bar override, handing the stale value straight back — the reset looked
+# like it did nothing. The classic struct (lowercase "s") and the iOS 27
+# archive (capital "S", which the lowercase prefix does NOT match) must both be
+# excluded; the same directory's other SpringBoard state is still kept.
+check("classic statusBarOverrides dropped",
+      not _is_protective_file("HomeDomain", "Library/SpringBoard/statusBarOverrides"))
+check("iOS 27 StatusBarOverrides.archive dropped",
+      not _is_protective_file("HomeDomain", "Library/SpringBoard/StatusBarOverrides.archive"))
+check("neighbouring SpringBoard state kept",
+      _is_protective_file("HomeDomain", "Library/SpringBoard/IconState.plist"))
+
 print(f"\nAll {PASS} checks passed")
