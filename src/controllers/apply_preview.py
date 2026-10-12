@@ -163,6 +163,21 @@ def safe_capture_preview(manager):
         return None
 
 
+def selection_change_count(preview, previous):
+    """Count added, edited and deselected entries; unknown history stays unknown.
+
+    Queued assets are reapplied each time and have no comparable stored state.
+    Deselections are selection changes, not device resets.
+    """
+    if preview is None or previous is None:
+        return None
+    entries = preview["entries"]
+    return sum(
+        key not in previous or previous[key]["value"] != entry["value"]
+        for key, entry in entries.items()
+    ) + sum(key not in entries for key in previous)
+
+
 def preview_lines(preview, previous):
     """Describe selection differences, never promise an implicit reset."""
     q = lambda text: QCoreApplication.translate("Nugget", text)

@@ -55,6 +55,17 @@ class PreviewTests(unittest.TestCase):
         self.state['queued'] = [["PosterBoard", "<wallpaper>.tendies"]]
         self.assertIn("<wallpaper>.tendies", '\n'.join(preview.preview_lines(self.state, old)))
 
+    def test_change_count_tracks_values_and_deselections_not_assets(self):
+        self.assertIsNone(preview.selection_change_count(self.state, None))
+        self.assertIsNone(preview.selection_change_count(None, {}))
+        self.assertEqual(preview.selection_change_count(self.state, self.state['entries']), 0)
+        old = {'Example': dict(self.entry, value=False), 'Removed': self.entry}
+        self.assertEqual(preview.selection_change_count(self.state, old), 2)
+        self.assertEqual(preview.selection_change_count(self.state, {}), 1)
+        self.state['queued'] = [['PosterBoard', 'wallpaper.tendies']]
+        self.state['blocked'] = ['Blocked']
+        self.assertEqual(preview.selection_change_count(self.state, self.state['entries']), 0)
+
     def test_capture_applies_safety_rules_without_mutation(self):
         spec = next(s for s in SPECS if not s.disabled and s.factory is None)
         tweak = _build_spec(spec)

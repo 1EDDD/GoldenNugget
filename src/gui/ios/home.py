@@ -355,6 +355,7 @@ class IOSHomePage(QWidget):
         self.summary_title.setStyleSheet(t("home_tile_title"))
         summary_text.addWidget(self.summary_title)
         self.summary_detail = QLabel("")
+        self.summary_detail.setWordWrap(True)
         self.summary_detail.setStyleSheet(t("home_tile_subtitle"))
         summary_text.addWidget(self.summary_detail)
         summary_layout.addLayout(summary_text, 1)
@@ -363,6 +364,13 @@ class IOSHomePage(QWidget):
         self.summary_cache.setWordWrap(True)
         self.summary_cache.setStyleSheet(t("home_tile_subtitle"))
         summary_layout.addWidget(self.summary_cache)
+        self.summary_preview_btn = QPushButton(QCoreApplication.translate(
+            "ApplyPreview", "View changes"))
+        self.summary_preview_btn.setCursor(Qt.PointingHandCursor)
+        self.summary_preview_btn.setStyleSheet(t("mini_button"))
+        self.summary_preview_btn.clicked.connect(
+            lambda: self.window._show_apply_preview(self.window))
+        summary_layout.addWidget(self.summary_preview_btn)
         layout.addWidget(self.summary_card)
         self._storage_thread = None
 
@@ -451,6 +459,10 @@ class IOSHomePage(QWidget):
         self._apply_icon(self._logs_btn, ":/icon/file-earmark-text.svg")
         self._settings_btn.setStyleSheet(t("home_icon_button"))
         self._apply_icon(self._settings_btn, ":/icon/gear.svg")
+        self.summary_title.setStyleSheet(t("home_tile_title"))
+        self.summary_detail.setStyleSheet(t("home_tile_subtitle"))
+        self.summary_cache.setStyleSheet(t("home_tile_subtitle"))
+        self.summary_preview_btn.setStyleSheet(t("mini_button"))
         self.storage_title.setStyleSheet(t("home_tile_title"))
         self.storage_lbl.setStyleSheet(t("home_tile_subtitle"))
         self.storage_bar.setStyleSheet(f"""
@@ -569,6 +581,7 @@ class IOSHomePage(QWidget):
         except AttributeError:
             self.subtitle.setText(QCoreApplication.translate("Nugget", "iPhone (iOS —)"))
         self._refresh_storage()
+        self.refresh_summary()
 
     def _refresh_storage(self):
         # Also feeds the pre-apply warnings in MainWindow, so always collect
@@ -666,12 +679,37 @@ class IOSHomePage(QWidget):
             self.presets_lbl.setText(QCoreApplication.translate("Nugget", "Manage presets"))
         self.refresh_summary()
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.refresh_summary()
+
     def refresh_summary(self):
         """Refresh the lightweight configuration/cache summary on Home."""
         enabled = sum(1 for tweak in tweaks.values()
                       if getattr(tweak, "enabled", False))
+        from src.controllers.apply_preview import (
+            load_preview, safe_capture_preview, selection_change_count,
+        )
+        manager = self.window.device_manager
+        udid = manager.get_current_device_udid()
+        preview = safe_capture_preview(manager) if udid else None
+        previous = load_preview(udid, manager.get_current_device_version()) if udid else None
+        changed = selection_change_count(preview, previous)
+        if not udid:
+            detail = QCoreApplication.translate("Nugget", "Connect a device to compare changes")
+        elif preview is None:
+            detail = QCoreApplication.translate("Nugget", "Comparison unavailable")
+        elif changed is None:
+            detail = QCoreApplication.translate("Nugget", "No comparison history")
+        else:
+            detail = QCoreApplication.translate("Nugget", "{0} selection change(s)").format(changed)
         self.summary_detail.setText(QCoreApplication.translate(
-            "Nugget", "{0} enabled tweak(s)").format(enabled))
+            "Nugget", "{0} enabled tweak(s) · {1}").format(enabled, detail))
+        self.summary_detail.setToolTip(QCoreApplication.translate(
+            "ApplyPreview", "Compared with the last successful apply through GoldenNugget. "
+            "Current device settings are not read. Deselecting a tweak does not reset it; "
+            "use Reset Tweaks to restore defaults."))
+        self.summary_preview_btn.setEnabled(bool(udid))
 
         manager = getattr(self.window.device_manager, "pref_manager", None)
         cache_enabled = bool(getattr(manager, "use_backup_cache", False))
