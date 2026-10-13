@@ -1,6 +1,10 @@
-from requests import get, RequestException, HTTPError
 from json import JSONDecodeError
 from src.devicemanagement.constants import Version
+
+# ``requests`` (and its urllib3/certifi tree) costs ~100 ms to import and is
+# only needed when an update check actually runs, so it is pulled in lazily
+# inside get_latest_version() instead of at module import. This module sits on
+# the GUI startup import graph (dialogs -> icon pack downloader).
 
 Nugget_Repo = "awesomenull-dev/GoldenNugget/releases/latest"
 
@@ -21,6 +25,8 @@ def get_latest_version() -> str:
     # get the cached version
     if last_fetched_version != None:
         return last_fetched_version
+    # Lazy import: see the module header.
+    from requests import get, RequestException, HTTPError
     # fetch with web requests
     try:
         response = get(f"https://api.github.com/repos/{Nugget_Repo}", timeout=5)

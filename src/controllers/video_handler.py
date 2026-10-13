@@ -2,14 +2,31 @@ import os
 from tempfile import mkdtemp
 from shutil import rmtree
 
-cv2_successful = False
-try:
-    import cv2
-    import ffmpeg
-    cv2_successful = True
-except:
-    print("failed to include cv2!")
-    cv2_successful = False
+# OpenCV (which drags in numpy) and ffmpeg together cost ~160 ms to import and
+# are only needed when a video wallpaper is actually converted. This module is
+# imported at startup through the tweak registry, so the imports are deferred to
+# the first video operation via _ensure_video_libs().
+cv2 = None
+ffmpeg = None
+# None = not resolved yet, True/False mirror the historical module flag once
+# _ensure_video_libs() has run.
+cv2_successful = None
+
+
+def _ensure_video_libs() -> bool:
+    """Import cv2/ffmpeg on first use. Returns True when both are available."""
+    global cv2, ffmpeg, cv2_successful
+    if cv2_successful is None:
+        try:
+            import cv2 as _cv2
+            import ffmpeg as _ffmpeg
+            cv2, ffmpeg = _cv2, _ffmpeg
+            cv2_successful = True
+        except Exception:
+            print("failed to include cv2!")
+            cv2_successful = False
+    return cv2_successful
+
 
 from src.exceptions.posterboard_exceptions import VideoLengthException
 from src.controllers.files_handler import get_bundle_files
@@ -23,6 +40,7 @@ def set_ignore_frame_limit(value: bool):
     ignore_pb_frame_limit = value
 
 def convert_to_mov(input_file: str, output_file: str = None):
+    _ensure_video_libs()
     # if there is no output file specified, create a temp file then return contents
     if output_file == None:
         tmpdir = mkdtemp()
@@ -52,6 +70,7 @@ def create_caml(video_path: str, output_file: str, auto_reverses: bool, calculat
     reads as a flat wallpaper, so callers that want depth pass a scale > 1 and an
     offset.
     """
+    _ensure_video_libs()
     cam = cv2.VideoCapture(video_path)
     assets_path = os.path.join(output_file, "assets")
     frame_count = int(cam.get(cv2.CAP_PROP_FRAME_COUNT))

@@ -22,7 +22,10 @@ from PySide6.QtWidgets import (
     QPushButton, QMessageBox, QFileDialog, QComboBox,
 )
 
-from src.airlift import write_files, AirliftError
+# NOTE: ``src.airlift`` and ``src.devicemanagement.session`` are imported lazily
+# inside PasscodeThemeWriteThread.run(). Together they pull the whole
+# pymobiledevice3 lockdown stack (plus IPython/questionary) — ~400 ms — and this
+# page module is imported at startup, before any theme is ever written.
 from src.tweaks.passcode_theme import (
     PASSTHME_TARGET,
     PASSTHME_TARGETS_ALL,
@@ -33,7 +36,6 @@ from src.tweaks.passcode_theme import (
     keypad_code_for_locale,
     theme_size,
 )
-from src.devicemanagement.session import lockdown_session
 from pymobiledevice3.exceptions import (
     NotPairedError, PasswordRequiredError, UserDeniedPairingError,
     PairingDialogResponsePendingError, FatalPairingError,
@@ -89,6 +91,11 @@ class PasscodeThemeWriteThread(QThread):
         return None
 
     def run(self):
+        # Heavy stack, imported only when a theme is actually written (see the
+        # module header). Kept as function-locals so the nested coroutine and
+        # the except clauses below see them.
+        from src.airlift import write_files, AirliftError
+        from src.devicemanagement.session import lockdown_session
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:
