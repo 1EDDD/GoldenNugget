@@ -10,6 +10,7 @@ class TendieFile:
     unsafe_container: bool
     loaded: bool
     auto_convert: bool
+    legacy_families: list
 
     def __init__(self, path: str):
         self.path = path
@@ -22,6 +23,10 @@ class TendieFile:
         # for a legacy (pre-iOS 27) package. None means the prompt never ran
         # (iOS 26, or nothing legacy inside) and the apply path decides.
         self.auto_convert: "bool | None" = None
+        # Legacy (pre-iOS 27) wallpaper families found in the archive, detected
+        # once on import so the tendies card can show the Convert switch without
+        # re-reading the zip. Empty means the package needs no conversion.
+        self.legacy_families: "list[str]" = []
 
         # read the contents
         with zipfile.ZipFile(path, mode="r") as archive:

@@ -132,24 +132,45 @@ class PosterboardTweak(Tweak):
             return False
 
     def _ask_legacy_convert(self, new_tendie: TendieFile, device_version: str) -> None:
-        """Offer "Convert" / "Install as is" once, at import time.
+        """Detect the legacy format and offer "Convert" / "Install as is".
 
-        The answer is stored on the tendie (``auto_convert``) and honoured by
-        :meth:`apply_tweak`, which converts each extracted tendie on its own.
+        The detected families land on the tendie (``legacy_families``) so the
+        tendies card can show the Convert switch, and — on a device that can
+        use the modern format — the user's answer lands in ``auto_convert``,
+        which :meth:`apply_tweak` honours while converting each extracted
+        tendie on its own.
         """
         new_tendie.auto_convert = None
+        new_tendie.legacy_families = []
         if not self.auto_convert_legacy:
-            return
-        if not self._legacy_convert_supported(device_version):
             return
         try:
             families = posterboard_converter.legacy_families(new_tendie.path)
         except Exception:
             traceback.print_exc()
             return
+        new_tendie.legacy_families = families
         if not families:
             return
+        if not self._legacy_convert_supported(device_version):
+            return
         new_tendie.auto_convert = prompt_legacy_convert(new_tendie.name, families)
+
+    def tendie_needs_conversion(self, tendie: TendieFile) -> bool:
+        """True when the imported archive carries a legacy (pre-iOS 27) package."""
+        return bool(getattr(tendie, "legacy_families", None))
+
+    def tendie_convert_enabled(self, tendie: TendieFile) -> bool:
+        """True when the tendie is rewritten into the modern format on apply.
+
+        This is the state the tendies card's Convert switch shows; ``False`` is
+        only ever the explicit answer to the import prompt.
+        """
+        return getattr(tendie, "auto_convert", True) is not False
+
+    def set_tendie_convert(self, tendie: TendieFile, convert: bool) -> None:
+        """Record the Convert switch: convert on apply, or install as is."""
+        tendie.auto_convert = bool(convert)
 
     def add_template(self, file: str, version: str = None):
         try:
@@ -521,7 +542,7 @@ class PosterboardTweak(Tweak):
         for tendie in self.tendies:
             update_label(QCoreApplication.tr("Extracting tendie {0}...").format(tendie.name))
             extracted.append((tendie.extract(output_dir=output_dir),
-                              getattr(tendie, "auto_convert", True) is not False))
+                              self.tendie_convert_enabled(tendie)))
         # extract templates
         for template in templates:
             if template.domain == 'com.apple.PosterBoard' or template.domain == 'AppDomain-com.apple.PosterBoard':

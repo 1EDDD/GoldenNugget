@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QPixmap, QIcon, QImageReader
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
-from src.gui.ios.components import IOSCard, IOSPrimaryButton
+from src.gui.ios.components import IOSCard, IOSPrimaryButton, IOSSwitch
 from src.gui.theme import ColorThemeManager
 from src.tweaks.tweaks import tweaks, TweakID
 
@@ -17,15 +17,19 @@ from src.tweaks.tweaks import tweaks, TweakID
 class TendieRow(IOSCard):
     """One installed ``.tendies`` wallpaper as a full-width list row.
 
-    Left: the preview thumbnail. Middle: the wallpaper name. Right: the
-    lock-screen preview and delete actions. The page fills the thumbnail in
-    through ``_load_tendie_preview_by_name`` right after construction.
+    Left: the preview thumbnail. Middle: the wallpaper name plus a caption
+    telling whether it is converted to the modern format on apply. Right: the
+    **Convert** switch (legacy packages only — turning it off installs the
+    original files untouched), the lock-screen preview and delete actions. The
+    page fills the thumbnail in through ``_load_tendie_preview_by_name`` right
+    after construction.
     """
 
     THUMB = 48
 
     def __init__(self, page, tendie, parent=None):
         super().__init__(parent)
+        self.tendie = tendie
         self.setCursor(Qt.PointingHandCursor)
         self.setMinimumHeight(72)
 
@@ -38,9 +42,35 @@ class TendieRow(IOSCard):
         self.icon.setAlignment(Qt.AlignCenter)
         inner.addWidget(self.icon)
 
+        text_col = QVBoxLayout()
+        text_col.setSpacing(2)
         self.name = QLabel(tendie.name.replace(".tendies", ""), self)
         self.name.setWordWrap(False)
-        inner.addWidget(self.name, 1)
+        text_col.addWidget(self.name)
+        # Second line: the conversion state the Convert switch controls.
+        self.format_lbl = QLabel(self._format_caption(), self)
+        self.format_lbl.setWordWrap(False)
+        text_col.addWidget(self.format_lbl)
+        inner.addLayout(text_col, 1)
+
+        self.convert_switch = None
+        self.convert_lbl = None
+        if tweaks[TweakID.PosterBoard].tendie_needs_conversion(tendie):
+            self.convert_switch = IOSSwitch(
+                tweaks[TweakID.PosterBoard].tendie_convert_enabled(tendie), self)
+            self.convert_switch.setToolTip(QCoreApplication.translate(
+                "Nugget",
+                "Convert this legacy wallpaper to the modern iOS 27 format when "
+                "applied. Turn it off to install the original files untouched."))
+            self.convert_switch.toggled.connect(self._on_convert_toggled)
+
+            self.convert_lbl = QLabel(QCoreApplication.translate("Nugget", "Convert"), self)
+            convert_row = QHBoxLayout()
+            convert_row.setContentsMargins(0, 0, 0, 0)
+            convert_row.setSpacing(8)
+            convert_row.addWidget(self.convert_lbl)
+            convert_row.addWidget(self.convert_switch)
+            inner.addLayout(convert_row)
 
         self.preview_btn = QToolButton(self)
         self.preview_btn.setIconSize(QSize(18, 18))
@@ -63,6 +93,18 @@ class TendieRow(IOSCard):
         # now that the child widgets exist.
         self._retheme()
 
+    def _format_caption(self) -> str:
+        posterboard = tweaks[TweakID.PosterBoard]
+        if not posterboard.tendie_needs_conversion(self.tendie):
+            return QCoreApplication.translate("Nugget", "Modern format")
+        if posterboard.tendie_convert_enabled(self.tendie):
+            return QCoreApplication.translate("Nugget", "Converts to the modern format")
+        return QCoreApplication.translate("Nugget", "Installs as is")
+
+    def _on_convert_toggled(self, checked: bool):
+        tweaks[TweakID.PosterBoard].set_tendie_convert(self.tendie, checked)
+        self.format_lbl.setText(self._format_caption())
+
     def _retheme(self):
         super()._retheme()
         if not hasattr(self, "icon"):
@@ -74,6 +116,13 @@ class TendieRow(IOSCard):
         self.name.setStyleSheet(
             f"color: {c.text_primary}; font-size: 15px; background: transparent;"
         )
+        self.format_lbl.setStyleSheet(
+            f"color: {c.text_secondary}; font-size: 12px; background: transparent;"
+        )
+        if self.convert_lbl is not None:
+            self.convert_lbl.setStyleSheet(
+                f"color: {c.text_secondary}; font-size: 12px; background: transparent;"
+            )
         self.preview_btn.setStyleSheet(
             f"QToolButton {{ background-color: {c.bg_secondary}; color: {c.accent}; "
             f"border: 1px solid {c.border}; border-radius: 10px; padding: 7px; }}"
