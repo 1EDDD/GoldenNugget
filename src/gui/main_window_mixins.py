@@ -51,6 +51,12 @@ class DeviceBarMixin:
         The placeholder lives on its own in ``content_stack`` (index 3), so it
         replaces the whole iOS shell — no nav bar, no feature cards — until a
         supported device shows up. It auto-dismisses back to the iOS home.
+
+        Only routed to once the first device scan has finished
+        (``device_scan_completed``): the scan runs on a worker thread and the
+        device list is empty until it returns, so gating on that list right away
+        flashed the "No device connected" screen for the whole scan even when a
+        supported phone was already connected.
         """
         placeholder = getattr(self, "connect_placeholder", None)
         stack = getattr(self, "content_stack", None)
@@ -58,7 +64,9 @@ class DeviceBarMixin:
             return
         if hasattr(self, "ios_apply"):
             self.ios_apply.set_busy(self.apply_in_progress)
-        if len(self.device_manager.devices) == 0 and not getattr(self, "_browse_without_device", False):
+        no_device = (len(self.device_manager.devices) == 0
+                     and not getattr(self, "_browse_without_device", False))
+        if no_device and getattr(self, "device_scan_completed", False):
             stack.setCurrentWidget(placeholder)
         elif stack.currentWidget() is placeholder:
             stack.setCurrentIndex(1)
@@ -154,6 +162,9 @@ class DeviceBarMixin:
 
     def refresh_devices_finished(self):
         self.refresh_in_progress = False
+        # From now on the device list is authoritative, so the connect
+        # placeholder (when there is no device) may be shown.
+        self.device_scan_completed = True
         self.connect_placeholder.set_scan_status(
             QCoreApplication.translate("Nugget", "Device found.") if self.device_manager.devices else
             getattr(self, '_last_connection_error', '') or QCoreApplication.translate(
@@ -378,12 +389,10 @@ class SettingsMixin:
 
     def _on_tweak_changed(self):
         """Called when any tweak value changes - schedule autosave."""
-        # Keep the visible configuration summary/counts in sync while the
-        # user is toggling controls; these widgets intentionally do not rebuild
-        # the whole page for every switch change.
+        # Keep the visible section counts in sync while the user is toggling
+        # controls; these widgets intentionally do not rebuild the whole page
+        # for every switch change.
         try:
-            if hasattr(self, "ios_home"):
-                self.ios_home.refresh_summary()
             for page in getattr(self, "ios_pages", []):
                 content = getattr(page, "content", None)
                 if content is not None and hasattr(content, "refresh_section_counts"):
@@ -1309,7 +1318,6 @@ class ApplyMixin:
         self.ios_home.result_card.show_result(success, text, is_reset)
         self.ios_apply.result_card.show_result(success, text, is_reset)
         self.ios_apply.set_status("")
-        self.ios_home.refresh_summary()
         # Show completion indicator on the iOS home page
         if success:
             if worker is not None and not is_reset:

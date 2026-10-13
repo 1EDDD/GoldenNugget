@@ -108,6 +108,10 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.noneText = self.tr("None")
         self.apply_in_progress = False
         self.refresh_in_progress = False
+        # False until the first device scan resolves; the connect placeholder
+        # must not be shown while that scan is still running (the device list
+        # is empty then, even with a phone plugged in).
+        self.device_scan_completed = False
         self._cache_restore_in_progress = False
         self._cache_restore_thread = None
         self.threadpool = QtCore.QThreadPool()
@@ -286,8 +290,11 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         
         ## DEVICE BAR
         self.refresh_devices()
-        # No device known yet (the refresh above runs on a thread) -> show the
-        # connect placeholder right away instead of an empty iOS home.
+        # The refresh above runs on a worker thread, so the device list is still
+        # empty here. _update_device_gate() deliberately does NOT show the
+        # connect placeholder until that first scan finishes — otherwise the
+        # "No device connected" screen stayed up for the whole scan (seconds)
+        # even when a supported phone was already plugged in.
         self._update_device_gate()
 
         self.ui.refreshBtn.clicked.connect(self.refresh_devices)
