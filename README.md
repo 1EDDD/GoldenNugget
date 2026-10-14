@@ -1,40 +1,15 @@
 ![Artboard][NuggetLogo]
 
 # GoldenNugget
-
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
 > [!WARNING]
 > **Back up your device before applying tweaks.** GoldenNugget can cause data loss, boot loops, or other unexpected device problems. Use this project at your own risk; the authors are not responsible for damage to your device or data. See the [full disclaimer](docs/DISCLAIMER.md).
-
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
 
 Unlock your device's full potential, with iOS 27 support!
 
 Customize your device with animated wallpapers, disable pesky daemons, and more!
 
 Make sure you have installed the [requirements](#requirements) if you are on Windows or Linux.
-
-## Quick Start
-
-1. Install the device connection tools listed in [Requirements](#requirements).
-2. Create and activate a virtual environment:
-
-```bash
-python -m venv .venv
-# Windows PowerShell
-.\.venv\Scripts\Activate.ps1
-# macOS/Linux
-source .venv/bin/activate
-```
-
-3. Install the pinned dependencies and start GoldenNugget:
-
-```bash
-python -m pip install -r requirements.txt
-python main_app.py
-```
-
-Make a full device backup before applying tweaks. Use `python main_app.py --test-mode`
-to open the interface with mock devices and no iPhone connected.
 
 ## Compatibility
 
