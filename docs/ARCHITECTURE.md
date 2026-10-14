@@ -56,6 +56,23 @@ metadata only; macOS adds `--osx-bundle-identifier`/codesign. i18n is not
 compiled by `compile.py` — `.qm`/`resources_rc.py` are produced by the
 pyside6-lrelease/lupdate/rcc pipeline (README / CI).
 
+Windows-only packaging detail — **the abi3t compat DLL**: the Windows branch of
+`compile.py` collects `python3t.dll` into the bundle root. cryptography ≥ 50
+ships an abi3/abi3t wheel whose `hazmat/bindings/_rust.pyd` links
+`python3t.dll`, but the official python.org Windows installer does **not** put
+that DLL next to `python3XX.dll` — it installs it under a sibling
+`abi3t-compat\` directory (CPython `Tools/msi/core/core_files.wxs`), which is
+on no DLL search path. PyInstaller therefore cannot resolve the import, drops
+it silently, and the frozen app dies at startup with `ImportError: DLL load
+failed while importing _rust`. `compile.py` finds the DLL (in `abi3t-compat\`
+or the install root, via `sys.base_prefix`/`sys.executable`), adds it with
+`--add-binary ...;.` so it lands beside `python3XX.dll`/`python3.dll`, and
+verifies it made it into `dist/Nugget`. At runtime CPython's
+`_Py_CheckPython3t()` (`Python/dynload_win.c`) preloads `python3t.dll` from
+that directory, so the `_rust.pyd` import resolves. If the DLL cannot be found
+while the installed cryptography needs it, the build fails loudly instead of
+shipping a broken release.
+
 ## Global state — one real singleton, two process singletons
 
 | Object | File | Purpose |
