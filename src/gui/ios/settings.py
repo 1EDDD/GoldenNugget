@@ -1,4 +1,5 @@
-from PySide6.QtCore import Qt, QCoreApplication, QTimer, QPropertyAnimation, QEasingCurve, QSize
+from PySide6.QtCore import Qt, QCoreApplication, QTimer, QPropertyAnimation, QEasingCurve, QSize, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea,
     QComboBox, QLineEdit, QListWidget, QListWidgetItem, QMessageBox, QInputDialog,
@@ -62,6 +63,19 @@ class IOSSettingsPage(QWidget):
 
         # --- Appearance ---
         self.content_layout.addWidget(IOSSectionHeader(QCoreApplication.translate("Nugget", "Appearance")))
+
+        theme_row = IOSCard()
+        theme_layout = QHBoxLayout(theme_row)
+        theme_layout.setContentsMargins(16, 10, 16, 10)
+        theme_layout.addWidget(QLabel(QCoreApplication.translate('Nugget', 'Color Theme')), 1)
+        self.color_theme_combo = QComboBox()
+        self.color_theme_combo.setAccessibleName(QCoreApplication.translate('Nugget', 'Color Theme'))
+        self.color_theme_combo.addItem(QCoreApplication.translate('Nugget', 'Dark'), 'dark')
+        self.color_theme_combo.addItem(QCoreApplication.translate('Nugget', 'Light'), 'light')
+        self.color_theme_combo.setCurrentIndex(self.color_theme_combo.findData(self._tm.mode))
+        self.color_theme_combo.activated.connect(self._on_color_mode_changed)
+        theme_layout.addWidget(self.color_theme_combo)
+        self.content_layout.addWidget(theme_row)
 
         accent_row_card = IOSCard()
         accent_row = QHBoxLayout(accent_row_card)
@@ -228,6 +242,15 @@ class IOSSettingsPage(QWidget):
         about_btn.clicked.connect(self.show_about)
         self.content_layout.addWidget(about_btn)
 
+        diagnostics_btn = IOSSettingsAction(QCoreApplication.translate('Nugget', 'Export Diagnostics'))
+        diagnostics_btn.clicked.connect(self._export_diagnostics)
+        self.content_layout.addWidget(diagnostics_btn)
+
+        self.report_bug_btn = IOSSettingsAction(
+            QCoreApplication.translate('Nugget', 'Report a Bug'))
+        self.report_bug_btn.clicked.connect(self._report_bug)
+        self.content_layout.addWidget(self.report_bug_btn)
+
         self.content_layout.addStretch()
 
         self._sync_setting_dependencies()
@@ -244,6 +267,21 @@ class IOSSettingsPage(QWidget):
     def showEvent(self, event):
         super().showEvent(event)
         self._sync_setting_dependencies()
+
+    def _on_color_mode_changed(self, index):
+        self._tm.set_mode(self.color_theme_combo.itemData(index))
+
+    def _report_bug(self):
+        url = QUrl('https://github.com/GoldenNugget-Team/GoldenNugget/issues/new')
+        if not QDesktopServices.openUrl(url):
+            QMessageBox.warning(
+                self, QCoreApplication.translate('Nugget', 'Report a Bug'),
+                QCoreApplication.translate(
+                    'Nugget', 'Could not open the browser. Open this link to report a bug:\n{0}').format(url.toString()))
+
+    def _export_diagnostics(self):
+        from src.gui.dialogs.diagnostics import DiagnosticsDialog
+        DiagnosticsDialog(self.window.settings, self.window.device_manager, self).exec()
 
     def _on_advanced_toggled(self, expanded):
         self.window.settings.setValue('advanced_settings_expanded', expanded)
@@ -325,6 +363,12 @@ class IOSSettingsPage(QWidget):
 
     def _retheme(self):
         c = self._tm.colors
+        for label in [*self.findChildren(QLabel), *self.findChildren(QAbstractButton)]:
+            style_key = label.property('theme_style_key')
+            if style_key:
+                label.setStyleSheet(t(style_key))
+        self.color_theme_combo.setStyleSheet(t('combo_dropdown'))
+        self.color_theme_combo.setCurrentIndex(self.color_theme_combo.findData(self._tm.mode))
         self._scroll.setStyleSheet(
             f"background-color: {c.bg_primary}; border: none;"
         )
@@ -434,6 +478,10 @@ class IOSSettingsPage(QWidget):
 
     # ---------- helpers ----------
 
+    def _style_label(self, label, key):
+        label.setProperty('theme_style_key', key)
+        label.setStyleSheet(t(key))
+
     def _make_switch(self, title: str, checked: bool, on_toggled) -> IOSSwitch:
         c = self._tm.colors
         card = IOSCard()
@@ -442,7 +490,7 @@ class IOSSettingsPage(QWidget):
         row.setSpacing(12)
 
         label = QLabel(title)
-        label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        self._style_label(label, 'row_title')
         label.setWordWrap(True)
         row.addWidget(label, 1)
 
@@ -631,15 +679,14 @@ class IOSSettingsPage(QWidget):
         row.setSpacing(8)
 
         title = QLabel(QCoreApplication.translate("Nugget", "Backup/Cache Location"))
-        title.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        self._style_label(title, 'row_title')
         row.addWidget(title)
 
         custom = self._custom_backup_dir_value()
         self.backup_location_lbl = QLabel(
             custom if custom else self._default_backup_dir_text())
         self.backup_location_lbl.setWordWrap(True)
-        self.backup_location_lbl.setStyleSheet(
-            f"color: {c.text_secondary}; font-size: 13px;")
+        self._style_label(self.backup_location_lbl, 'muted_caption')
         row.addWidget(self.backup_location_lbl)
 
         hint = QLabel(QCoreApplication.translate(
@@ -648,7 +695,7 @@ class IOSSettingsPage(QWidget):
             "backup/restore files for iOS 27 are stored in this folder. "
             "Useful when the system drive is small (e.g. C: 28 GB)."))
         hint.setWordWrap(True)
-        hint.setStyleSheet(f"color: {c.text_secondary}; font-size: 12px;")
+        self._style_label(hint, 'small_hint')
         row.addWidget(hint)
 
         btns = QHBoxLayout()
@@ -698,11 +745,11 @@ class IOSSettingsPage(QWidget):
         row.setSpacing(12)
 
         label = QLabel(title)
-        label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        self._style_label(label, 'row_title')
         row.addWidget(label, 1)
 
         self.org_value_lbl = QLabel(current if current else QCoreApplication.translate("MainWindow", "None"))
-        self.org_value_lbl.setStyleSheet(f"color: {c.text_secondary}; font-size: 14px;")
+        self._style_label(self.org_value_lbl, 'value_label')
         row.addWidget(self.org_value_lbl)
 
         edit_btn = QPushButton(self)
@@ -725,27 +772,7 @@ class IOSSettingsPage(QWidget):
         dialog.setWindowTitle(title)
         dialog.setLabelText(QCoreApplication.translate("Nugget", "Enter value:"))
         dialog.setTextValue(self.window.device_manager.pref_manager.organization_name)
-        dialog.setStyleSheet(f"""
-            QDialog, QInputDialog {{ background-color: {c.bg_primary}; }}
-            QLabel {{ color: {c.text_primary}; font-size: 15px; }}
-            QLineEdit {{
-                background-color: {c.bg_input};
-                border: none;
-                border-radius: 10px;
-                color: {c.text_primary};
-                font-size: 15px;
-                padding: 10px 14px;
-            }}
-            QPushButton {{
-                background-color: {c.accent};
-                border-radius: 10px;
-                color: {c.text_primary};
-                font-size: 15px;
-                font-weight: 600;
-                padding: 10px 20px;
-                border: none;
-            }}
-        """)
+        dialog.setStyleSheet(t('text_input_dialog'))
         if dialog.exec() == QDialog.Accepted:
             text = dialog.textValue()
             on_submit(text)
@@ -765,7 +792,7 @@ class IOSSettingsPage(QWidget):
         row.setSpacing(12)
 
         label = QLabel(QCoreApplication.translate("Nugget", "App Language"))
-        label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        self._style_label(label, 'row_title')
         row.addWidget(label, 1)
 
         self.lang_drp = QComboBox()
@@ -818,7 +845,7 @@ class IOSSettingsPage(QWidget):
         ids_layout.setContentsMargins(16, 12, 16, 12)
         ids_layout.setSpacing(8)
         ids_title = QLabel(QCoreApplication.translate("Nugget", "Saved Configuration IDs"))
-        ids_title.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        self._style_label(ids_title, 'row_title')
         ids_layout.addWidget(ids_title)
 
         self.saved_ids_list = QListWidget()
@@ -845,11 +872,11 @@ class IOSSettingsPage(QWidget):
         row.setSpacing(12)
 
         label = QLabel(title)
-        label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        self._style_label(label, 'row_title')
         row.addWidget(label, 1)
 
         self.pb_db_lbl = QLabel(value)
-        self.pb_db_lbl.setStyleSheet(f"color: {c.text_secondary}; font-size: 14px;")
+        self._style_label(self.pb_db_lbl, 'value_label')
         row.addWidget(self.pb_db_lbl)
         self.content_layout.addWidget(card)
 
@@ -980,20 +1007,10 @@ class IOSSettingsPage(QWidget):
 
     def _make_mini_button(self, title: str):
         from PySide6.QtWidgets import QPushButton
-        c = self._tm.colors
         btn = QPushButton(title)
         btn.setCursor(Qt.PointingHandCursor)
-        btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {c.scrollbar};
-                border: none;
-                border-radius: 10px;
-                color: {c.text_primary};
-                font-size: 13px;
-                padding: 8px 12px;
-            }}
-            QPushButton:hover {{ background-color: {c.surface_hover}; }}
-        """)
+        btn.setProperty('theme_style_key', 'mini_button')
+        btn.setStyleSheet(t('mini_button'))
         return btn
 
     def _on_pb_get_db(self):
@@ -1128,7 +1145,7 @@ class IOSSettingsPage(QWidget):
             "for this session only — an existing AutoSave preset stays on "
             "disk and is not loaded at startup."))
         autosave_hint.setWordWrap(True)
-        autosave_hint.setStyleSheet(f"color: {c.text_secondary}; font-size: 12px;")
+        self._style_label(autosave_hint, 'small_hint')
         hint_row = QHBoxLayout()
         hint_row.setContentsMargins(16, 0, 16, 8)
         hint_row.addWidget(autosave_hint, 1)

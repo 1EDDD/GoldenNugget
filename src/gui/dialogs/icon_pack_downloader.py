@@ -128,6 +128,7 @@ class IconPackDownloaderDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        ColorThemeManager.instance().theme_changed.connect(self._retheme)
         self.setWindowTitle(QCoreApplication.translate("Nugget", "Download Icon Packs"))
         self.setModal(True)
         self.resize(760, 560)

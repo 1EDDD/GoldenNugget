@@ -30,6 +30,8 @@ class TendieFile:
 
         # read the contents
         with zipfile.ZipFile(path, mode="r") as archive:
+            from src.controllers.archive_safety import checked_members
+            checked_members(archive)
             for option in archive.namelist():
                 if "__macosx/" in option.lower():
                     continue

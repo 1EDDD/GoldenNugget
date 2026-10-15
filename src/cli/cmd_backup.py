@@ -33,7 +33,7 @@ def add_parser(subp):
     return parser
 
 
-async def _create(udid, include_photos, include_posterboard) -> int:
+async def _create(udid, include_photos, include_posterboard) -> dict:
     from pymobiledevice3.lockdown import create_using_usbmux
     from src.restore.protective import (
         perform_protective_backup, new_protective_backup_dir,
@@ -77,7 +77,7 @@ async def _create(udid, include_photos, include_posterboard) -> int:
     runs = list_protective_backups(udid)
     if runs:
         print(f"{len(runs)} stored backup(s) for {udid}.")
-    return 0
+    return dict(udid=udid, path=backup_root, encrypted=encrypted)
 
 
 def _run_create(args) -> int:
@@ -92,7 +92,10 @@ def _run_create(args) -> int:
     print(f"Backing up {getattr(device, 'name', udid)} "
           f"(iOS {getattr(device, 'version', '?')})...")
     try:
-        return asyncio.run(_create(udid, not args.no_photos, not args.no_posterboard))
+        result = asyncio.run(_create(udid, not args.no_photos, not args.no_posterboard))
+        from src.cli.output import set_result
+        set_result(result)
+        return 0
     except KeyboardInterrupt:
         print("\nInterrupted.")
         return 130
@@ -115,6 +118,8 @@ def _run_list(args) -> int:
 
     from src.restore.protective import list_protective_backups, find_latest_protective_backup
     runs = list_protective_backups(udid)
+    from src.cli.output import set_result
+    set_result(dict(udid=udid, backups=[dict(path=str(run), modified_at=run.stat().st_mtime) for run in runs]))
     if not runs:
         print(f"No protective backups stored for {udid}.")
         return 0

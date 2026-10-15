@@ -1,11 +1,11 @@
 from PySide6.QtCore import QObject, Signal, QSettings, QEvent
-from PySide6.QtGui import QColor, QPalette
+from PySide6.QtGui import QColor, QPalette, QGuiApplication
 
-from src.gui.theme.colors import ThemeColors, DARK, ACCENT_PRESETS
+from src.gui.theme.colors import ThemeColors, DARK, LIGHT, ACCENT_PRESETS, LIGHT_ACCENT_PRESETS
 
 
 class ColorThemeManager(QObject):
-    """Manages the app's color theme (dark + accent).
+    """Manages the persisted light/dark theme and independent accent choice.
 
     Singleton accessed via ``ColorThemeManager.instance()``.
     Emits ``theme_changed`` whenever the palette or accent changes so
@@ -19,7 +19,12 @@ class ColorThemeManager(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._settings = QSettings("GoldenNugget", "GoldenNugget")
+        self._mode = self._settings.value("color_mode", "dark")
+        if self._mode not in ('dark', 'light'):
+            self._mode = 'dark'
         self._accent_name = self._settings.value("accent_color", "blue")
+        if self._accent_name not in ACCENT_PRESETS:
+            self._accent_name = 'blue'
         self._colors = self._build_colors()
         self._revision = 0
 
@@ -41,17 +46,28 @@ class ColorThemeManager(QObject):
 
     @property
     def mode(self) -> str:
-        return "dark"
+        return self._mode
 
     @property
     def is_dark(self) -> bool:
-        return True
+        return self._mode == 'dark'
+
+    @property
+    def accent_name(self) -> str:
+        return self._accent_name
 
     def c(self, slot: str) -> str:
         """Shortcut: return the hex value for *slot* from the active palette."""
         return getattr(self._colors, slot)
 
     # ---- switching -------------------------------------------------------
+
+    def set_mode(self, mode: str):
+        if mode not in ('dark', 'light') or mode == self._mode:
+            return
+        self._mode = mode
+        self._settings.setValue('color_mode', mode)
+        self._publish_colors()
 
     def set_accent(self, name: str):
         if name not in ACCENT_PRESETS:
@@ -60,8 +76,15 @@ class ColorThemeManager(QObject):
             return
         self._accent_name = name
         self._settings.setValue("accent_color", name)
+        self._publish_colors()
+
+    def _publish_colors(self):
+        self._settings.sync()
         self._colors = self._build_colors()
         self._revision += 1
+        app = QGuiApplication.instance()
+        if app is not None:
+            app.setPalette(self.build_palette())
         self.theme_changed.emit()
 
     # ---- QPalette for Fusion style ---------------------------------------
@@ -69,66 +92,56 @@ class ColorThemeManager(QObject):
     def build_palette(self) -> QPalette:
         pal = QPalette()
         c = self._colors
-        # --- Active group (default) ---
-        pal.setColor(QPalette.ColorGroup.Active, QPalette.ColorRole.Window, QColor(c.bg_primary))
-        pal.setColor(QPalette.ColorGroup.Active, QPalette.ColorRole.WindowText, QColor(c.text_primary))
-        pal.setColor(QPalette.ColorGroup.Active, QPalette.ColorRole.Base, QColor(c.bg_input))
-        pal.setColor(QPalette.ColorGroup.Active, QPalette.ColorRole.AlternateBase, QColor(c.bg_tertiary))
-        pal.setColor(QPalette.ColorGroup.Active, QPalette.ColorRole.ToolTipBase, QColor(c.bg_elevated))
-        pal.setColor(QPalette.ColorGroup.Active, QPalette.ColorRole.ToolTipText, QColor(c.text_primary))
-        pal.setColor(QPalette.ColorGroup.Active, QPalette.ColorRole.Text, QColor(c.text_primary))
-        pal.setColor(QPalette.ColorGroup.Active, QPalette.ColorRole.Button, QColor(c.bg_secondary))
-        pal.setColor(QPalette.ColorGroup.Active, QPalette.ColorRole.ButtonText, QColor(c.text_primary))
-        pal.setColor(QPalette.ColorGroup.Active, QPalette.ColorRole.BrightText, QColor(c.error))
-        pal.setColor(QPalette.ColorGroup.Active, QPalette.ColorRole.Link, QColor(c.accent))
-        pal.setColor(QPalette.ColorGroup.Active, QPalette.ColorRole.LinkVisited, QColor(c.accent_pressed))
-        pal.setColor(QPalette.ColorGroup.Active, QPalette.ColorRole.Highlight, QColor(c.accent))
-        pal.setColor(QPalette.ColorGroup.Active, QPalette.ColorRole.HighlightedText, QColor(c.text_inverse))
-        pal.setColor(QPalette.ColorGroup.Active, QPalette.ColorRole.PlaceholderText, QColor(c.text_secondary))
-        # 3-D bevel / shading roles needed by Fusion on Windows
-        pal.setColor(QPalette.ColorGroup.Active, QPalette.ColorRole.Light, QColor(c.bg_elevated))
-        pal.setColor(QPalette.ColorGroup.Active, QPalette.ColorRole.Midlight, QColor(c.border))
-        pal.setColor(QPalette.ColorGroup.Active, QPalette.ColorRole.Dark, QColor(c.border))
-        pal.setColor(QPalette.ColorGroup.Active, QPalette.ColorRole.Mid, QColor(c.border))
-        pal.setColor(QPalette.ColorGroup.Active, QPalette.ColorRole.Shadow, QColor("#000000"))
-        # --- Inactive group ---
-        pal.setColor(QPalette.ColorGroup.Inactive, QPalette.ColorRole.Window, QColor(c.bg_primary))
-        pal.setColor(QPalette.ColorGroup.Inactive, QPalette.ColorRole.WindowText, QColor(c.text_primary))
-        pal.setColor(QPalette.ColorGroup.Inactive, QPalette.ColorRole.Base, QColor(c.bg_input))
-        pal.setColor(QPalette.ColorGroup.Inactive, QPalette.ColorRole.AlternateBase, QColor(c.bg_tertiary))
-        pal.setColor(QPalette.ColorGroup.Inactive, QPalette.ColorRole.Text, QColor(c.text_primary))
-        pal.setColor(QPalette.ColorGroup.Inactive, QPalette.ColorRole.Button, QColor(c.bg_secondary))
-        pal.setColor(QPalette.ColorGroup.Inactive, QPalette.ColorRole.ButtonText, QColor(c.text_primary))
-        pal.setColor(QPalette.ColorGroup.Inactive, QPalette.ColorRole.Highlight, QColor(c.accent))
-        pal.setColor(QPalette.ColorGroup.Inactive, QPalette.ColorRole.HighlightedText, QColor(c.text_inverse))
-        pal.setColor(QPalette.ColorGroup.Inactive, QPalette.ColorRole.PlaceholderText, QColor(c.text_secondary))
-        # --- Disabled group ---
-        pal.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Window, QColor(c.bg_primary))
-        pal.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.WindowText, QColor(c.text_disabled))
-        pal.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Base, QColor(c.bg_input))
-        pal.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Text, QColor(c.text_disabled))
-        pal.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Button, QColor(c.bg_secondary))
-        pal.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.ButtonText, QColor(c.text_disabled))
-        pal.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.BrightText, QColor(c.error))
-        pal.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Highlight, QColor(c.border))
-        pal.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.HighlightedText, QColor(c.text_disabled))
-        pal.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.PlaceholderText, QColor(c.text_disabled))
+        roles = {
+            QPalette.ColorRole.Window: c.bg_primary,
+            QPalette.ColorRole.WindowText: c.text_primary,
+            QPalette.ColorRole.Base: c.bg_input,
+            QPalette.ColorRole.AlternateBase: c.bg_tertiary,
+            QPalette.ColorRole.ToolTipBase: c.bg_elevated,
+            QPalette.ColorRole.ToolTipText: c.text_primary,
+            QPalette.ColorRole.Text: c.text_primary,
+            QPalette.ColorRole.Button: c.bg_secondary,
+            QPalette.ColorRole.ButtonText: c.text_primary,
+            QPalette.ColorRole.BrightText: c.error,
+            QPalette.ColorRole.Link: c.accent,
+            QPalette.ColorRole.LinkVisited: c.accent_pressed,
+            QPalette.ColorRole.Highlight: c.selection,
+            QPalette.ColorRole.HighlightedText: c.text_inverse,
+            QPalette.ColorRole.PlaceholderText: c.text_secondary,
+            QPalette.ColorRole.Light: c.bg_elevated,
+            QPalette.ColorRole.Midlight: c.bg_tertiary,
+            QPalette.ColorRole.Dark: c.border,
+            QPalette.ColorRole.Mid: c.divider,
+            QPalette.ColorRole.Shadow: c.border,
+            QPalette.ColorRole.Accent: c.accent,
+        }
+        # Apply every role to inactive windows too: default Qt roles otherwise
+        # leave pale text or dark native controls behind when focus changes.
+        for group in (QPalette.ColorGroup.Active, QPalette.ColorGroup.Inactive,
+                      QPalette.ColorGroup.Disabled):
+            for role, value in roles.items():
+                pal.setColor(group, role, QColor(value))
+        for role in (QPalette.ColorRole.WindowText, QPalette.ColorRole.Text,
+                     QPalette.ColorRole.ButtonText, QPalette.ColorRole.PlaceholderText,
+                     QPalette.ColorRole.HighlightedText):
+            pal.setColor(QPalette.ColorGroup.Disabled, role, QColor(c.text_disabled))
+        pal.setColor(QPalette.ColorGroup.Disabled, QPalette.ColorRole.Highlight, QColor(c.bg_tertiary))
         return pal
 
     # ---- helpers ---------------------------------------------------------
 
     def _build_colors(self) -> ThemeColors:
-        accent, hover, pressed = ACCENT_PRESETS[self._accent_name]
-        return DARK.with_accent(accent, hover, pressed)
+        palette = DARK if self.is_dark else LIGHT
+        presets = ACCENT_PRESETS if self.is_dark else LIGHT_ACCENT_PRESETS
+        accent, hover, pressed = presets[self._accent_name]
+        return palette.with_accent(accent, hover, pressed)
 
     def accent_hex(self) -> str:
         """Return the current accent as a ``"#rrggbb"`` string."""
-        accent, _, _ = ACCENT_PRESETS[self._accent_name]
-        return accent
+        return self._colors.accent
 
     def accent_rgb(self) -> tuple:
-        accent, _, _ = ACCENT_PRESETS[self._accent_name]
-        q = QColor(accent)
+        q = QColor(self._colors.accent)
         return (q.red(), q.green(), q.blue())
 
 

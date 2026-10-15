@@ -44,6 +44,7 @@ class _WallpaperCard(QFrame):
 
     def __init__(self, wallpaper, on_click, parent=None):
         super().__init__(parent)
+        ColorThemeManager.instance().theme_changed.connect(self._retheme)
         self.wallpaper = wallpaper
         self._on_click_cb = on_click
         self.setCursor(Qt.PointingHandCursor)
@@ -184,6 +185,7 @@ class WallpaperDownloaderDialog(QDialog):
 
     def __init__(self, window, parent=None):
         super().__init__(parent)
+        ColorThemeManager.instance().theme_changed.connect(self._retheme)
         self.window = window
         self.setWindowTitle(QCoreApplication.translate("Nugget", "Download Wallpapers"))
         self.setModal(True)
@@ -220,7 +222,7 @@ class WallpaperDownloaderDialog(QDialog):
         # Status / progress area
         c = ColorThemeManager.instance().colors
         self.status_lbl = QLabel(QCoreApplication.translate("Nugget", "Loading..."))
-        self.status_lbl.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px;")
+        self.status_lbl.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px; background-color: transparent;")
         layout.addWidget(self.status_lbl)
 
         self.progress = QProgressBar()

@@ -3,6 +3,8 @@
 import argparse
 import sys
 
+from src.cli.output import set_result
+
 
 def _pm():
     from src.controllers.preset_manager import PresetManager
@@ -68,6 +70,7 @@ def add_parser(subp):
     p.add_argument("name")
     p.add_argument("--out", default=None, help="output path (default: <name>.json)")
     p.add_argument("--include", default="", help="comma-separated TweakID names")
+    p.add_argument('--portable', action='store_true', help='Embed templates and icons in a .gnpreset archive')
     p.set_defaults(func=_run_export)
 
     p = sub.add_parser("import", help="Import a preset from a JSON file")
@@ -80,6 +83,7 @@ def add_parser(subp):
 def _run_list(args):
     pm = _pm()
     presets = pm.list_presets_with_metadata()
+    set_result({'presets': presets})
     if not presets:
         print("No presets saved.")
         return 0
@@ -97,6 +101,7 @@ def _run_show(args):
     if meta is None:
         print(f"ERROR: preset '{args.name}' not found.", file=sys.stderr)
         return 1
+    set_result(dict(name=args.name, metadata=meta))
     print(f"name:        {args.name}")
     print(f"description: {meta.get('description', '')}")
     print(f"device:      {meta.get('device_model', 'Unknown')} "
@@ -123,6 +128,7 @@ def _run_save(args):
     if args.name != "AutoSave":
         autosave_preset()
     print(f"Saved preset '{args.name}'.")
+    set_result(dict(name=args.name, saved=True))
     return 0
 
 
@@ -145,6 +151,7 @@ def _run_load(args):
     print(f"Loaded preset '{args.name}'.")
     if not getattr(args, "no_save", False):
         autosave_preset()
+    set_result(dict(name=args.name, loaded=True, skipped_features=sorted(hidden)))
     return 0
 
 
@@ -154,30 +161,31 @@ def _run_delete(args):
         print(f"ERROR: preset '{args.name}' not found.", file=sys.stderr)
         return 1
     print(f"Deleted preset '{args.name}'.")
+    set_result(dict(name=args.name, deleted=True))
     return 0
 
 
 def _run_export(args):
     pm = _pm()
-    out = args.out or f"{args.name}.json"
+    portable = getattr(args, 'portable', False)
+    out = args.out or f"{args.name}.{'gnpreset' if portable else 'json'}"
     include = [s.strip() for s in args.include.split(",") if s.strip()] or None
-    if not pm.export_preset(args.name, out, include=include):
-        print(f"ERROR: failed to export preset '{args.name}'.", file=sys.stderr)
+    if not pm.export_preset(args.name, out, include=include, portable=portable):
+        print(f"ERROR: failed to export preset '{args.name}': {pm.last_transfer_error}", file=sys.stderr)
         return 1
     print(f"Exported '{args.name}' -> {out}")
+    set_result(dict(name=args.name, path=out, portable=portable or out.lower().endswith('.gnpreset')))
     return 0
 
 
 def _run_import(args):
-    from src.cli.common import load_core_tweaks, autosave_preset
-    load_core_tweaks()
     pm = _pm()
     ok, name = pm.import_preset(args.path, new_name=args.name)
     if not ok:
         print(f"ERROR: import failed: {name}", file=sys.stderr)
         return 1
     print(f"Imported preset '{name}'.")
-    autosave_preset()
+    set_result(dict(name=name, imported=True))
     return 0
 
 

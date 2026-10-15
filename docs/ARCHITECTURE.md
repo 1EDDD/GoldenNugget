@@ -3,6 +3,8 @@
 A guided tour of every part of the codebase: what each package does, how the
 main flows work end-to-end, and which conventions hold the whole thing
 together. For agent-facing operational notes see [AGENTS.md](../AGENTS.md);
+for portable presets, diagnostic archives and read-only CLI inspection see
+[PORTABLE_AND_DIAGNOSTICS.md](PORTABLE_AND_DIAGNOSTICS.md);
 for the iOS 27 status-bar research see [iOS27_StatusBar_Research.md](iOS27_StatusBar_Research.md);
 for line-level verified facts gathered during a codebase audit see [FINDINGS.md](FINDINGS.md).
 
@@ -402,6 +404,17 @@ the `ProtectiveBackupCache` to `protective_cache.py` (both re-exported from
 
 ## src/gui/ — two UIs, one state
 
+Application color themes live separately in `gui/theme/`: `DARK` and `LIGHT`
+share named slots, with eight accent choices tuned independently for contrast
+in each mode. `ColorThemeManager.set_mode()` saves `color_mode` in QSettings;
+dark is the default and the OS color scheme is not followed. Settings →
+Appearance → Color Theme changes the palette live without a restart.
+Native widget palettes cover active, inactive and disabled states, while
+pages, shared components and open dialogs reapply their themed styles.
+Color-only labels must explicitly use a transparent background so their
+palette window color cannot obscure card surfaces. Offline theme regressions
+are in `tools/test_light_theme.py`.
+
 The pre-apply summary includes **View changes**, a read-only, scrollable
 selection comparison (`controllers/apply_preview.py`,
 `gui/dialogs/apply_preview.py`). It compares against the last successful apply
@@ -472,6 +485,22 @@ and is not the live navigator. Real navigation uses:
   - `RefreshDevicesThread` — device refresh.
 
 ## src/controllers/ — support services
+
+Local transfer/inspection modules:
+- `preset_bundle.py`: atomic portable preset export/import with hashed template
+  and icon assets; `PresetManager` retains the legacy JSON path. Import stores
+  selections without activation. `gui/dialogs/file_task.py` runs transfers off
+  the GUI thread.
+- `archive_safety.py`: shared ZIP path, link, duplication and expansion checks.
+- `wallpaper_validation.py`: bounded offline package report; exposed through
+  `gui/dialogs/wallpaper_validation.py` and `cli/cmd_wallpaper.py`.
+- `diagnostics.py`: allowlisted metadata and redacted log tails, with an editable
+  GUI preview in `gui/dialogs/diagnostics.py` and local CLI exports.
+- `apply_plan.py`: CLI dry-run built from the existing preview, compatibility
+  and conflict rules. Preview-only preset loading avoids copying icon assets or
+  instantiating templates. It never calls device apply/reset or generates a
+  restore payload.
+- `cli/output.py`: common versioned JSON envelope, with progress on stderr.
 
 | Module | Role |
 |---|---|

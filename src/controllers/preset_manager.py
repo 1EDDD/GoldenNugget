@@ -1,6 +1,8 @@
 import base64
 import json
 import os
+import shutil
+import tempfile
 import time
 from typing import Optional
 
@@ -24,6 +26,7 @@ PRESET_VERSION = 2
 
 class PresetManager:
     def __init__(self):
+        self.last_transfer_error = ""
         base_dir = QStandardPaths.writableLocation(QStandardPaths.AppDataLocation)
         # Ensure GoldenNugget-specific folder
         if not base_dir.endswith("GoldenNugget") and not base_dir.endswith("GoldenNugget/"):
@@ -159,7 +162,7 @@ class PresetManager:
             print(f"Failed to save preset: {e}")
             return False
 
-    def load_preset(self, name: str) -> bool:
+    def load_preset(self, name: str, preview_only: bool = False) -> bool:
         file_path = self.get_preset_path(name)
         if not os.path.isfile(file_path):
             return False
@@ -169,7 +172,9 @@ class PresetManager:
         except Exception as e:
             print(f"Failed to read preset: {e}")
             return False
-        return self._apply(data)
+        if preview_only and not self._valid_import_structure(data):
+            return False
+        return self._apply(data, preview_only=preview_only)
 
     def delete_preset(self, name: str) -> bool:
         file_path = self.get_preset_path(name)
@@ -183,15 +188,17 @@ class PresetManager:
 
     ## EXPORT / IMPORT
     def export_preset(self, name: str, export_path: str,
-                      include: Optional[list] = None) -> bool:
-        """Export a preset to a shareable JSON file.
+                      include: Optional[list] = None, portable: bool = False) -> bool:
+        """Export JSON or a portable .gnpreset with template/icon assets.
 
         ``include`` optionally limits the export to a subset of tweaks, given
         as a list of ``TweakID`` members (or their ``.name`` strings). When
         omitted, the whole preset is exported. ``None``/empty means full.
         """
+        self.last_transfer_error = ""
         file_path = self.get_preset_path(name)
         if not os.path.isfile(file_path):
+            self.last_transfer_error = 'Preset not found.'
             return False
         try:
             with open(file_path, "r", encoding="utf-8") as f:
@@ -203,10 +210,16 @@ class PresetManager:
             if include:
                 data = self._filter_export(data, include)
 
+            if portable or str(export_path).lower().endswith('.gnpreset'):
+                from src.controllers.preset_bundle import export_bundle
+                export_bundle(data, export_path)
+                return True
+
             with open(export_path, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             return True
         except Exception as e:
+            self.last_transfer_error = str(e)
             print(f"Failed to export preset: {e}")
             return False
 
@@ -264,12 +277,21 @@ class PresetManager:
         return {"tweaks": tweak_data}
 
     def import_preset(self, import_path: str, new_name: str = None) -> tuple[bool, str]:
-        """Import a preset from a JSON file. Returns (success, actual_name)."""
+        """Store JSON or a portable preset without activation; return (ok, name)."""
         if not os.path.isfile(import_path):
             return False, "File not found"
+        owned_assets = temporary = None
+        committed = False
         try:
-            with open(import_path, "r", encoding="utf-8") as f:
-                data = json.load(f)
+            import zipfile
+            if str(import_path).lower().endswith('.gnpreset') or zipfile.is_zipfile(import_path):
+                from src.controllers.preset_bundle import import_bundle
+                data, owned_assets = import_bundle(
+                    import_path, os.path.join(self.presets_dir, 'assets'),
+                    self._valid_import_structure)
+            else:
+                with open(import_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
             
             # Validate structure
             if not self._valid_import_structure(data):
@@ -289,7 +311,7 @@ class PresetManager:
             name = base_name
             counter = 1
             while os.path.isfile(self.get_preset_path(name)):
-                name = f"{base_name} ({counter})"
+                name = f"{base_name} {counter}"
                 counter += 1
             
             # Update metadata
@@ -302,13 +324,21 @@ class PresetManager:
                 data["metadata"]["created_at"] = now
             
             file_path = self.get_preset_path(name)
-            with open(file_path, "w", encoding="utf-8") as f:
+            with tempfile.NamedTemporaryFile('w', encoding='utf-8', dir=self.presets_dir,
+                                             delete=False) as f:
+                temporary = f.name
                 json.dump(data, f, ensure_ascii=False, indent=2)
-            
+            os.replace(temporary, file_path)
+            committed = True
             return True, name
         except Exception as e:
             print(f"Failed to import preset: {e}")
             return False, str(e)
+        finally:
+            if temporary and os.path.exists(temporary):
+                os.unlink(temporary)
+            if owned_assets is not None and not committed:
+                shutil.rmtree(owned_assets, ignore_errors=True)
 
     @staticmethod
     def _valid_import_structure(data) -> bool:
@@ -401,7 +431,7 @@ class PresetManager:
         return data
 
     ## DESERIALIZATION
-    def _apply(self, data: dict) -> bool:
+    def _apply(self, data: dict, preview_only: bool = False) -> bool:
         try:
             # make sure every tweak exists before applying
             self._load_all_tweaks()
@@ -428,7 +458,14 @@ class PresetManager:
                     if name in hidden_names:
                         continue
                     try:
-                        self._apply_tweak(tweaks[key], tweak_data)
+                        if preview_only and key == TweakID.Templates:
+                            from types import SimpleNamespace
+                            tweaks[key].templates = [SimpleNamespace(path=path)
+                                                    for path in tweak_data.get('templates', [])]
+                        elif preview_only and key == TweakID.IconThemes:
+                            tweaks[key].themes = [IconTheme(**entry) for entry in tweak_data.get('themes', [])]
+                        else:
+                            self._apply_tweak(tweaks[key], tweak_data)
                     except Exception as e:
                         print(f"Failed to apply tweak {name}: {e}")
 

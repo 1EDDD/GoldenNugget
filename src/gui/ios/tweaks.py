@@ -178,7 +178,7 @@ class IOSSectionContent(QWidget):
             c = ColorThemeManager.instance().colors
             label = QLabel(title)
             label.setWordWrap(True)
-            label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+            label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px; background-color: transparent;")
             self._switch_labels.append(label)
             row_layout.addWidget(label, 1)
             switch = IOSSwitch(tweak.enabled)
@@ -436,7 +436,7 @@ class IOSSectionContent(QWidget):
         c = ColorThemeManager.instance().colors
         self.filter_control._retheme()
         for lbl in self._switch_labels:
-            lbl.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+            lbl.setStyleSheet(f"color: {c.text_primary}; font-size: 15px; background-color: transparent;")
         for button in self._info_buttons:
             button.setStyleSheet(t("tweak_info_button"))
         for button in self._favorite_buttons.values():

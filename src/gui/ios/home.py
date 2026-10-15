@@ -606,7 +606,7 @@ class IOSHomePage(QWidget):
         else:
             color = c.accent
         self.process_status_lbl.setStyleSheet(
-            f"font-size: 14px; font-weight: 600; color: {color};")
+            f"font-size: 14px; font-weight: 600; color: {color}; background-color: transparent;")
         self.process_status_lbl.setText(text)
         self.process_status_lbl.show()
         self._hide_timer.stop()

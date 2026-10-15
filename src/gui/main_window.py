@@ -357,6 +357,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
     def _apply_global_stylesheet(self):
         """Re-apply the global stylesheet using the current color theme."""
         self.setStyleSheet(t("global"))
+        self._applied_color_mode = self._color_theme.mode
         # Also update the QPalette so native widgets pick up the colors
         QtWidgets.QApplication.instance().setPalette(self._color_theme.build_palette())
         # Re-style the ios_pages stack
@@ -414,6 +415,8 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         if self.theme_manager.current_theme == ThemeManager.CLASSIC:
             self._apply_global_stylesheet()
             return
+        if getattr(self, '_applied_color_mode', None) != self._color_theme.mode:
+            self._apply_global_stylesheet()
         page = self.ios_pages.currentWidget()
         if page is not None and hasattr(page, "_retheme"):
             page._retheme()

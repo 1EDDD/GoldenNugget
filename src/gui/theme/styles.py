@@ -2,8 +2,8 @@
 
 Usage::
 
-    from src.gui.theme.styles import STYLES
-    widget.setStyleSheet(STYLES["card"].format_map(theme.colors.__dict__))
+    from src.gui.theme import t
+    widget.setStyleSheet(t("card"))
 """
 
 
@@ -15,6 +15,12 @@ FONT_FAMILY = "Inter Variable"
 
 
 STYLES = {
+    "accent_swatch": """
+        QPushButton {{ background-color: {swatch}; border-radius: 16px;
+                       border: 3px solid transparent; }}
+        QPushButton:hover, QPushButton:focus {{ border-color: {text_secondary}; }}
+        QPushButton:checked {{ border-color: {text_primary}; }}
+    """,
     # ---- Components ------------------------------------------------------
     "text_input_dialog": """
         QDialog {{ background-color: {bg_elevated}; }}
@@ -68,9 +74,15 @@ STYLES = {
         QPushButton:hover {{ background-color: {accent_hover}; }}
     """,
 
+    "number_input_field": """
+        QSpinBox, QDoubleSpinBox {{ background-color: {bg_input}; color: {text_primary};
+            border: 1px solid {border}; border-radius: 10px;
+            font-size: 15px; padding: 12px 16px; }}
+    """,
+
     "section_header": (
         "font-size: 13px; font-weight: 600; color: {text_secondary}; "
-        "text-transform: uppercase; letter-spacing: 0.5px; padding-left: 4px;"
+        "text-transform: uppercase; letter-spacing: 0.5px; padding-left: 4px; background-color: transparent;"
     ),
 
     # Header of an IOSCollapsibleSection: same look as a plain section header,
@@ -364,7 +376,11 @@ STYLES = {
     # IOSSwitch paints its own track/knob (it animates the knob position and
     # fades the track color), so there is no switch stylesheet here.
 
-    "value_label": "color: {text_secondary}; font-size: 14px;",
+    "row_title": "color: {text_primary}; font-size: 15px; background-color: transparent;",
+    "muted_caption": "color: {text_secondary}; font-size: 13px; background-color: transparent;",
+    "small_hint": "color: {text_secondary}; font-size: 12px; background-color: transparent;",
+    "edit_hint": "color: {accent}; font-size: 17px; background-color: transparent;",
+    "value_label": "color: {text_secondary}; font-size: 14px; background-color: transparent;",
 
     # ---- Preset popup (home screen, opened from the preset banner) ------
     "preset_popup": """
@@ -387,7 +403,7 @@ STYLES = {
         }}
         QPushButton#presetRow:hover {{ background-color: {surface_hover}; }}
         QPushButton#presetRow:checked {{
-            background-color: {accent_pressed};
+            background-color: {surface_hover};
             border: 1px solid {accent};
         }}
     """,
@@ -437,7 +453,7 @@ STYLES = {
         }}
         QListWidget::item:selected {{
             background-color: {scrollbar_pressed};
-            color: {text_inverse};
+            color: {text_primary};
             border-radius: 6px;
         }}
     """,
@@ -575,7 +591,7 @@ STYLES = {
         QPushButton:hover {{ background-color: {surface_hover}; }}
     """,
 
-    "download_card_icon": "background-color: {accent}; border-radius: 10px; color: white; font-size: 20px;",
+    "download_card_icon": "background-color: {accent}; border-radius: 10px; color: {text_inverse}; font-size: 20px;",
 
     "thumb_button": """
         QPushButton {{
@@ -755,6 +771,30 @@ STYLES = {
     "about_credit_title": "color: {text_secondary}; font-size: 13px; font-weight: 600;",
     "about_link": "color: {accent}; font-size: 14px; border: none; background: transparent;",
     "about_link_hover": "color: {accent_hover}; font-size: 14px; border: none; background: transparent;",
+    "about_dialog": """
+        QDialog {{ background-color: {bg_elevated}; }}
+        QLabel {{ color: {text_primary}; background-color: transparent; }}
+        QDialogButtonBox QPushButton {{ background-color: {accent}; color: {text_inverse};
+            border: none; border-radius: 10px; padding: 10px 24px; font-size: 15px; font-weight: 600; }}
+        QDialogButtonBox QPushButton:hover {{ background-color: {accent_hover}; }}
+    """,
+    "about_version": "color: {text_secondary}; font-size: 15px; background: transparent;",
+    "about_description": "color: {text_secondary}; font-size: 15px; padding: 0 20px; background: transparent;",
+    "about_credit_heading": "font-size: 17px; font-weight: 600; color: {text_primary}; padding-top: 8px; background: transparent;",
+    "about_credit_role": "color: {text_secondary}; font-size: 14px; font-weight: 500; min-width: 160px; background: transparent;",
+    "about_credit_name": """
+        QToolButton {{ color: {accent}; font-size: 14px; background: transparent; border: none; padding: 0; text-align: left; }}
+        QToolButton:hover {{ color: {accent_hover}; text-decoration: underline; }}
+    """,
+    "about_footer_link": """
+        QToolButton {{ color: {accent}; font-size: 14px; font-weight: 500; background: transparent; border: none; padding: 4px 8px; }}
+        QToolButton:hover {{ color: {accent_hover}; text-decoration: underline; }}
+    """,
+    "about_credits_scroll": """
+        QScrollArea, QWidget {{ background: transparent; border: none; }}
+        QScrollBar:vertical {{ width: 6px; background: transparent; }}
+        QScrollBar::handle {{ background: {border}; border-radius: 3px; min-height: 30px; }}
+    """,
 
     # ---- Interface picker ------------------------------------------------
     "picker_frame": """
@@ -789,7 +829,11 @@ STYLES = {
         QWidget:focus {{ outline: none; }}
         QToolTip {{ color: {text_primary}; background-color: {bg_elevated}; border: 1px solid {divider}; border-radius: 6px; padding: 6px 8px; }}
         QWidget[cls=central] {{ background-color: {bg_primary}; border-radius: 0px; border: 1px solid {divider}; }}
-        QLabel {{ font-size: 14px; }}
+        QLabel {{ font-size: 14px; background-color: transparent; }}
+        QDialog {{ background-color: {bg_elevated}; }}
+        QToolTip {{ background-color: {bg_elevated}; color: {text_primary}; border: 1px solid {border}; }}
+        QMenu {{ background-color: {bg_elevated}; color: {text_primary}; border: 1px solid {border}; }}
+        QMenu::item:selected {{ background-color: {accent}; color: {text_inverse}; }}
         QToolButton {{ background-color: {scrollbar}; border: none; color: {text_primary}; font-size: 14px; min-height: 35px; icon-size: 16px; padding-left: 10px; padding-right: 10px; border-radius: 8px; }}
         QToolButton[cls=sidebarBtn] {{ background-color: transparent; icon-size: 24px; }}
         QToolButton:pressed {{ background-color: {scrollbar_pressed}; color: {text_primary}; }}

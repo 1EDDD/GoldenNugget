@@ -14,6 +14,7 @@ GoldenNugget - unified CLI
 Usage:
   Nugget                              Launch the GUI
   Nugget --usage | --help             Show this help
+  Nugget <command> ... --json         Emit one JSON document; progress goes to stderr
 
 Device & target management:
   Nugget devices [--udid UDID]
@@ -41,10 +42,11 @@ Apply / Reset:
                [--daemon-disable DAEMON --daemon-enable DAEMON]
                [--encrypted-backup] [--password PWD]
                [--no-skip-setup] [--no-reboot] [--continue-anyway]
+               [--dry-run [--ios-version VERSION --model MODEL]]
       Apply the current tweak state (AutoSave preset + overrides) to the device.
 
   Nugget reset [--udid UDID] [--status-bar|--springboard|--daemons|--internal]
-               [--no-skip-setup] [--no-reboot]
+               [--no-skip-setup] [--no-reboot] [--dry-run]
       Reset tweak sections back to stock (default: all resettable sections).
 
 Presets:
@@ -52,7 +54,7 @@ Presets:
   Nugget preset save NAME [--description ...] [--tags a,b]
   Nugget preset load NAME [--no-save]
   Nugget preset delete NAME
-  Nugget preset export NAME [--out PATH] [--include ID,...]
+  Nugget preset export NAME [--out PATH] [--include ID,...] [--portable]
   Nugget preset import PATH [--name NEW]
 
 Safety rules (HotLoad):
@@ -63,6 +65,11 @@ Safety rules (HotLoad):
 Backups:
   Nugget backup create [--udid UDID] [--no-photos] [--no-posterboard]
   Nugget backup list [--udid UDID]
+
+Offline inspection / support:
+  Nugget wallpaper validate PATH [--ios-version VERSION] [--json]
+  Nugget diagnostics show [--json]
+  Nugget diagnostics export --out PATH [--json]
 
 Standalone recovery / wallpapers:
   Nugget apply-wallpaper [TENDIE] [--udid UDID] [--list]
@@ -98,20 +105,27 @@ def _build_parser():
     import argparse
     from src.cli import cmd_devices, cmd_tweaks, cmd_daemons, cmd_preset
     from src.cli import cmd_apply, cmd_reset, cmd_hotload, cmd_backup
+    from src.cli import cmd_diagnostics, cmd_wallpaper
 
     parser = argparse.ArgumentParser(
         prog="Nugget",
-        description="GoldenNugget unified CLI (GUI when run with no command).",
+        description="GoldenNugget unified CLI (GUI when run with no command). Add --json to any command for structured output.",
         add_help=True,
     )
     subp = parser.add_subparsers(dest="command", required=True)
     for module in (cmd_devices, cmd_tweaks, cmd_daemons, cmd_preset,
-                   cmd_apply, cmd_reset, cmd_hotload, cmd_backup):
+                   cmd_apply, cmd_reset, cmd_hotload, cmd_backup,
+                   cmd_diagnostics, cmd_wallpaper):
         module.add_parser(subp)
     return parser
 
 
 def dispatch(argv: list) -> int:
+    from src.cli.output import run_cli
+    return run_cli(argv, _dispatch)
+
+
+def _dispatch(argv: list) -> int:
     # Empty argv (e.g. double-clicking Nugget.exe on Windows) must fall through
     # to the GUI below — only an explicit help flag prints the usage.
     if argv and argv[0] in ("-h", "--help", "--usage"):
@@ -120,7 +134,7 @@ def dispatch(argv: list) -> int:
 
     known = {"apply-wallpaper", "restore-cache", "restore", "skip-setup",
              "devices", "tweaks", "daemons", "preset", "apply", "reset",
-             "hotload", "backup"}
+             "hotload", "backup", "diagnostics", "wallpaper"}
     if argv and argv[0] in known:
         if argv[0] in ("apply-wallpaper", "restore-cache", "restore",
                        "skip-setup"):
@@ -140,6 +154,10 @@ def dispatch(argv: list) -> int:
     # Fall through to the classic GUI + dispatcher in main_app, which handles
     # ``-m <module>`` (background processes), ``<file>.py`` execution, and the
     # GUI when no recognized argument is present.
+    from src.cli.output import is_json
+    if is_json():
+        print('ERROR: unknown CLI command; use --help.', file=sys.stderr)
+        return 2
     from main_app import main
     return main()
 

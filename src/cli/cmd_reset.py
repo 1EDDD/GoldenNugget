@@ -30,6 +30,7 @@ def add_parser(subp):
                         help="don't mark iOS setup panes complete")
     parser.add_argument("--no-reboot", action="store_true",
                         help="don't auto-reboot after resetting")
+    parser.add_argument('--dry-run', action='store_true', help='List reset sections without connecting or resetting')
     parser.set_defaults(func=run)
     return parser
 
@@ -69,16 +70,25 @@ def run(args) -> int:
     if args.no_reboot:
         dm.pref_manager.auto_reboot = False
 
+    from src.cli.output import set_result
+    if getattr(args, 'dry_run', False):
+        pages = _resolve_pages(args, dm)
+        result = dict(dry_run=True, sections=[page.name for page in pages],
+                      note='Reset writes stock defaults. Device support and live state have not been checked.')
+        set_result(result)
+        print(result)
+        return 0
     device = ensure_device(dm, settings, args.udid)
     print("Device:", describe_device(device))
 
     pages = _resolve_pages(args, dm)
     print("Starting reset...")
-    dm.reset_tweaks(pages, settings,
+    success = dm.reset_tweaks(pages, settings,
                     update_label=print_status,
                     show_alert=print_alert)
-    print("Reset finished.")
-    return 0
+    set_result(dict(reset=success is True, sections=[page.name for page in pages], udid=device.udid))
+    print('Reset finished.' if success is True else 'Reset failed or stopped.')
+    return 0 if success is True else 1
 
 
 def main(argv=None) -> int:

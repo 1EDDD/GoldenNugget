@@ -100,6 +100,33 @@ def _save_if(args, dm=None):
         from src.cli.common import autosave_preset
         if not autosave_preset(dm):
             print("note: nothing serializable, AutoSave not written.")
+    from src.cli.output import set_result
+    from src.tweaks.tweaks import tweaks
+    set_result({'tweaks': [_spec_data(spec, tweaks.get(spec.id)) for spec in SPECS_BY_ID.values()]})
+
+
+def _spec_data(spec, tweak):
+    return dict(id=spec.id.name, section=spec.section.value, kind=spec.kind.value,
+                plist=spec.location.value, key=spec.key, default=spec.value,
+                enabled=bool(tweak and tweak.enabled), value=tweak.value if tweak else None,
+                min_ios=spec.min_version, max_ios=spec.max_version,
+                iphone_only=spec.iphone_only, ipad_only=spec.ipad_only, disabled=spec.disabled)
+
+
+def parse_value(spec, raw):
+    """Use the same typed values for CLI edits and apply/dry-run overrides."""
+    import math
+    if spec.kind == Kind.NUMBER:
+        value = int(raw) if float(spec.step or 1).is_integer() else float(raw)
+        if not math.isfinite(value) or value < spec.min_value or value > spec.max_value:
+            raise ValueError(f'{spec.id.name} requires a value from {spec.min_value} to {spec.max_value}.')
+        return value
+    if spec.kind == Kind.SWITCH:
+        value = str(raw).casefold()
+        if value not in ('true', 'false', '1', '0', 'on', 'off'):
+            raise ValueError(f'{spec.id.name} requires true or false.')
+        return value in ('true', '1', 'on')
+    return raw
 
 
 def _run_list(args):
@@ -117,6 +144,11 @@ def _run_list(args):
             continue
         print(f"[{title}]")
         _print_list_section(section, only_enabled=not args.all)
+    from src.cli.output import set_result
+    from src.tweaks.tweaks import tweaks
+    set_result({'tweaks': [_spec_data(spec, tweaks.get(spec.id)) for section in sections
+                           for spec in SPECS_BY_SECTION[section]
+                           if args.all or (tweaks.get(spec.id) and tweaks[spec.id].enabled)]})
     return 0
 
 
@@ -127,6 +159,8 @@ def _run_show(args):
     from src.tweaks.tweaks import tweaks
     spec = specs[0]
     tweak = tweaks.get(spec.id)
+    from src.cli.output import set_result
+    set_result(_spec_data(spec, tweak))
     print(f"id:        {spec.id.name}")
     print(f"section:   {spec.section.value}")
     print(f"kind:      {spec.kind.value}")
@@ -158,7 +192,7 @@ def _run_enable(args):
         from src.tweaks.tweaks import tweaks
         tweak = tweaks[spec.id]
         if args.value is not None:
-            tweak.set_value(args.value, toggle_enabled=True)
+            tweak.set_value(parse_value(spec, args.value), toggle_enabled=True)
         elif spec.factory is not None:
             # factory tweaks (watchOS compatibility) are just toggles
             tweak.set_enabled(True)
@@ -186,24 +220,11 @@ def _run_set(args):
     spec = _resolve_specs([args.id])[0]
     from src.tweaks.tweaks import tweaks
     tweak = tweaks[spec.id]
-    if spec.kind == Kind.NUMBER:
-        # Integral ranges keep strict int parsing; a fractional step
-        # (spec.step, e.g. the Liquid Glass tint's 0.5) accepts floats.
-        integral = float(spec.step or 1).is_integer()
-        try:
-            value = int(args.value) if integral else float(args.value)
-        except ValueError:
-            print(f"ERROR: {spec.id.name} needs a number, got '{args.value}'.",
-                  file=sys.stderr)
-            return 1
-        if spec.min_value is not None and value < spec.min_value:
-            print(f"ERROR: value below minimum {spec.min_value}.", file=sys.stderr)
-            return 1
-        if spec.max_value is not None and value > spec.max_value:
-            print(f"ERROR: value above maximum {spec.max_value}.", file=sys.stderr)
-            return 1
-    else:
-        value = args.value
+    try:
+        value = parse_value(spec, args.value)
+    except ValueError as exc:
+        print(f'ERROR: {exc}', file=sys.stderr)
+        return 1
     tweak.set_value(value, toggle_enabled=True)
     print(f"set {spec.id.name} = {value!r}")
     _save_if(args)

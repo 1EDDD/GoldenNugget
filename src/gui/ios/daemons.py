@@ -169,7 +169,7 @@ class IOSDaemonsContent(QWidget):
         c = ColorThemeManager.instance().colors
         master_label = QLabel(QCoreApplication.translate("Nugget", "Enable Daemon Modifications"))
         master_label.setWordWrap(True)
-        master_label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        master_label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px; background-color: transparent;")
         self._master_label = master_label
         master_row.addWidget(master_label, 1)
         self.master_switch = IOSSwitch(self.daemons_tweak.enabled)
@@ -199,7 +199,7 @@ class IOSDaemonsContent(QWidget):
             "Nugget", "Recommended (analytics, tracking & logging)"))
         self._recommended_label.setWordWrap(True)
         self._recommended_label.setStyleSheet(
-            f"color: {c.text_primary}; font-size: 15px; font-weight: 600;")
+            f"color: {c.text_primary}; font-size: 15px; font-weight: 600; background-color: transparent;")
         recommended_row.addWidget(self._recommended_label, 1)
         self.recommended_switch = IOSSwitch(self._recommended_all_on())
         self.recommended_switch.toggled.connect(self._on_recommended_toggled)
@@ -280,7 +280,7 @@ class IOSDaemonsContent(QWidget):
             label = QLabel(QCoreApplication.translate(
                 "Nugget", "Clear ScreenTimeAgent.plist file"))
             label.setWordWrap(True)
-            label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+            label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px; background-color: transparent;")
             self._screen_time_label = label
             row_layout.addWidget(label, 1)
             self.screen_time_switch = IOSSwitch(self.screen_time_tweak.enabled)
@@ -362,7 +362,7 @@ class IOSDaemonsContent(QWidget):
         c = ColorThemeManager.instance().colors
         label = QLabel(title)
         label.setWordWrap(True)
-        label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px; background-color: transparent;")
         self._daemon_labels.append(label)
         row_layout.addWidget(label, 1)
 
@@ -382,7 +382,7 @@ class IOSDaemonsContent(QWidget):
                 "Nugget", "blocked (boot-loop protection)"))
             note.setFixedWidth(100)
             note.setWordWrap(True)
-            note.setStyleSheet(f"color: {c.error}; font-size: 12px;")
+            note.setStyleSheet(f"color: {c.error}; font-size: 12px; background-color: transparent;")
             self._forced_notes.append(note)
             row_layout.addWidget(note)
 
@@ -395,7 +395,7 @@ class IOSDaemonsContent(QWidget):
             note = QLabel(QCoreApplication.translate("Nugget", "safety rules"))
             note.setFixedWidth(100)
             note.setWordWrap(True)
-            note.setStyleSheet(f"color: {c.error}; font-size: 12px;")
+            note.setStyleSheet(f"color: {c.error}; font-size: 12px; background-color: transparent;")
             self._forced_notes.append(note)
             row_layout.addWidget(note)
 
@@ -617,17 +617,17 @@ class IOSDaemonsContent(QWidget):
 
     def _retheme(self):
         c = ColorThemeManager.instance().colors
-        self._master_label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        self._master_label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px; background-color: transparent;")
         for lbl in self._daemon_labels:
-            lbl.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+            lbl.setStyleSheet(f"color: {c.text_primary}; font-size: 15px; background-color: transparent;")
         for note in self._forced_notes:
-            note.setStyleSheet(f"color: {c.error}; font-size: 12px;")
+            note.setStyleSheet(f"color: {c.error}; font-size: 12px; background-color: transparent;")
         if hasattr(self, '_recommended_label'):
             self._recommended_label.setStyleSheet(
-                f"color: {c.text_primary}; font-size: 15px; font-weight: 600;")
+                f"color: {c.text_primary}; font-size: 15px; font-weight: 600; background-color: transparent;")
         if hasattr(self, '_screen_time_label'):
             self._screen_time_label.setStyleSheet(
-                f"color: {c.text_primary}; font-size: 15px;")
+                f"color: {c.text_primary}; font-size: 15px; background-color: transparent;")
 
 
 class IOSDaemonsPage(QWidget):

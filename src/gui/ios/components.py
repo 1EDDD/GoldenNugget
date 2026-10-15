@@ -22,6 +22,7 @@ class TextInputDialog(QDialog):
     """iOS-style text input dialog."""
     def __init__(self, title: str, current_value: str = "", parent=None):
         super().__init__(parent)
+        ColorThemeManager.instance().theme_changed.connect(self._retheme)
         self.setWindowTitle(title)
         self.setModal(True)
         self.setMinimumWidth(320)
@@ -76,6 +77,7 @@ class NumberInputDialog(QDialog):
     def __init__(self, title: str, current_value: int = 0, min_val: int = 0, max_val: int = 999,
                  parent=None, step: float = 1.0):
         super().__init__(parent)
+        ColorThemeManager.instance().theme_changed.connect(self._retheme)
         self.setWindowTitle(title)
         self.setModal(True)
         self.setMinimumWidth(320)
@@ -100,17 +102,7 @@ class NumberInputDialog(QDialog):
             self.spin.setRange(float(min_val), float(max_val))
             self.spin.setValue(float(current_value))
             self.spin.setButtonSymbols(QDoubleSpinBox.NoButtons)
-        c = ColorThemeManager.instance().colors
-        self.spin.setStyleSheet(f"""
-            QSpinBox, QDoubleSpinBox {{
-                background-color: {c.bg_input};
-                border: none;
-                border-radius: 10px;
-                color: {c.text_primary};
-                font-size: 15px;
-                padding: 12px 16px;
-            }}
-        """)
+        self.spin.setStyleSheet(t('number_input_field'))
         layout.addWidget(self.spin)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
@@ -119,22 +111,9 @@ class NumberInputDialog(QDialog):
         layout.addWidget(buttons)
 
     def _retheme(self):
-        c = ColorThemeManager.instance().colors
-        self.setStyleSheet(f"""
-            QDialog {{ background-color: {c.bg_elevated}; }}
-            QLabel {{ color: {c.text_primary}; font-size: 15px; }}
-            QPushButton {{
-                background-color: {c.accent};
-                border-radius: 10px;
-                color: {c.text_inverse};
-                font-size: 15px;
-                font-weight: 600;
-                padding: 12px 24px;
-                border: none;
-                min-width: 80px;
-            }}
-            QPushButton:hover {{ background-color: {c.accent_hover}; }}
-        """)
+        self.setStyleSheet(t('number_input_dialog'))
+        if hasattr(self, 'spin'):
+            self.spin.setStyleSheet(t('number_input_field'))
 
     def get_value(self):
         value = self.spin.value()

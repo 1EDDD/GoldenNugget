@@ -247,15 +247,19 @@ def export_preset_flow(parent, pm: PresetManager, name: str) -> bool:
             parent, _T("Nugget", "Export Preset"),
             _T("Nugget", "Select a preset to export first."))
         return False
-    file_path, _ = QFileDialog.getSaveFileName(
+    file_path, selected_filter = QFileDialog.getSaveFileName(
         parent, _T("Nugget", "Export Preset"), f"{name}.json",
-        _T("Nugget", "JSON Files (*.json)"))
+        _T("Nugget", "JSON Files (*.json);;Portable Preset with Templates and Icons (*.gnpreset)"))
     if not file_path:
         return False
-    if not pm.export_preset(name, file_path):
+    if '*.gnpreset' in selected_filter and not file_path.lower().endswith('.gnpreset'):
+        file_path = os.path.splitext(file_path)[0] + '.gnpreset'
+    from src.gui.dialogs.file_task import run_file_task
+    if not run_file_task(parent, _T('Nugget', 'Export Preset'),
+                         lambda: pm.export_preset(name, file_path)):
         QMessageBox.critical(
             parent, _T("Nugget", "Export Preset"),
-            _T("Nugget", "Failed to export preset."))
+            _T("Nugget", "Failed to export preset:\n{0}").format(pm.last_transfer_error))
         return False
     QMessageBox.information(
         parent, _T("Nugget", "Export Preset"),
@@ -279,15 +283,19 @@ def partial_export_preset_flow(parent, pm: PresetManager, name: str) -> bool:
             parent, _T("Nugget", "Partial Export"),
             _T("Nugget", "Select at least one tweak to export."))
         return False
-    file_path, _ = QFileDialog.getSaveFileName(
+    file_path, selected_filter = QFileDialog.getSaveFileName(
         parent, _T("Nugget", "Partial Export"), f"{name}.json",
-        _T("Nugget", "JSON Files (*.json)"))
+        _T("Nugget", "JSON Files (*.json);;Portable Preset with Templates and Icons (*.gnpreset)"))
     if not file_path:
         return False
-    if not pm.export_preset(name, file_path, include=selected):
+    if '*.gnpreset' in selected_filter and not file_path.lower().endswith('.gnpreset'):
+        file_path = os.path.splitext(file_path)[0] + '.gnpreset'
+    from src.gui.dialogs.file_task import run_file_task
+    if not run_file_task(parent, _T('Nugget', 'Partial Export'),
+                         lambda: pm.export_preset(name, file_path, include=selected)):
         QMessageBox.critical(
             parent, _T("Nugget", "Partial Export"),
-            _T("Nugget", "Failed to export preset."))
+            _T("Nugget", "Failed to export preset:\n{0}").format(pm.last_transfer_error))
         return False
     QMessageBox.information(
         parent, _T("Nugget", "Partial Export"),
@@ -299,10 +307,12 @@ def import_preset_flow(parent, pm: PresetManager) -> Optional[str]:
     """Import a preset file. Returns the new preset name, or None."""
     file_path, _ = QFileDialog.getOpenFileName(
         parent, _T("Nugget", "Import Preset"), "",
-        _T("Nugget", "JSON Files (*.json)"))
+        _T("Nugget", "Preset Files (*.json *.gnpreset)"))
     if not file_path:
         return None
-    success, result = pm.import_preset(file_path)
+    from src.gui.dialogs.file_task import run_file_task
+    success, result = run_file_task(parent, _T('Nugget', 'Import Preset'),
+                                    lambda: pm.import_preset(file_path))
     if not success:
         QMessageBox.critical(
             parent, _T("Nugget", "Import Preset"),
@@ -379,7 +389,7 @@ class _PresetRow(QPushButton):
         c = ColorThemeManager.instance().colors
         self.setStyleSheet(t("preset_row"))
         self._check.setStyleSheet(
-            f"color: {c.accent}; font-size: 14px; font-weight: 700;")
+            f"color: {c.accent}; font-size: 14px; font-weight: 700; background-color: transparent;")
         self._title.setStyleSheet(
             f"color: {c.text_primary}; font-size: 15px; font-weight: 600;"
             "background-color: transparent;")

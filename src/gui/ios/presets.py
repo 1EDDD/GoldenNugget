@@ -110,8 +110,8 @@ class IOSPresetsPage(QWidget):
     def _retheme(self):
         c = self._tm.colors
         self._scroll.setStyleSheet(f"background-color: {c.bg_primary}; border: none;")
-        self._intro.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px;")
-        self._autosave_label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        self._intro.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px; background-color: transparent;")
+        self._autosave_label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px; background-color: transparent;")
         for edit in (self.name_edit, self.description_edit):
             edit.setStyleSheet(f"""
                 QLineEdit {{ background-color: {c.bg_input}; border: none;

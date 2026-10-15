@@ -228,6 +228,10 @@ class LogViewerDialog(QDialog):
         copy_btn.clicked.connect(self._copy_visible)
         buttons.addWidget(copy_btn)
 
+        diagnostics_btn = QPushButton(QCoreApplication.translate('Nugget', 'Export Diagnostics'), self)
+        diagnostics_btn.clicked.connect(self._export_diagnostics)
+        buttons.addWidget(diagnostics_btn)
+
         buttons.addStretch(1)
 
         close_btn = QPushButton(QCoreApplication.translate("Nugget", "Close"), self)
@@ -271,6 +275,16 @@ class LogViewerDialog(QDialog):
             return "", 0
         consumed = end + 1
         return data[:consumed].decode("utf-8", errors="replace"), consumed
+
+    def _export_diagnostics(self):
+        from src.controllers.settings import Settings
+        from src.gui.dialogs.diagnostics import DiagnosticsDialog
+        owner = self.parentWidget()
+        while owner is not None and not hasattr(owner, 'device_manager'):
+            owner = owner.parentWidget()
+        manager = getattr(owner, 'device_manager', None)
+        settings = getattr(owner, 'settings', None) or Settings('settings')
+        DiagnosticsDialog(settings, manager, parent=self).exec()
 
     def reload(self):
         """Discard the cached buffer and render from scratch."""

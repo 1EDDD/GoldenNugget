@@ -214,6 +214,11 @@ python3 main_app.py
 > Depending on your system configuration, use either `python/pip` or `python3/pip3`.
 
 ## Building
+
+Portable presets (`.gnpreset`), diagnostic archives, JSON CLI output and offline
+wallpaper checks are documented in
+[Portable presets and offline inspection](docs/PORTABLE_AND_DIAGNOSTICS.md).
+
 To compile `mainwindow.ui` for Python, run the following command:
 ```py
 pyside6-uic --from-imports src/qt/mainwindow.ui -o src/qt/mainwindow_ui.py

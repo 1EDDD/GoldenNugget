@@ -49,7 +49,7 @@ class IOSApplyPage(QWidget):
             "when done. If you turn Find My off for this apply, turn it back "
             "on afterwards."))
         apply_desc.setWordWrap(True)
-        apply_desc.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px;")
+        apply_desc.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px; background-color: transparent;")
         self.apply_desc = apply_desc
         apply_layout.addWidget(apply_desc)
 
@@ -76,7 +76,7 @@ class IOSApplyPage(QWidget):
             "Nugget",
             "Restores the original values for the tweak pages you pick."))
         remove_desc.setWordWrap(True)
-        remove_desc.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px;")
+        remove_desc.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px; background-color: transparent;")
         self.remove_desc = remove_desc
         remove_layout.addWidget(remove_desc)
 
@@ -104,7 +104,7 @@ class IOSApplyPage(QWidget):
         self.status_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.status_lbl.setAccessibleName(QCoreApplication.translate(
             "Nugget", "Operation status"))
-        self.status_lbl.setStyleSheet(f"color: {c.text_primary}; font-size: 14px;")
+        self.status_lbl.setStyleSheet(f"color: {c.text_primary}; font-size: 14px; background-color: transparent;")
         status_layout.addWidget(self.status_lbl)
 
         self.stage_labels = []
@@ -205,9 +205,9 @@ class IOSApplyPage(QWidget):
     def _retheme(self):
         c = ColorThemeManager.instance().colors
         self._scroll.setStyleSheet(f"background-color: {c.bg_primary}; border: none;")
-        self.apply_desc.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px;")
-        self.remove_desc.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px;")
-        self.status_lbl.setStyleSheet(f"color: {c.text_primary}; font-size: 14px;")
+        self.apply_desc.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px; background-color: transparent;")
+        self.remove_desc.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px; background-color: transparent;")
+        self.status_lbl.setStyleSheet(f"color: {c.text_primary}; font-size: 14px; background-color: transparent;")
         self.progress_bar.setStyleSheet(t("dialog_progress_bar"))
         self.progress_value_lbl.setStyleSheet(t("home_subtitle"))
         self.progress_hint_lbl.setStyleSheet(t("home_subtitle"))

@@ -45,6 +45,15 @@ def _save_if(args):
     from src.cli.common import autosave_preset
     if not getattr(args, "no_save", False) and not autosave_preset():
         print("note: nothing serializable, AutoSave not written.")
+    _result()
+
+
+def _result():
+    from src.cli.output import set_result
+    dl = _daemons()
+    set_result(dict(enabled=dl.enabled, values=dl.value,
+                    daemons=[dict(name=d.name, keys=d.value,
+                                  disabled=any((dl.value or {}).get(k, False) for k in d.value)) for d in Daemon]))
 
 
 def add_parser(subp):
@@ -94,6 +103,7 @@ def _run_list(args):
     seed_from_autosave()
     dl = tweaks[TweakID.Daemons]
     value = dl.value or {}
+    _result()
     print("Daemons (master " + ("ON" if dl.enabled else "off") + "):")
     for d in Daemon:
         enabled = any(value.get(k, False) for k in d.value)
@@ -107,6 +117,7 @@ def _run_show(args):
     dl = _daemons()
     seed_from_autosave()
     print("master enabled:", dl.enabled)
+    _result()
     value = dl.value or {}
     if not value:
         print("(no daemons disabled)")

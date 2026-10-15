@@ -42,12 +42,15 @@ def add_parser(subp):
     parser.add_argument("--continue-anyway", action="store_true",
                         help="continue without a protective backup when the "
                              "device/computer is low on disk space (data risk)")
+    parser.add_argument('--dry-run', action='store_true', help='Show selections, paths, conflicts and local safety rules without applying')
+    parser.add_argument('--ios-version', default=None, help='Offline target iOS version (requires --dry-run)')
+    parser.add_argument('--model', default=None, help='Offline model identifier, e.g. iPhone16,1 (requires --dry-run --ios-version)')
     parser.set_defaults(func=run)
     return parser
 
 
 def _apply_flag_tweaks(args):
-    from src.cli.cmd_tweaks import _resolve_specs
+    from src.cli.cmd_tweaks import _resolve_specs, parse_value
     from src.tweaks.tweaks import tweaks
 
     for name in args.enable:
@@ -64,7 +67,7 @@ def _apply_flag_tweaks(args):
             raise SystemExit(2)
         name, _, value = item.partition("=")
         spec = _resolve_specs([name])[0]
-        tweaks[spec.id].set_value(value, toggle_enabled=True)
+        tweaks[spec.id].set_value(parse_value(spec, value), toggle_enabled=True)
         print(f"[apply] set {spec.id.name} = {value!r}")
 
     if args.daemon_disable or args.daemon_enable:
@@ -99,12 +102,35 @@ def run(args) -> int:
     if args.encrypted_backup:
         dm.pref_manager.use_encrypted_backup = True
 
-    device = ensure_device(dm, settings, args.udid)
+    dry_run = getattr(args, 'dry_run', False)
+    if (getattr(args, 'ios_version', None) or getattr(args, 'model', None)) and not dry_run:
+        print('ERROR: --ios-version and --model require --dry-run.', file=sys.stderr)
+        return 2
+    if getattr(args, 'model', None) and not getattr(args, 'ios_version', None):
+        print('ERROR: --model requires --ios-version.', file=sys.stderr)
+        return 2
+    if dry_run and getattr(args, 'ios_version', None):
+        from packaging.version import Version
+        from src.devicemanagement.constants import Device
+        version = str(Version(args.ios_version))
+        device = Device(args.udid or '', False, 'Offline target', version, '', args.model or '', '', '', '')
+        dm.devices = [device]
+        dm.set_current_device(0)
+    else:
+        device = ensure_device(dm, settings, args.udid)
     print("Device:", describe_device(device))
 
     load_core_tweaks()
-    load_default_preset(args.preset, dm)
+    load_default_preset(args.preset, dm, preview_only=dry_run)
     _apply_flag_tweaks(args)
+
+    if dry_run:
+        from src.controllers.apply_plan import build_apply_plan, plan_text
+        from src.cli.output import set_result
+        plan = build_apply_plan(dm)
+        set_result(plan)
+        print(plan_text(plan))
+        return 0 if plan['ready'] else 1
 
     def prompt_password(title, text):
         if args.password:
@@ -122,12 +148,14 @@ def run(args) -> int:
         prompt_choice = None
 
     print("Starting apply...")
-    dm.apply_changes(update_label=print_status,
+    success = dm.apply_changes(update_label=print_status,
                      show_alert=print_alert,
                      prompt_password=prompt_password,
                      prompt_choice=prompt_choice)
-    print("Apply finished.")
-    return 0
+    from src.cli.output import set_result
+    set_result(dict(applied=success is True, udid=device.udid))
+    print('Apply finished.' if success is True else 'Apply failed or stopped.')
+    return 0 if success is True else 1
 
 
 def main(argv=None) -> int:

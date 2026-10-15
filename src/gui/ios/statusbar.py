@@ -294,11 +294,11 @@ class IOSStatusBarPage(QWidget):
                     if isinstance(w, QLabel):
                         current = w.styleSheet()
                         if "font-size: 15px" in current:
-                            w.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+                            w.setStyleSheet(f"color: {c.text_primary}; font-size: 15px; background-color: transparent;")
                         elif "font-size: 14px" in current:
-                            w.setStyleSheet(f"color: {c.text_secondary}; font-size: 14px;")
+                            w.setStyleSheet(f"color: {c.text_secondary}; font-size: 14px; background-color: transparent;")
                         elif "font-size: 17px" in current:
-                            w.setStyleSheet(f"color: {c.accent}; font-size: 17px;")
+                            w.setStyleSheet(f"color: {c.accent}; font-size: 17px; background-color: transparent;")
             for button in widget.findChildren(QPushButton):
                 if button.objectName() == "statusBarEdit":
                     button.setStyleSheet(t("tweak_info_button"))
@@ -344,7 +344,7 @@ class IOSStatusBarPage(QWidget):
         row.setSpacing(12)
         label = QLabel(title)
         label.setWordWrap(True)
-        label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px; background-color: transparent;")
         row.addWidget(label, 1)
         switch = IOSSwitch(checked)
         switch.toggled.connect(on_toggled)
@@ -362,12 +362,12 @@ class IOSStatusBarPage(QWidget):
 
         label = QLabel(title)
         label.setWordWrap(True)
-        label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px; background-color: transparent;")
         row.addWidget(label, 1)
 
         card.setProperty("overrideValue", current)
         value_lbl = QLabel(current if overridden else QCoreApplication.translate("Nugget", "Default"))
-        value_lbl.setStyleSheet(f"color: {c.text_secondary}; font-size: 14px;")
+        value_lbl.setStyleSheet(f"color: {c.text_secondary}; font-size: 14px; background-color: transparent;")
         value_lbl.setMaximumWidth(180)
         value_lbl.setWordWrap(True)
         row.addWidget(value_lbl)
@@ -413,12 +413,12 @@ class IOSStatusBarPage(QWidget):
 
         label = QLabel(title)
         label.setWordWrap(True)
-        label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px; background-color: transparent;")
         row.addWidget(label, 1)
 
         card.setProperty("overrideValue", current)
         value_lbl = QLabel(str(current) if overridden else QCoreApplication.translate("Nugget", "Default"))
-        value_lbl.setStyleSheet(f"color: {c.text_secondary}; font-size: 14px;")
+        value_lbl.setStyleSheet(f"color: {c.text_secondary}; font-size: 14px; background-color: transparent;")
         value_lbl.setMaximumWidth(180)
         value_lbl.setWordWrap(True)
         row.addWidget(value_lbl)

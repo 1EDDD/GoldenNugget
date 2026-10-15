@@ -103,6 +103,7 @@ class AppListExportDialog(QDialog):
 
     def __init__(self, window, parent=None):
         super().__init__(parent)
+        ColorThemeManager.instance().theme_changed.connect(self._retheme)
         self.window = window
         self.setWindowTitle(QCoreApplication.translate("Nugget", "Apps on iPhone"))
         self.setModal(True)
