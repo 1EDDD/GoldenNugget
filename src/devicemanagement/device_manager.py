@@ -11,8 +11,6 @@ from typing import Optional
 from PySide6.QtWidgets import QMessageBox
 from PySide6.QtCore import QSettings, QCoreApplication
 
-from packaging.version import Version
-
 from pymobiledevice3 import usbmux
 from pymobiledevice3.services.mobile_config import MobileConfigService
 from pymobiledevice3.exceptions import MuxException, PasswordRequiredError, ConnectionTerminatedError, AccessDeniedError, InvalidServiceError
@@ -248,7 +246,7 @@ class DeviceManager:
                             locale=locale,
                         )
                     self.devices.append(dev)
-            except PasswordRequiredError as e:
+            except PasswordRequiredError:
                 show_alert(ApplyAlertMessage(txt=QCoreApplication.tr("Device is password protected! You must trust the computer on your device.\n\nUnlock your device. On the popup, click \"Trust\", enter your password, then try again.")))
             except MuxException as e:
                 # there is probably a cable issue
@@ -314,8 +312,6 @@ class DeviceManager:
         except Exception:
             return False
         
-    def reset_device_pairing(self):
-        return asyncio.run(self._reset_device_pairing())
     async def _reset_device_pairing(self):
         # first, unpair it
         if self.data_singleton.current_device == None:

@@ -141,7 +141,7 @@ def _pick_donor_blob(conn, domain: str, relative_path: str) -> "Optional[bytes]"
         if row is not None:
             return row[0]
 
-    for candidate_flags, candidate_blob in conn.execute(
+    for _candidate_flags, candidate_blob in conn.execute(
         "SELECT flags, file FROM Files WHERE domain = ? AND file IS NOT NULL "
         "AND relativePath != ? AND flags = 1",
         (domain, relative_path),
@@ -155,7 +155,7 @@ def _pick_donor_blob(conn, domain: str, relative_path: str) -> "Optional[bytes]"
         except Exception:
             continue
 
-    for candidate_flags, candidate_blob in conn.execute(
+    for _candidate_flags, candidate_blob in conn.execute(
         "SELECT flags, file FROM Files WHERE domain = ? AND file IS NOT NULL "
         "AND relativePath != ? AND flags = 1",
         (domain, relative_path),
@@ -463,20 +463,3 @@ def inject_files_into_backup(backup_dir: "str | Path", udid: str, files: list,
     return injected, unchanged, len(files) - injected - unchanged
 
 
-def inject_file_into_backup(backup_dir: "str | Path", udid: str, domain: str,
-                            relative_path: str, contents: bytes,
-                            mode: Optional[int] = None,
-                            owner: Optional[int] = None,
-                            group: Optional[int] = None,
-                            manifest_password: str = "") -> bool:
-    """Add a single file to a pruned backup's Manifest.db and payload store.
-
-    Thin single-file wrapper around ``inject_files_into_backup`` (see its
-    docstring for the full contract). Returns True when the file was added
-    (or left in place because its payload already matched).
-    """
-    injected, unchanged, failed = inject_files_into_backup(
-        backup_dir, udid,
-        [(domain, relative_path, contents, mode, owner, group)],
-        manifest_password=manifest_password)
-    return (injected + unchanged) == 1 and failed == 0

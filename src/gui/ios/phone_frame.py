@@ -24,8 +24,6 @@ _MAX_CA_EDGE = DEVICE_PT_H * DEVICE_SCALE
 
 class PhoneFrame(QWidget):
 
-    SCREEN_ASPECT = 19.5 / 9.0
-
     def __init__(self, parent=None, show_chrome=True):
         super().__init__(parent)
         self._pixmap = None
@@ -150,18 +148,6 @@ class PhoneFrame(QWidget):
         self._pixmap = None
         self.update()
 
-    def set_live_clock(self, live: bool):
-        self._show_chrome = live
-        self.update()
-
-    def relock(self, animated: bool = True):
-        self._drag_y = None
-        if animated and self._progress > 0.0:
-            self._animate_to(0.0)
-        else:
-            self._progress = 0.0
-            self.update()
-
     def _get_progress(self):
         return self._progress
 
@@ -216,7 +202,6 @@ class PhoneFrame(QWidget):
         if self._drag_y is None:
             super().mouseReleaseEvent(event)
             return
-        dy = event.position().y() - self._drag_y
         start_y = self._drag_y
         self._drag_y = None
         moved = abs(event.position().y() - start_y)

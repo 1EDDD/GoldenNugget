@@ -14,7 +14,6 @@ from PySide6.QtCore import QCoreApplication
 
 from src.controllers.video_handler import set_ignore_frame_limit
 from src.devicemanagement.constants import Version
-from src.gui.dialogs import AboutProgramDialog
 from src.gui.dialogs.reset_dialog import ResetDialog
 from src.gui.logger import get_logger
 from src.gui.theme import ColorThemeManager
@@ -753,12 +752,6 @@ class NavigationMixin:
         self._sync_sidebar_selection()
 
 
-    def show_about_dialog(self):
-        dialog = AboutProgramDialog(self)
-        dialog.exec()
-
-
-
 class ApplyMixin:
     """Apply/reset orchestration, alerts and dialog prompts."""
 
@@ -1168,7 +1161,7 @@ class ApplyMixin:
         # GitHub + Open Log), instead of a raw QMessageBox.
         if (icon == QtWidgets.QMessageBox.Critical
                 and alert.exc_type is not None and alert.detailed_txt):
-            from src.exceptions.crash_handler import show_error_dialog, _classify
+            from src.exceptions.crash_handler import _classify
             info = _classify(alert.exc_type, alert.exc_value)
             self._embedded_alert_error(alert, info)
             return
@@ -1335,23 +1328,6 @@ class ApplyMixin:
     def dismiss_operation_result(self):
         self.ios_home.result_card.hide()
         self.ios_apply.result_card.hide()
-
-    def prompt_star_on_github(self):
-        if self.settings.value("star_prompt_done", False, type=bool):
-            return
-        self.settings.setValue("star_prompt_done", True)
-        self._sync_settings()
-        box = QtWidgets.QMessageBox(self)
-        box.setIcon(QtWidgets.QMessageBox.Question)
-        box.setWindowTitle(self.tr("Enjoying GoldenNugget?"))
-        box.setText(self.tr("If you like GoldenNugget, please consider giving it a star on GitHub!"))
-        star_btn = box.addButton(self.tr("Star on GitHub"), QtWidgets.QMessageBox.AcceptRole)
-        box.addButton(self.tr("Not now"), QtWidgets.QMessageBox.RejectRole)
-        box.exec()
-        if box.clickedButton() == star_btn:
-            from PySide6.QtGui import QDesktopServices
-            QDesktopServices.openUrl(QtCore.QUrl("https://github.com/awesomenull-dev/GoldenNugget"))
-
 
     def prompt_first_launch_backup(self) -> bool:
         box = QtWidgets.QMessageBox(self)

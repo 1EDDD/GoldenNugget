@@ -24,7 +24,6 @@ Runs against ``Library/SpringBoard/StatusBarOverrides.archive`` in
 comes out is byte-comparable with what we produce.
 """
 
-import os
 import plistlib
 import sqlite3
 import tempfile

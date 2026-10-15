@@ -13,7 +13,7 @@ from src.gui.theme import ColorThemeManager, t
 from src.tweaks.tweaks import tweaks, TweakID
 from src.tweaks.registry import SPECS_BY_SECTION, SECTION_FEATURES, Kind, Section
 from src.tweaks.tweak_loader import load_plist_tweaks
-from src.tweaks.hidden import current_hidden_feature_names, current_hidden_tweak_names
+from src.tweaks.hidden import current_hidden_feature_names
 
 # Feature (page) name -> registry Section it maps to in the iOS tweaks UI.
 # A HotLoad-hidden feature loses its whole section here (and the Sidebar/Home
@@ -32,12 +32,6 @@ def _fmt_number(value) -> str:
         return f"{float(value):g}"
     except (TypeError, ValueError):
         return str(value)
-
-
-def _hidden_tweak_names() -> set:
-    """Names of the tweaks that belong to HotLoad-hidden features for the
-    current setup. Used by the preset loader to strip them during load."""
-    return current_hidden_tweak_names()
 
 
 def _hidden_sections() -> set:

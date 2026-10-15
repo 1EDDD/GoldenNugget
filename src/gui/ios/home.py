@@ -357,9 +357,8 @@ class IOSHomePage(QWidget):
             "Icon Themes", "Themed app icons & labels", 10),
             self._make_card(
             "Passcode Theme", "Custom keypad theme (.passthm)", 11)]
-        (self.posterboard_card, self.tweaks_card,
-         self.daemons_card, self.statusbar_card,
-         self.icon_themes_card, self.passcode_theme_card) = cards_row
+        (self.posterboard_card, _, self.daemons_card,
+         self.statusbar_card, _, _) = cards_row
         self.cards_grid = _CardGrid(cards_row)
         layout.addWidget(self.cards_grid)
 
@@ -502,11 +501,6 @@ class IOSHomePage(QWidget):
         """Open the dedicated Apply page before starting an operation."""
         self.window.show_ios_page(6)
         self.window._sync_sidebar_selection()
-
-    def reset_tweaks(self):
-        from src.gui.dialogs.reset_dialog import ResetDialog
-        dialog = ResetDialog(device_manager=self.window.device_manager, apply_reset=self.window.apply_changes)
-        dialog.exec()
 
     def show_process_status(self, text: str, success: bool = None):
         c = self._c

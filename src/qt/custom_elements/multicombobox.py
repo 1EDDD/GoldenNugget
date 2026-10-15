@@ -28,10 +28,6 @@ class MultiComboBox(QComboBox):
         for text in items_list:
             self.addItem(text)
 
-    def deselectAll(self):
-        for i in range(self.model().rowCount()):
-            self.model().item(i).setCheckState(Qt.CheckState.Unchecked)
-    
     def selectIndices(self, indices: list[int]):
         for idx in indices:
             self.model().item(idx).setCheckState(Qt.CheckState.Checked)

@@ -348,7 +348,7 @@ class IOSCollapsibleSection(QWidget):
 
 class IOSNavBar(QWidget):
     """Reusable navigation header."""
-    def __init__(self, title: str = "", on_back=None, right_action=None,
+    def __init__(self, title: str = "", on_back=None,
                  window=None, parent=None):
         super().__init__(parent)
         self.setObjectName("iosNavBar")
@@ -356,7 +356,6 @@ class IOSNavBar(QWidget):
         self.setSizePolicy(QSizePolicy.Policy.Expanding,
                            QSizePolicy.Policy.Fixed)
         self._on_back = on_back or (window._go_back if hasattr(window, "_go_back") else None)
-        c = ColorThemeManager.instance().colors
         self.setStyleSheet(t("nav_bar"))
 
         layout = QHBoxLayout(self)
@@ -391,7 +390,6 @@ class IOSNavBar(QWidget):
         _auto_retheme(self)
 
     def _retheme(self):
-        c = ColorThemeManager.instance().colors
         self.setStyleSheet(t("nav_bar"))
         self.back_btn.setStyleSheet(t("nav_back_btn"))
         self.title_lbl.setStyleSheet(t("nav_title"))
@@ -407,7 +405,6 @@ class IOSNavBar(QWidget):
 
     def set_right_action(self, label_text: str, callback):
         self._clear_right()
-        c = ColorThemeManager.instance().colors
         btn = QPushButton(label_text, self)
         btn.setCursor(Qt.PointingHandCursor)
         btn.setStyleSheet(t("nav_right_btn"))
@@ -563,15 +560,3 @@ class IOSSwitch(QPushButton):
         painter.drawRoundedRect(
             QRectF(knob_x, inset, knob, knob), knob / 2.0, knob / 2.0)
         painter.end()
-
-
-class IOSValueLabel(QLabel):
-    """Label showing current value in parentheses"""
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._retheme()
-        self.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        _auto_retheme(self)
-
-    def _retheme(self):
-        self.setStyleSheet(t("value_label"))

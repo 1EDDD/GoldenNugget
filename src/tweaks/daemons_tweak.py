@@ -5,8 +5,6 @@ from enum import Enum
 # Kept empty by design; entries are removed from the codebase entirely rather
 # than blocked at runtime. Every daemon listed in the Daemon enum is considered
 # interface-available and can be toggled on/off freely.
-DANGEROUS_DAEMONS: set["Daemon"] = set()  # filled below, after the class definition
-DANGEROUS_KEYS = frozenset()
 
 class Daemon(Enum):
     thermalmonitord = ["com.apple.thermalmonitord"]

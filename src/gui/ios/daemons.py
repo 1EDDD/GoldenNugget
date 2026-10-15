@@ -468,7 +468,7 @@ class IOSDaemonsContent(QWidget):
         continue_btn = box.addButton(
             QCoreApplication.translate("Nugget", "Continue Anyway"),
             QW.QMessageBox.ButtonRole.AcceptRole)
-        stop_btn = box.addButton(
+        box.addButton(
             QCoreApplication.translate("Nugget", "Stop"),
             QW.QMessageBox.ButtonRole.RejectRole)
         box.setDefaultButton(continue_btn)

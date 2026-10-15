@@ -53,7 +53,7 @@ def prompt_legacy_convert(tendie_name: str, families: "list[str]") -> bool:
     convert = box.addButton(
         QCoreApplication.translate("Nugget", "Convert (may break the wallpaper)"),
         QtWidgets.QMessageBox.ButtonRole.AcceptRole)
-    as_is = box.addButton(
+    box.addButton(
         QCoreApplication.translate("Nugget", "Install as is"),
         QtWidgets.QMessageBox.ButtonRole.RejectRole)
     box.setDefaultButton(convert)
@@ -75,7 +75,6 @@ class PosterboardTweak(Tweak):
         # composited by the system between the planes, so "floating" is what
         # puts the video in front of it.
         self.video_plane = "background"
-        self.use_configs = True  # descriptors apply method is gone (broken on iOS 26+)
         # Rewrite legacy (pre-iOS 27) wallpaper packages to the modern shape on
         # import so PosterKit builds the Depth effect for them. Only descriptors
         # without a published plane are touched; modern packages pass through.

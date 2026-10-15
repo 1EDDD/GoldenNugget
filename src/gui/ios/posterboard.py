@@ -377,7 +377,6 @@ class IOSPosterboardPage(QWidget):
         return self._tendies_scroll
 
     def _create_download_card(self) -> QWidget:
-        c = ColorThemeManager.instance().colors
         card = IOSCard()
         card.setCursor(Qt.PointingHandCursor)
         card.setMinimumHeight(88)
@@ -499,7 +498,6 @@ class IOSPosterboardPage(QWidget):
             template.create_ui(self.window, tweaks[TweakID.Templates], widgets, self.templates_layout)
 
     def _create_video_tab(self) -> QWidget:
-        c = ColorThemeManager.instance().colors
         self._video_scroll = QScrollArea()
         self._video_scroll.setWidgetResizable(True)
         content = QWidget()

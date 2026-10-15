@@ -364,9 +364,6 @@ class _PresetRow(QPushButton):
         self._retheme()
         _auto_retheme(self)
 
-    def set_active(self, active: bool):
-        self._check.setText("✓" if active else "")
-
     def mouseDoubleClickEvent(self, event):
         self.doubleClicked.emit()
         super().mouseDoubleClickEvent(event)

@@ -45,7 +45,7 @@ from src.exceptions.device_errors import (
     is_device_lock_required_error,
 )
 from src.exceptions.nugget_exception import NuggetException
-from src.utils.log_util import log_info, log_warn, log_error
+from src.utils.log_util import log_info, log_warn
 
 AFC_MEDIA_DIRNAME = "afc_media"
 
@@ -353,7 +353,6 @@ async def backup_media_via_afc(lockdown_client, media_root: str,
     """
     root = os.path.abspath(media_root)
     os.makedirs(root, exist_ok=True)
-    tally = {"files": 0, "bytes": 0, "skipped": 0}
 
     def _log(value):
         if progress_callback is not None and not isinstance(value, (int, float)):

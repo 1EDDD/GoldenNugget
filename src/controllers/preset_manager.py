@@ -210,19 +210,6 @@ class PresetManager:
             print(f"Failed to export preset: {e}")
             return False
 
-    def build_export_data(self, include: Optional[list] = None) -> Optional[dict]:
-        """Serialize the *current* tweak state, optionally limited to a subset.
-
-        ``include`` is a list of ``TweakID`` members (or ``.name`` strings).
-        Returns ``None`` if nothing was serialized.
-        """
-        data = self._serialize_subset(include)
-        if data is None:
-            return None
-        data["exported"] = True
-        data["exported_at"] = int(time.time())
-        return data
-
     @staticmethod
     def _filter_export(data: dict, include: list) -> dict:
         """Return a copy of *data* with ``tweaks`` reduced to ``include``
