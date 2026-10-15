@@ -162,6 +162,3 @@ class TweakID(Enum):
     # daemons
     Daemons = auto()
     ClearScreenTimeAgentPlist = auto()
-
-    UIAnimationDuration = auto()
-    KeyboardKeyFlick = auto()

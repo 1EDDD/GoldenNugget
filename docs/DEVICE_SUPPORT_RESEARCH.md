@@ -2,29 +2,6 @@
 
 Investigated October 15, 2026. Follow-up research after PR #56.
 
-## Added experimental preferences
-
-These three entries use the existing TweakSpec registry, preset handling, apply
-preview, and managed-preference delivery. They have a separate **Experimental
-Preferences** section and start disabled. Their effects on iOS 27 have not been
-verified on a device; registration and historical source evidence are not proof
-that the current OS honors them.
-
-| Control | Domain / key | Evidence |
-| --- | --- | --- |
-| UI Animation Duration | `com.apple.UIKit` / `UIAnimationDragCoefficient` | Cowabunga Lite ships the preference and edits its value. Default coefficient 1.0; editor range 0.1–5.0. |
-| Metal Performance HUD | `.GlobalPreferences` / `MetalForceHudEnabled` | Nugget registers this managed preference. Requests an app graphics overlay, not a systemwide FPS guarantee. |
-| Keyboard Key Flicks | `.GlobalPreferences` / `GesturesEnabled` | Nugget registers this key for its KeyFlick feature. Keyboard/device support remains conditional. |
-
-Deselecting a preference excludes it from the next apply; use Restore Defaults
-to restore the section's defaults. No new restore mechanism or dependency was added.
-
-Sources:
-
-- [Nugget preference registrations](https://github.com/leminlimez/Nugget/blob/main/src/tweaks/tweak_loader.py).
-- [Cowabunga Lite UIKit managed preferences](https://github.com/leminlimez/CowabungaLite/blob/main/Cowabunga%20Lite/FileFolders/Files/SpringboardOptions/ManagedPreferencesDomain/mobile/com.apple.UIKit.plist).
-- [Cowabunga Lite animation editor](https://github.com/leminlimez/CowabungaLite/blob/main/Cowabunga%20Lite/Views/Tools/SpringboardOptionsView.swift).
-
 ## Service candidates
 
 No new disable switches or purported live diagnostics were added for these

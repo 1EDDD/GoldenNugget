@@ -1,4 +1,4 @@
-"""Offline checks for the requested version gate and historical preferences."""
+"""Offline checks for the Passcode Theme version gate."""
 import sys
 import unittest
 from pathlib import Path
@@ -6,12 +6,9 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.devicemanagement.passcode_support import passcode_theme_unavailable_reason
-from src.tweaks.registry import SPECS_BY_ID, Section
-from src.tweaks.tweak_loader import _build_spec
-from src.tweaks.tweak_names import TweakID
 
 
-class ExperimentalPreferenceTests(unittest.TestCase):
+class PasscodeSupportTests(unittest.TestCase):
     def test_passcode_version_boundary(self):
         allowed = [('27.0', '24A435'), ('27.0.1', '24A500'), ('27.1', '24B1'),
                    ('27.2', '24B5084k'), ('27.2', '24B5089g'), ('27.2', '24B5099f')]
@@ -26,19 +23,6 @@ class ExperimentalPreferenceTests(unittest.TestCase):
         self.assertIsNotNone(passcode_theme_unavailable_reason('27.0', '24A435', 'iPad16,3'))
         self.assertIsNotNone(passcode_theme_unavailable_reason('', '', ''))
 
-    def test_preferences_require_explicit_enable(self):
-        expected = {TweakID.UIAnimationDuration: ('UIAnimationDragCoefficient', 1.0),
-                    TweakID.MetalForceHudEnabled: ('MetalForceHudEnabled', True),
-                    TweakID.KeyboardKeyFlick: ('GesturesEnabled', True)}
-        for tid, (key, value) in expected.items():
-            with self.subTest(tweak=tid.name):
-                spec = SPECS_BY_ID[tid]
-                self.assertEqual(spec.section, Section.EXPERIMENTAL)
-                tweak = _build_spec(spec)
-                self.assertFalse(tweak.enabled)
-                self.assertEqual(tweak.apply_tweak({}), {})
-                tweak.set_enabled(True)
-                self.assertEqual(tweak.apply_tweak({})[spec.location], {key: value})
 
 
 if __name__ == '__main__':
