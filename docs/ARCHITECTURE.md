@@ -407,8 +407,9 @@ the `ProtectiveBackupCache` to `protective_cache.py` (both re-exported from
 Application color themes live separately in `gui/theme/`: `DARK` and `LIGHT`
 share named slots, with eight accent choices tuned independently for contrast
 in each mode. `ColorThemeManager.set_mode()` saves `color_mode` in QSettings;
-dark is the default and the OS color scheme is not followed. Settings →
-Appearance → Color Theme changes the palette live without a restart.
+dark is the default and the OS color scheme is not followed. The Settings
+page no longer exposes a light/dark selector; the stored mode is still applied
+at startup and `set_mode()` can update the palette live.
 Native widget palettes cover active, inactive and disabled states, while
 pages, shared components and open dialogs reapply their themed styles.
 Color-only labels must explicitly use a transparent background so their

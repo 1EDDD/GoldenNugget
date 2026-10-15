@@ -137,7 +137,7 @@ class Themes(unittest.TestCase):
                 widget.deleteLater()
             QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
 
-    def test_real_settings_switch_updates_labels_without_editing_tweaks(self):
+    def test_settings_has_no_mode_switch_and_rethemes_without_editing_tweaks(self):
         from src.controllers.translator import Translator
         from src.devicemanagement.device_manager import DeviceManager
         from src.gui.main_window import MainWindow
@@ -156,11 +156,12 @@ class Themes(unittest.TestCase):
             window.content_stack.setCurrentIndex(1)
             window.set_ios_page(4, animate=False)
             APP.processEvents()
+            self.assertFalse(hasattr(page, 'color_theme_combo'))
             before = {tid: (tweak.enabled, repr(tweak.value)) for tid, tweak in tweaks.items()}
             for mode in ('light', 'dark', 'light'):
-                index = page.color_theme_combo.findData(mode)
-                page.color_theme_combo.setCurrentIndex(index)
-                page.color_theme_combo.activated.emit(index)
+                self.manager.set_mode(mode)
+                window._on_color_theme_changed()
+                APP.processEvents()
                 self.assertEqual(self.manager.mode, mode)
                 labels = [label for label in page.findChildren(QLabel) if label.property('theme_style_key')]
                 self.assertTrue(labels)

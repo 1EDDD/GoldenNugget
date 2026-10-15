@@ -64,19 +64,6 @@ class IOSSettingsPage(QWidget):
         # --- Appearance ---
         self.content_layout.addWidget(IOSSectionHeader(QCoreApplication.translate("Nugget", "Appearance")))
 
-        theme_row = IOSCard()
-        theme_layout = QHBoxLayout(theme_row)
-        theme_layout.setContentsMargins(16, 10, 16, 10)
-        theme_layout.addWidget(QLabel(QCoreApplication.translate('Nugget', 'Color Theme')), 1)
-        self.color_theme_combo = QComboBox()
-        self.color_theme_combo.setAccessibleName(QCoreApplication.translate('Nugget', 'Color Theme'))
-        self.color_theme_combo.addItem(QCoreApplication.translate('Nugget', 'Dark'), 'dark')
-        self.color_theme_combo.addItem(QCoreApplication.translate('Nugget', 'Light'), 'light')
-        self.color_theme_combo.setCurrentIndex(self.color_theme_combo.findData(self._tm.mode))
-        self.color_theme_combo.activated.connect(self._on_color_mode_changed)
-        theme_layout.addWidget(self.color_theme_combo)
-        self.content_layout.addWidget(theme_row)
-
         accent_row_card = IOSCard()
         accent_row = QHBoxLayout(accent_row_card)
         accent_row.setContentsMargins(16, 12, 16, 12)
@@ -268,9 +255,6 @@ class IOSSettingsPage(QWidget):
         super().showEvent(event)
         self._sync_setting_dependencies()
 
-    def _on_color_mode_changed(self, index):
-        self._tm.set_mode(self.color_theme_combo.itemData(index))
-
     def _report_bug(self):
         url = QUrl('https://github.com/GoldenNugget-Team/GoldenNugget/issues/new')
         if not QDesktopServices.openUrl(url):
@@ -367,8 +351,6 @@ class IOSSettingsPage(QWidget):
             style_key = label.property('theme_style_key')
             if style_key:
                 label.setStyleSheet(t(style_key))
-        self.color_theme_combo.setStyleSheet(t('combo_dropdown'))
-        self.color_theme_combo.setCurrentIndex(self.color_theme_combo.findData(self._tm.mode))
         self._scroll.setStyleSheet(
             f"background-color: {c.bg_primary}; border: none;"
         )
