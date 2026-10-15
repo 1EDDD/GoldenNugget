@@ -1,3 +1,4 @@
+import sys
 from PySide6.QtCore import (
     Qt, QCoreApplication, Slot, QTimer, QSize, QEvent, Signal, QThread,
 )
@@ -216,6 +217,11 @@ class IOSHomePage(QWidget):
         self.control_tabs = QTabWidget(self)
         self.control_tabs.setDocumentMode(True)
         self.control_tabs.setFixedSize(560, 116)
+
+        self._developer_page = None
+        if not getattr(sys, 'frozen', False):
+            from src.gui.ios.developer import DeveloperPanel
+            self._developer_page = DeveloperPanel(self.window, self.control_tabs)
 
         devices_page = QWidget(self.control_tabs)
         self._devices_page = devices_page
@@ -768,6 +774,8 @@ class IOSHomePage(QWidget):
         self.control_tabs.blockSignals(True)
         while self.control_tabs.count():
             self.control_tabs.removeTab(0)
+        if self._developer_page is not None:
+            self.control_tabs.addTab(self._developer_page, QCoreApplication.translate("Nugget", "Developer"))
         self.control_tabs.addTab(self._devices_page, QCoreApplication.translate("Nugget", "Devices"))
         if mode in ("presets", "both"):
             self.control_tabs.addTab(self._presets_page, QCoreApplication.translate("Nugget", "Presets"))
@@ -775,7 +783,8 @@ class IOSHomePage(QWidget):
             self.control_tabs.addTab(self._storage_page, QCoreApplication.translate("Nugget", "Device Storage"))
         if current is not None and self.control_tabs.indexOf(current) >= 0:
             self.control_tabs.setCurrentWidget(current)
-        self.control_tabs.setFixedWidth(640 if mode == "both" else 560)
+        width = 640 if mode == "both" else 560
+        self.control_tabs.setFixedWidth(width + (100 if self._developer_page is not None else 0))
         self.control_tabs.blockSignals(False)
 
     def _on_control_tab_changed(self, index):
