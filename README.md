@@ -11,6 +11,29 @@ Customize your device with animated wallpapers, disable pesky daemons, and more!
 
 Make sure you have installed the [requirements](#requirements) if you are on Windows or Linux.
 
+## Quick Start
+
+1. Install the device connection tools listed in [Requirements](#requirements).
+2. Create and activate a virtual environment:
+
+```bash
+python -m venv .venv
+# Windows PowerShell
+.\.venv\Scripts\Activate.ps1
+# macOS/Linux
+source .venv/bin/activate
+```
+
+3. Install the pinned dependencies and start GoldenNugget:
+
+```bash
+python -m pip install -r requirements.txt
+python main_app.py
+```
+
+Make a full device backup before applying tweaks. Use `python main_app.py --test-mode`
+to open the interface with mock devices and no iPhone connected.
+
 ## Compatibility
 
 | Component | Supported | Notes |
