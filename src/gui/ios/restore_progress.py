@@ -97,19 +97,21 @@ class RestoreProgressCard(IOSCard):
         warning = QWidget()
         warning.setObjectName("restoreConnection")
         warning_layout = QHBoxLayout(warning)
-        warning_layout.setContentsMargins(12, 12, 12, 12)
-        warning_layout.setSpacing(10)
+        warning_layout.setContentsMargins(16, 14, 16, 14)
+        warning_layout.setSpacing(12)
         self.connection_icon = QLabel()
-        self.connection_icon.setFixedSize(24, 24)
-        warning_layout.addWidget(self.connection_icon)
+        self.connection_icon.setObjectName("restoreConnectionIcon")
+        self.connection_icon.setFixedSize(32, 32)
+        self.connection_icon.setAlignment(Qt.AlignCenter)
+        warning_layout.addWidget(self.connection_icon, 0, Qt.AlignVCenter)
         warning_text = QVBoxLayout()
         warning_text.setSpacing(3)
-        self.hint = QLabel(_tr("Keep your iPhone connected"))
+        self.hint = QLabel(_tr("Do not disconnect your iPhone"))
         self.hint.setObjectName("restoreWarning")
         self.hint.setWordWrap(True)
         warning_text.addWidget(self.hint)
-        detail = QLabel(_tr("Do not unplug until the operation finishes."))
-        detail.setObjectName("restoreMuted")
+        detail = QLabel(_tr("Keep the USB cable connected until GoldenNugget confirms the restore is complete."))
+        detail.setObjectName("restoreConnectionDetail")
         detail.setWordWrap(True)
         warning_text.addWidget(detail)
         warning_layout.addLayout(warning_text, 1)
@@ -233,8 +235,8 @@ class RestoreProgressCard(IOSCard):
             ":/icon/clock.svg", ColorThemeManager.instance().colors.accent,
             22, self.devicePixelRatioF()))
         self.connection_icon.setPixmap(theme_pixmap(
-            ":/icon/cable.svg", ColorThemeManager.instance().colors.warning,
-            24, self.devicePixelRatioF()))
+            ":/icon/restore-warning.svg", ColorThemeManager.instance().colors.warning,
+            28, self.devicePixelRatioF()))
         self._refresh_stage()
 
     def _refresh_stage(self):

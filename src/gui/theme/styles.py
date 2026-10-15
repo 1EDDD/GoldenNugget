@@ -273,8 +273,10 @@ STYLES = {
             """,
 
     "restore_progress": """
-        QWidget#restoreConnection {{ background: {bg_tertiary}; border: 1px solid {warning}; border-radius: 10px; }}
-        QLabel#restoreWarning {{ color: {warning}; font-size: 15px; font-weight: 600; }}
+        QWidget#restoreConnection {{ background: {bg_tertiary}; border: none; border-left: 3px solid {warning}; border-radius: 8px; }}
+        QLabel#restoreConnectionIcon {{ background: transparent; }}
+        QLabel#restoreConnectionDetail {{ color: {text_secondary}; font-size: 13px; background: transparent; }}
+        QLabel#restoreWarning {{ color: {text_primary}; font-size: 15px; font-weight: 600; background: transparent; }}
         QLabel#restorePercent {{ color: {text_primary}; font-size: 18px; font-weight: 600; }}
         QLabel#restoreTime {{ color: {text_primary}; font-size: 16px; font-weight: 600; }}
         QLabel#restorePhase {{ color: {text_primary}; font-size: 18px; font-weight: 600; }}
