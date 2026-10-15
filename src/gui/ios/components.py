@@ -104,6 +104,14 @@ class NumberInputDialog(QDialog):
             self.spin.setButtonSymbols(QDoubleSpinBox.NoButtons)
         self.spin.setStyleSheet(t('number_input_field'))
         layout.addWidget(self.spin)
+        if not self._integral:
+            hint = QLabel(QCoreApplication.translate("Nugget", "Range: {0} – {1} · Step: {2}").format(
+                self.spin.locale().toString(float(min_val), 'f', self._decimals),
+                self.spin.locale().toString(float(max_val), 'f', self._decimals),
+                self.spin.locale().toString(float(step), 'f', self._decimals)))
+            hint.setWordWrap(True)
+            hint.setStyleSheet(t("home_subtitle"))
+            layout.addWidget(hint)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.accept)
@@ -115,7 +123,13 @@ class NumberInputDialog(QDialog):
         if hasattr(self, 'spin'):
             self.spin.setStyleSheet(t('number_input_field'))
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.spin.setFocus(Qt.OtherFocusReason)
+        self.spin.selectAll()
+
     def get_value(self):
+        self.spin.interpretText()
         value = self.spin.value()
         return int(value) if self._integral else round(float(value), self._decimals)
 

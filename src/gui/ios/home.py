@@ -11,6 +11,7 @@ from src.gui.ios.components import IOSCard, IOSPrimaryButton
 from src.gui.theme import t, ColorThemeManager, theme_icon, theme_pixmap
 
 from src.gui.ios.feature_icons import FEATURE_ICONS
+from src.devicemanagement.passcode_support import current_passcode_theme_reason
 
 
 class _StorageThread(QThread):
@@ -525,6 +526,7 @@ class IOSHomePage(QWidget):
             self._paint_tile_icon(icon_lbl, icon_res)
             title_lbl.setStyleSheet(t("home_tile_title"))
             sub_lbl.setStyleSheet(t("home_tile_subtitle"))
+        self.update_passcode_support()
 
     def populate_device_picker(self):
         self.device_combo.blockSignals(True)
@@ -610,7 +612,7 @@ class IOSHomePage(QWidget):
         self.process_status_lbl.setText(text)
         self.process_status_lbl.show()
         self._hide_timer.stop()
-        if success is not False:
+        if success is not False and not getattr(self.window, "apply_in_progress", False):
             self._hide_timer.start(6000)
 
     def hide_process_status(self):
@@ -678,7 +680,26 @@ class IOSHomePage(QWidget):
                 self.subtitle.setText(QCoreApplication.translate("Nugget", "No device connected"))
         except AttributeError:
             self.subtitle.setText(QCoreApplication.translate("Nugget", "No device connected"))
+        self.update_passcode_support()
         self._refresh_storage()
+
+    def update_passcode_support(self):
+        reason = current_passcode_theme_reason(self.window.device_manager)
+        self.passcode_theme_card.setEnabled(not reason)
+        icon, resource, title, caption = self._tiles[-1]
+        if reason:
+            message = "Your version is not supported" if self.window.device_manager.get_current_device_udid() else "Connect an iPhone"
+            caption.setText(QCoreApplication.translate("Nugget", message))
+        else:
+            caption.setText(QCoreApplication.translate("Nugget", "Custom keypad theme (.passthm)"))
+        self.passcode_theme_card.setAccessibleDescription(reason or "")
+        color = self._c.text_disabled if reason else self._c.text_secondary
+        caption.setStyleSheet(t("home_tile_subtitle") + f"color: {color};")
+        title.setStyleSheet(t("home_tile_title") +
+                           f"color: {self._c.text_disabled if reason else self._c.text_primary};")
+        icon.setPixmap(theme_pixmap(resource,
+            self._c.text_disabled if reason else self._c.text_primary,
+            self.TILE_ICON_PX, self.devicePixelRatioF()))
 
     def _refresh_storage(self):
         # Also feeds the pre-apply warnings in MainWindow, so always collect

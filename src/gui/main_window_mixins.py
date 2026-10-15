@@ -66,7 +66,8 @@ class DeviceBarMixin:
             self.ios_apply.set_busy(self.apply_in_progress)
         no_device = (len(self.device_manager.devices) == 0
                      and not getattr(self, "_browse_without_device", False))
-        if no_device and getattr(self, "device_scan_completed", False):
+        keep_operation_visible = self.apply_in_progress or getattr(self, "_operation_result_visible", False)
+        if no_device and not keep_operation_visible and getattr(self, "device_scan_completed", False):
             stack.setCurrentWidget(placeholder)
         elif stack.currentWidget() is placeholder:
             stack.setCurrentIndex(1)
@@ -124,6 +125,13 @@ class DeviceBarMixin:
         for feat, card in card_map.items():
             card.setVisible(feat not in hidden)
         self.ios_home.set_statusbar_visible(not statusbar_hidden)
+        self.ios_home.update_passcode_support()
+        from src.devicemanagement.passcode_support import current_passcode_theme_reason
+        reason = current_passcode_theme_reason(self.device_manager)
+        self.ui.passcodePageBtn.setEnabled(not reason)
+        self.ui.passcodePageBtn.setToolTip(reason or "")
+        if reason and self.ios_pages.currentIndex() == 11:
+            self.show_ios_page(0)
 
 
     @QtCore.Slot()
@@ -685,6 +693,11 @@ class NavigationMixin:
 
 
     def show_ios_page(self, index: int):
+        if index == 11:
+            from src.devicemanagement.passcode_support import current_passcode_theme_reason
+            if current_passcode_theme_reason(self.device_manager):
+                self.ios_home.update_passcode_support()
+                return
         self.content_stack.setCurrentIndex(1)
         self.set_ios_page(index)
 
@@ -1242,6 +1255,7 @@ class ApplyMixin:
             self.toggle_thread_btns(disabled=True)
             self.worker_thread = ApplyThread(manager=self.device_manager, settings=self.settings, reset_pages=reset_pages)
             self.worker_thread.progress.connect(self.update_label)
+            self.worker_thread.operation_stage.connect(self.ios_apply.set_stage)
             self.worker_thread.alert.connect(self.alert_message)
             self.worker_thread.request_text.connect(self.on_password_request)
             self.worker_thread.choice_prompt.connect(self.on_choice_prompt)
@@ -1423,6 +1437,7 @@ class ApplyMixin:
 
     def finish_apply_thread(self, success: bool = False, error_msg: str = ""):
         self.apply_in_progress = False
+        self._operation_result_visible = True
         self.toggle_thread_btns(disabled=False)
         try:
             self.ios_settings._refresh_history()
@@ -1436,8 +1451,11 @@ class ApplyMixin:
             preview=getattr(self.device_manager, '_last_operation_preview', None))
         self.ios_home._hide_timer.stop()
         self.ios_home.hide_process_status()
-        self.ios_home.result_card.show_result(success, text, is_reset)
-        self.ios_apply.result_card.show_result(success, text, is_reset)
+        restart_required = success and not self.device_manager.pref_manager.auto_reboot
+        self.ios_home.result_card.show_result(success, text, is_reset, restart_required)
+        self.ios_apply.result_card.show_result(success, text, is_reset, restart_required)
+        if self.content_stack.currentWidget() is getattr(self, "connect_placeholder", None):
+            self.show_ios_page(6)
         self.ios_apply.set_status("")
         # Show completion indicator on the iOS home page
         if success:
@@ -1465,6 +1483,7 @@ class ApplyMixin:
 
 
     def dismiss_operation_result(self):
+        self._operation_result_visible = False
         self.ios_home.result_card.hide()
         self.ios_apply.result_card.hide()
 

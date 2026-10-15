@@ -1,9 +1,9 @@
 """Persistent, dismissible result shared by Home and Apply."""
 from PySide6.QtCore import QCoreApplication, Qt
-from PySide6.QtWidgets import QLabel, QPushButton, QPlainTextEdit, QVBoxLayout, QHBoxLayout
+from PySide6.QtWidgets import QLabel, QPushButton, QPlainTextEdit, QVBoxLayout, QHBoxLayout, QWidget
 
 from src.gui.ios.components import IOSCard
-from src.gui.theme import t
+from src.gui.theme import t, ColorThemeManager, theme_pixmap
 
 
 def result_text(success, error, reset_pages=None, preview=None):
@@ -50,6 +50,24 @@ class OperationResultCard(IOSCard):
         self.summary.setWordWrap(True)
         self.summary.setTextFormat(Qt.PlainText)
         layout.addWidget(self.summary)
+        self.find_my_reminder = QWidget(self)
+        reminder_layout = QHBoxLayout(self.find_my_reminder)
+        reminder_layout.setContentsMargins(12, 12, 12, 12)
+        reminder_layout.setSpacing(12)
+        self.find_my_icon = QLabel()
+        self.find_my_icon.setFixedSize(40, 40)
+        reminder_layout.addWidget(self.find_my_icon)
+        reminder_text = QVBoxLayout()
+        reminder_text.setSpacing(4)
+        self.find_my_title = QLabel(QCoreApplication.translate("Nugget", "Turn Find My back on"))
+        self.find_my_title.setWordWrap(True)
+        reminder_text.addWidget(self.find_my_title)
+        self.find_my_description = QLabel(QCoreApplication.translate("Nugget",
+            "If you disabled Find My, re-enable it on your iPhone: Settings → your name → Find My → Find My iPhone."))
+        self.find_my_description.setWordWrap(True)
+        reminder_text.addWidget(self.find_my_description)
+        reminder_layout.addLayout(reminder_text, 1)
+        layout.addWidget(self.find_my_reminder)
         self.expand_btn = QPushButton(self)
         self.expand_btn.setCheckable(True)
         self.expand_btn.setMinimumHeight(44)
@@ -82,14 +100,15 @@ class OperationResultCard(IOSCard):
         self._retheme()
         self.hide()
 
-    def show_result(self, success, text, is_reset=False):
+    def show_result(self, success, text, is_reset=False, restart_required=False):
         self._success = success
         self.title.setText(QCoreApplication.translate("Nugget",
             "Defaults restored!" if success and is_reset else "Apply complete!" if success else "Operation failed or stopped"))
         self.summary.setText(QCoreApplication.translate("Nugget",
-            "Check the result on your iPhone. Turn Find My back on if you disabled it."
+            ("Restart your iPhone to see the changes, then check the result." if restart_required else "Check the result on your iPhone. You can keep GoldenNugget open.")
             if success else
             "Completion was not confirmed. Expand details and logs before retrying; follow any recovery instructions shown."))
+        self.find_my_reminder.setVisible(success)
         self.details.setPlainText(text)
         self.expand_btn.setChecked(False)
         self._set_expanded(False)
@@ -114,6 +133,12 @@ class OperationResultCard(IOSCard):
             return
         self.title.setStyleSheet(t("process_status_green" if self._success else "process_status_red"))
         self.summary.setStyleSheet(t("home_subtitle"))
+        colors = ColorThemeManager.instance().colors
+        self.find_my_reminder.setStyleSheet(
+            f"background: {colors.bg_tertiary}; border-radius: 12px;")
+        self.find_my_title.setStyleSheet(f"color: {colors.text_primary}; font-size: 15px; font-weight: 600;")
+        self.find_my_description.setStyleSheet(f"color: {colors.text_secondary}; font-size: 13px;")
+        self.find_my_icon.setPixmap(theme_pixmap(":/icon/find-my.svg", colors.success, 40, self.devicePixelRatioF()))
         self.details.setStyleSheet(t("apply_preview_text"))
         self.log_details.setStyleSheet(t("apply_preview_text"))
         self.expand_btn.setStyleSheet(t("settings_action"))

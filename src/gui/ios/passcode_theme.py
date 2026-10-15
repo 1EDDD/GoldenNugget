@@ -44,6 +44,7 @@ from src.gui.ios.components import (
     IOSSectionHeader, IOSCard, IOSPrimaryButton, IOSDangerButton,
 )
 from src.gui.theme import ColorThemeManager
+from src.devicemanagement.passcode_support import current_passcode_theme_reason, passcode_theme_unavailable_reason
 
 logger = logging.getLogger("GoldenNugget.passthme")
 
@@ -117,6 +118,11 @@ class PasscodeThemeWriteThread(QThread):
                         "this computer isn't trusted yet, unlock your iPhone "
                         "and tap \u201cTrust This Computer\u201d now."))
                     async with lockdown_session(self.udid) as lockdown:
+                        values = lockdown.all_values
+                        reason = passcode_theme_unavailable_reason(
+                            values.get("ProductVersion"), values.get("BuildVersion"), values.get("ProductType"))
+                        if reason:
+                            raise AirliftError(reason)
                         if not getattr(lockdown, "paired", True):
                             # lockdown_session already refuses unpaired clients,
                             # but keep the belt-and-suspenders check so we
@@ -433,7 +439,19 @@ class IOSPasscodeThemePage(QWidget):
         except Exception:
             return ""
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._refresh_device_line()
+
     def _refresh_device_line(self):
+        reason = current_passcode_theme_reason(self.window.device_manager)
+        busy = self._worker is not None and self._worker.isRunning()
+        self._write_btn.setEnabled(not reason and not busy)
+        if reason:
+            self._device_lbl.setText(reason)
+            self._device_lbl.setStyleSheet(
+                f"color: {ColorThemeManager.instance().colors.error}; font-size: 13px;")
+            return
         c = ColorThemeManager.instance().colors
         dm = self.window.device_manager
         device = None
@@ -464,6 +482,10 @@ class IOSPasscodeThemePage(QWidget):
             self._device_lbl.setStyleSheet(f"color: {c.error}; font-size: 13px; background-color: transparent;")
 
     def start_write(self):
+        reason = current_passcode_theme_reason(self.window.device_manager)
+        if reason:
+            self._show_status(reason, "error")
+            return
         self._save_options()
         self._refresh_device_line()
         if not self._theme_path:
@@ -516,7 +538,7 @@ class IOSPasscodeThemePage(QWidget):
         self._show_status(message, "info")
 
     def _on_done(self, success: bool, message: str):
-        self._write_btn.setEnabled(True)
+        self._write_btn.setEnabled(not current_passcode_theme_reason(self.window.device_manager))
         self._show_status(message, "success" if success else "error")
         try:
             if self.window.isVisible():

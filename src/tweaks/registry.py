@@ -19,6 +19,7 @@ class Section(Enum):
     LIQUID_GLASS = "Liquid Glass"
     SPRINGBOARD = "SpringBoard"
     INTERNAL = "Internal Options"
+    EXPERIMENTAL = "Experimental Preferences"
 
 
 class Kind(Enum):
@@ -34,6 +35,7 @@ SECTION_FEATURES: dict[Section, str] = {
     Section.LIQUID_GLASS: "Liquid Glass",
     Section.SPRINGBOARD: "Springboard",
     Section.INTERNAL: "Internal",
+    Section.EXPERIMENTAL: "Internal",
 }
 
 
@@ -603,6 +605,17 @@ SPECS: tuple[TweakSpec, ...] = (
        description=QT_TRANSLATE_NOOP("Nugget", "Plays a sound every time content is pasted anywhere on the device.")),
     _t(TweakID.AnnounceAllPastes, Section.INTERNAL, "Show Notifications for System Pastes", FileLocation.pasteboard, "AnnounceAllPastes",
        description=QT_TRANSLATE_NOOP("Nugget", "Shows a system notification whenever an app reads the pasteboard, acting as a privacy indicator for system-level pastes.")),
+    _t(TweakID.UIAnimationDuration, Section.EXPERIMENTAL, "UI Animation Duration Multiplier (Experimental)",
+       FileLocation.uikit, "UIAnimationDragCoefficient", kind=Kind.NUMBER,
+       value=1.0, min_value=0.1, max_value=5.0, step=0.1,
+       description="Requests animation timing in compatible UIKit interfaces: 0.1 is shorter/faster, 1.0 is normal, and values above 1.0 are longer/slower. Enable this option and Apply Tweaks to send it to your iPhone. iOS 27 may ignore this historical preference; it does not improve processing speed or touch responsiveness. Use Restore Defaults to reset the preference."),
+    _t(TweakID.MetalForceHudEnabled, Section.EXPERIMENTAL, "Metal Performance HUD (Experimental)",
+       GP, "MetalForceHudEnabled",
+       description="Historically implemented by Nugget. Requests the Metal graphics debugging overlay in apps that honor this preference. Effects on iOS 27 are unverified."),
+    _t(TweakID.KeyboardKeyFlick, Section.EXPERIMENTAL, "Keyboard Key Flicks (Experimental)",
+       GP, "GesturesEnabled",
+       description="Historically implemented by Nugget. Requests keyboard key-flick gestures where supported. It does not guarantee a change on every keyboard or device. Effects on iOS 27 are unverified."),
+
 )
 
 SPECS_BY_SECTION = {section: [s for s in SPECS if s.section == section and not s.disabled] for section in Section}

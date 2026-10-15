@@ -441,6 +441,8 @@ class DeviceManager:
         # propagate as a misleading "Connection Lost" error to the UI.
         # lockdown_session suppresses close() errors the same way.
         async with lockdown_session(self.data_singleton.current_device.udid) as ld:
+            if not self.get_current_device_partially_supported():
+                self._report_operation_stage("tweaks")
             update_label(QCoreApplication.tr("Preparing to restore...") + self.do_not_unplug)
             await restore_files(
                 files=files_to_restore, reboot=self.pref_manager.auto_reboot,
@@ -454,6 +456,7 @@ class DeviceManager:
                 afc_media=afc_media_enabled(self.pref_manager.use_afc_media),
                 supervised=supervised,
                 organization_name=organization_name,
+                stage_callback=self._report_operation_stage,
             )
             tweaks[TweakID.PosterBoard].config_manager.save_staged_ids(self.get_current_device_udid())
             if tweaks[TweakID.PosterBoard].full_reset:
@@ -471,11 +474,37 @@ class DeviceManager:
                 msg = QCoreApplication.tr("Please restart your device to see changes.")
             return ApplyAlertMessage(txt=QCoreApplication.tr("All done! ") + msg, title=QCoreApplication.tr("Success!"), icon=QMessageBox.Information)
 
+    def _report_operation_stage(self, stage, category=""):
+        if stage != getattr(self, "_progress_stage", None):
+            self._progress_stage = stage
+            if hasattr(self, "_restore_eta"):
+                self._restore_eta.reset()
+        callback = getattr(self, "operation_stage_callback", None)
+        if callback is not None:
+            callback(stage, category)
+
     def progress_callback(self, progress):
         if self.update_label == None:
             return
         if isinstance(progress, str):
+            from src.devicemanagement.progress_status import BackupStatus, OperationStatus
+            if isinstance(progress, BackupStatus):
+                self._report_operation_stage("backup", progress.category)
+            elif isinstance(progress, OperationStatus):
+                stage = getattr(self, "_progress_stage", "restore")
+                self._report_operation_stage(stage, "" if progress.category == "transfer_ready" else progress.category)
+                self._restore_eta.reset()
+            if getattr(self, "_progress_stage", None) == "media":
+                import re
+                match = re.search(r"(\d+(?:\.\d+)?)%", progress)
+                if match:
+                    remaining = self._restore_eta.update(float(match.group(1)))
+                    if remaining:
+                        progress += "\n" + QCoreApplication.tr("Time Left: {0}").format(remaining)
             self.update_label(progress)
+            return
+        if getattr(self, "_progress_stage", None) == "setup" and progress is not None and progress < 100:
+            self.update_label(QCoreApplication.tr("Finishing setup…") + self.do_not_unplug)
             return
         prog = ""
         if progress != None:
@@ -483,10 +512,14 @@ class DeviceManager:
             remaining = self._restore_eta.update(progress)
         else:
             remaining = ""
-        label = QCoreApplication.tr("Restoring to device...{0}{1}").format(
-            prog, self.do_not_unplug)
+        stage_label = {
+            "backup": QCoreApplication.tr("Backing up device data…"),
+            "tweaks": QCoreApplication.tr("Applying changes…"),
+            "media": QCoreApplication.tr("Restoring photos & videos…"),
+        }.get(getattr(self, "_progress_stage", None), QCoreApplication.tr("Restoring to device…"))
+        label = stage_label + prog + self.do_not_unplug
         if remaining:
-            label += "\n" + QCoreApplication.tr("⏱ Time Left: {0}").format(remaining)
+            label += "\n" + QCoreApplication.tr("Time Left: {0}").format(remaining)
         self.update_label(label)
     def _backup_progress(self, update_label, backup_path=None):
         """Progress callback for the pre-restore device backups.
@@ -504,6 +537,12 @@ class DeviceManager:
 
         def _cb(progress):
             if isinstance(progress, str):
+                from src.devicemanagement.progress_status import OperationStatus
+                if isinstance(progress, OperationStatus):
+                    category = "backup" if progress.category == "transfer_ready" else progress.category
+                    self._report_operation_stage("backup", category)
+                    if category == "authentication":
+                        eta.reset()
                 current_stage[0] = progress
                 update_label(progress)
                 return
@@ -523,12 +562,12 @@ class DeviceManager:
                         if free < _min_free_disk_bytes() and not warned_low_space[0]:
                             warned_low_space[0] = True
                             low_space_note[0] = QCoreApplication.tr(
-                                "⚠️ Low computer storage: {0:.1f} GB free. Free space now; the backup may fail if storage runs out.").format(free / (1024 ** 3))
+                                "Low computer storage: {0:.1f} GB free. Free space now; the backup may fail if storage runs out.").format(free / (1024 ** 3))
                     except OSError:
                         pass
             remaining = eta.update(progress)
             if remaining:
-                label += "\n" + QCoreApplication.tr("⏱ Time Left: {0}").format(remaining)
+                label += "\n" + QCoreApplication.tr("Time Left: {0}").format(remaining)
             if low_space_note[0]:
                 label += "\n" + low_space_note[0]
             update_label(label)
@@ -543,6 +582,7 @@ class DeviceManager:
         original_tendies = list(pb.tendies)
         try:
             self._raise_if_unsupported()
+            self._report_operation_stage("prepare")
             update_label(QCoreApplication.tr("Applying changes to files..."))
             self._protective_backup_skipped = False
             self._known_backup_encryption = None  # re-established by Phase 0
@@ -577,6 +617,7 @@ class DeviceManager:
             partially_supported = self.get_current_device_partially_supported()
             should_prepare = partially_supported and not raw_sparse
             if should_prepare:
+                self._report_operation_stage("backup")
                 # On NotEnoughDiskSpaceError the user can choose to continue
                 # without it — tweaks still apply, but there is no data
                 # protection (photos/settings get wiped).
@@ -625,6 +666,7 @@ class DeviceManager:
                 if os.environ.get("GOLDENNUGGET_SKIP_PB_BACKUP"):
                     log_warn("GOLDENNUGGET_SKIP_PB_BACKUP=1 set; skipping PosterBoard DB fetch")
                 else:
+                    self._report_operation_stage("backup", "wallpaper")
                     await self._backup_posterboard_database(update_label, force=True)
 
             self._apply_hotload_daemon_forcing()
@@ -658,7 +700,8 @@ class DeviceManager:
             return False
         finally:
             pb.tendies = original_tendies
-            show_alert(final_alert)
+            if final_alert is not None:
+                show_alert(final_alert)
 
     def _apply_hotload_daemon_forcing(self):
         """HotLoad "disable_daemon" rules: force their daemons into the
@@ -1365,4 +1408,5 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             final_alert = show_apply_error(e, update_label, files_list=files_to_restore)
             return False
         finally:
-            show_alert(final_alert)
+            if final_alert is not None:
+                show_alert(final_alert)

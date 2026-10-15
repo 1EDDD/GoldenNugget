@@ -287,6 +287,13 @@ class IOSSectionContent(QWidget):
                     name, not expanded))
             layout.addWidget(collapsible)
             start = len(self._search_rows)
+            if section == Section.EXPERIMENTAL:
+                note = QLabel(QCoreApplication.translate("Nugget",
+                    "These preferences have historical implementations but are not verified on iOS 27. "
+                    "They are off by default and may have no effect. Keep a separate backup before experimenting."))
+                note.setWordWrap(True)
+                note.setStyleSheet(t("home_subtitle"))
+                collapsible.body_layout.addWidget(note)
             for spec in SPECS_BY_SECTION[section]:
                 renderers[spec.kind](spec, collapsible.body_layout)
             section_rows = self._search_rows[start:]
