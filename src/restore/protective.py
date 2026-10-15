@@ -45,6 +45,8 @@ import pymobiledevice3.exceptions as _pm3_exc
 import pymobiledevice3.service_connection as _sc
 from pymobiledevice3.lockdown import LockdownClient
 from pymobiledevice3.exceptions import NotEnoughDiskSpaceError
+from src.devicemanagement.progress_status import BackupStatus
+
 from pymobiledevice3.services.mobilebackup2 import (
     Mobilebackup2Service, NP_LOCAL_AUTH_PRESENTED, NP_LOCAL_AUTH_DISMISSED,
 )
@@ -755,11 +757,12 @@ async def perform_protective_backup(
         nonlocal authentication_presented
         authentication_presented = presented
         if report_progress is not None:
-            report_progress(QCoreApplication.translate(
+            report_progress(BackupStatus(QCoreApplication.translate(
                 "Nugget",
-                "🔐 iOS authentication prompt detected. Check your iPhone and enter its passcode if requested to continue the protective backup."
+                "iOS authentication prompt detected. Check your iPhone and enter its passcode if requested to continue the protective backup."
                 if presented else
-                "iOS authentication prompt closed. Waiting for protective backup progress…"))
+                "iOS authentication prompt closed. Waiting for protective backup progress…"),
+                "authentication" if presented else "backup"))
 
     await check_disk_space_for_backup(lockdown_client, path=backup_root)
     if not incremental_ok:
@@ -801,22 +804,22 @@ async def perform_protective_backup(
     def _category_for(name: str) -> str:
         low = name.lower()
         if "keychaindomain" in low:
-            return "🔐 Keychain"
+            return BackupStatus(QCoreApplication.translate("Nugget", "Keychain"), "keychain")
         if "messagesdomain" in low:
-            return "💬 Messages"
+            return BackupStatus(QCoreApplication.translate("Nugget", "Messages"), "messages")
         if "camerarolldomain" in low or "mediadomain" in low:
-            return "📷 Photos and videos"
+            return BackupStatus(QCoreApplication.translate("Nugget", "Photos and videos"), "photos")
         if "accounts" in low or "appleaccount" in low:
-            return "👤 Apple account"
+            return BackupStatus(QCoreApplication.translate("Nugget", "Apple account"), "account")
         if "springboard" in low or "home screen" in low:
-            return "📱 Home screen"
+            return BackupStatus(QCoreApplication.translate("Nugget", "Home screen"), "home")
         if "shortcuts" in low:
-            return "⚡ Shortcuts"
+            return BackupStatus(QCoreApplication.translate("Nugget", "Shortcuts"), "shortcuts")
         if "poster" in low:
-            return "🖼️ Wallpaper data"
+            return BackupStatus(QCoreApplication.translate("Nugget", "Wallpaper data"), "wallpaper")
         if "preferences" in low or "configurationprofiles" in low:
-            return "⚙️ Settings"
-        return "📦 Device data"
+            return BackupStatus(QCoreApplication.translate("Nugget", "Settings"), "settings")
+        return BackupStatus(QCoreApplication.translate("Nugget", "Device data"), "backup")
 
     def _filter_callback(backup_file):
         name = backup_file.device_name or ""
@@ -824,7 +827,7 @@ async def perform_protective_backup(
         if category != _last_category[0]:
             _last_category[0] = category
             if progress_callback:
-                progress_callback(category + "…")
+                progress_callback(BackupStatus(category + "…", category.category))
         keep = is_protective_device_file(
             name,
             include_photos=include_photos,
@@ -869,7 +872,7 @@ async def perform_protective_backup(
                 log_warn("Device reported insufficient space during backup; refusing to proceed with a partial backup")
                 if progress_callback:
                     progress_callback(QCoreApplication.translate(
-                        "Nugget", "⚠️ The device ran out of storage during backup. Free space on the device and try again; tweaks were not applied."))
+                        "Nugget", "The device ran out of storage during backup. Free space on the device and try again; tweaks were not applied."))
                 raise NuggetException(QCoreApplication.translate(
                     "Nugget", "The device ran out of storage during backup. Free space on the device and try again. Tweaks were not applied."))
     except Exception:

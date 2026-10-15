@@ -47,6 +47,7 @@ def set_sudo_pwd(pwd: Optional[str]):
 
 class ApplyThread(QThread):
     progress = Signal(str)
+    operation_stage = Signal(str, str)
     alert = Signal(object)  # ApplyAlertMessage or None for sudo prompt
     finished_with_result = Signal(bool, str)  # success, error_message
     request_text = Signal(str, str, object)  # title, label, result box (main-thread prompt)
@@ -161,6 +162,10 @@ class ApplyThread(QThread):
             self.progress.emit(txt)
 
     def alert_window(self, msg: ApplyAlertMessage):
+        if (msg is not None and msg.icon == QMessageBox.Information
+                and msg.title == QCoreApplication.tr("Success!")):
+            self._log.info("completed: %s", msg.txt)
+            return
         if msg is not None:
             if msg.icon in (None, QMessageBox.Critical) or msg.exc_value is not None:
                 self._error_msg = msg.txt
@@ -169,12 +174,15 @@ class ApplyThread(QThread):
         self.alert.emit(msg)
 
     def _do_work(self):
-        if self.reset_pages is None:
-            return self.manager.apply_changes(self.update_label, self.alert_window,
-                                       self.prompt_password, self.prompt_user_choice)
-        else:
+        self.manager.operation_stage_callback = self.operation_stage.emit
+        try:
+            if self.reset_pages is None:
+                return self.manager.apply_changes(self.update_label, self.alert_window,
+                                                  self.prompt_password, self.prompt_user_choice)
             return self.manager.reset_tweaks(self.reset_pages, self.settings, self.update_label,
-                                      self.alert_window, self.prompt_user_choice)
+                                             self.alert_window, self.prompt_user_choice)
+        finally:
+            self.manager.operation_stage_callback = None
 
 
 class RestoreCacheThread(QThread):

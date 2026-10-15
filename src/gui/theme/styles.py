@@ -234,6 +234,12 @@ STYLES = {
         }}
     """,
 
+    "search_clear_button": """
+        QToolButton {{ background: transparent; border: none; border-radius: 8px;
+            padding: 0px; margin: 0px; min-width: 0px; min-height: 0px; }}
+        QToolButton:hover, QToolButton:focus {{ background: {surface_hover}; }}
+        QToolButton:pressed {{ background: {border}; }}
+    """,
     "list_search": """
         QLineEdit {{
             background-color: {bg_secondary}; color: {text_primary};
@@ -271,6 +277,40 @@ STYLES = {
             QPushButton#supportName {{ background: transparent; color: {text_primary}; font-size: 15px; font-weight: 600; border: none; padding: 5px; }}
             QPushButton#supportName:hover {{ color: {accent}; }}
             """,
+
+    "restore_progress": """
+        QWidget#restoreConnection {{ background: {bg_tertiary}; border: none; border-left: 3px solid {warning}; border-radius: 8px; }}
+        QLabel#restoreConnectionIcon {{ background: transparent; }}
+        QLabel#restoreConnectionDetail {{ color: {text_secondary}; font-size: 13px; background: transparent; }}
+        QLabel#restoreWarning {{ color: {text_primary}; font-size: 15px; font-weight: 600; background: transparent; }}
+        QLabel#restorePercent {{ color: {text_primary}; font-size: 18px; font-weight: 600; }}
+        QLabel#restoreTime {{ color: {text_primary}; font-size: 16px; font-weight: 600; }}
+        QLabel#restorePhase {{ color: {text_primary}; font-size: 18px; font-weight: 600; }}
+        QLabel#restoreStatus {{ color: {text_primary}; font-size: 14px; }}
+        QLabel#restoreMuted {{ color: {text_secondary}; font-size: 12px; }}
+        QWidget#restoreStep {{ background: {bg_tertiary}; border: 1px solid {border}; border-radius: 12px; }}
+        QWidget#restoreStep[state="active"] {{ border-color: {accent}; }}
+        QLabel#restoreStepTitle {{ color: {text_secondary}; font-size: 12px; background: transparent; }}
+    """,
+
+    "device_support_dialog": """
+        QDialog {{ background: {bg_primary}; }}
+        QScrollArea#compatScroll, QWidget#compatContent {{ background: transparent; border: none; }}
+        QLabel#compatTitle {{ color: {text_primary}; font-size: 22px; font-weight: 600; }}
+        QLabel#compatDevice {{ color: {text_primary}; font-size: 17px; font-weight: 600; }}
+        QLabel#compatBody {{ color: {text_primary}; font-size: 14px; }}
+        QLabel#compatMuted {{ color: {text_secondary}; font-size: 13px; }}
+        QLabel#compatSection {{ color: {text_primary}; font-size: 15px; font-weight: 600; }}
+        QLabel#compatCount {{ color: {text_primary}; font-size: 23px; font-weight: 600; }}
+        QLabel#compatWarning {{ color: {warning}; font-size: 13px; }}
+        QLabel#compatBadge {{
+            background: {bg_tertiary}; color: {success};
+            border: 1px solid {border}; border-radius: 10px;
+            padding: 6px 10px; font-size: 12px; font-weight: 600;
+        }}
+        QLabel#compatBadge[supportState="limited"] {{ color: {warning}; }}
+        QLabel#compatBadge[supportState="unsupported"] {{ color: {error}; }}
+    """,
 
     "summary_dialog": """
         QLabel#confirmTitle {{ font-size: 22px; }}

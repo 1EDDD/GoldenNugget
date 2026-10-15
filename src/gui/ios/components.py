@@ -2,11 +2,11 @@ from PySide6.QtCore import (
     Qt, QCoreApplication, Signal as pyqtSignal, QSize, QRectF,
     QPropertyAnimation, QEasingCurve, Property, QEvent,
 )
-from PySide6.QtGui import QPainter, QColor
+from PySide6.QtGui import QPainter, QColor, QIcon
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QLabel, QPushButton, QFrame,
     QSizePolicy, QDialog, QDialogButtonBox, QLineEdit, QSpinBox,
-    QDoubleSpinBox, QVBoxLayout, QScrollArea, QButtonGroup,
+    QDoubleSpinBox, QVBoxLayout, QScrollArea, QButtonGroup, QToolButton,
 )
 
 from src.gui.theme import t, ColorThemeManager, theme_pixmap
@@ -104,6 +104,14 @@ class NumberInputDialog(QDialog):
             self.spin.setButtonSymbols(QDoubleSpinBox.NoButtons)
         self.spin.setStyleSheet(t('number_input_field'))
         layout.addWidget(self.spin)
+        if not self._integral:
+            hint = QLabel(QCoreApplication.translate("Nugget", "Range: {0} – {1} · Step: {2}").format(
+                self.spin.locale().toString(float(min_val), 'f', self._decimals),
+                self.spin.locale().toString(float(max_val), 'f', self._decimals),
+                self.spin.locale().toString(float(step), 'f', self._decimals)))
+            hint.setWordWrap(True)
+            hint.setStyleSheet(t("home_subtitle"))
+            layout.addWidget(hint)
 
         buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.accept)
@@ -115,7 +123,13 @@ class NumberInputDialog(QDialog):
         if hasattr(self, 'spin'):
             self.spin.setStyleSheet(t('number_input_field'))
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.spin.setFocus(Qt.OtherFocusReason)
+        self.spin.selectAll()
+
     def get_value(self):
+        self.spin.interpretText()
         value = self.spin.value()
         return int(value) if self._integral else round(float(value), self._decimals)
 
@@ -227,9 +241,18 @@ class IOSSearchField(QLineEdit):
         super().__init__(parent)
         self.setPlaceholderText(QCoreApplication.translate("ListSearch", "Search this list…"))
         self.setAccessibleName(self.placeholderText())
-        self.setClearButtonEnabled(True)
+        self.setClearButtonEnabled(False)
         self.setFixedHeight(44)
-        self.setTextMargins(34, 0, 0, 0)
+        self.setTextMargins(34, 0, 38, 0)
+        self._clear_button = QToolButton(self)
+        self._clear_button.setFixedSize(36, 36)
+        self._clear_button.setIconSize(QSize(18, 18))
+        self._clear_button.setCursor(Qt.PointingHandCursor)
+        self._clear_button.setAccessibleName(QCoreApplication.translate("ListSearch", "Clear search"))
+        self._clear_button.setToolTip(QCoreApplication.translate("ListSearch", "Clear search"))
+        self._clear_button.clicked.connect(self._clear_search)
+        self.textChanged.connect(lambda text: self._clear_button.setVisible(bool(text)))
+        self._clear_button.hide()
         self._search_icon = QLabel(self)
         self._search_icon.setFixedSize(20, 20)
         self._search_icon.setAttribute(Qt.WA_TransparentForMouseEvents)
@@ -237,12 +260,20 @@ class IOSSearchField(QLineEdit):
         self._retheme()
         _auto_retheme(self)
 
+    def _clear_search(self):
+        self.clear()
+        self.setFocus(Qt.OtherFocusReason)
+
     def matches(self, *texts):
         haystack = " ".join(texts).casefold()
         return all(word in haystack for word in self.text().casefold().split())
 
     def _retheme(self):
         self.setStyleSheet(t("list_search"))
+        colors = ColorThemeManager.instance().colors
+        self._clear_button.setIcon(QIcon(theme_pixmap(
+            ":/icon/x-lg.svg", colors.text_secondary, 18, self.devicePixelRatioF())))
+        self._clear_button.setStyleSheet(t("search_clear_button"))
         self._search_icon.setPixmap(theme_pixmap(
             ":/icon/search.svg", ColorThemeManager.instance().colors.text_secondary,
             20, self.devicePixelRatioF()))
@@ -251,6 +282,7 @@ class IOSSearchField(QLineEdit):
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._search_icon.move(14, (self.height() - 20) // 2)
+        self._clear_button.move(self.width() - 44, (self.height() - 36) // 2)
 
 
 class IOSSegmentedFilter(QWidget):

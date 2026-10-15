@@ -1,3 +1,4 @@
+import sys
 from PySide6.QtCore import (
     Qt, QCoreApplication, Slot, QTimer, QSize, QEvent, Signal, QThread,
 )
@@ -11,6 +12,7 @@ from src.gui.ios.components import IOSCard, IOSPrimaryButton
 from src.gui.theme import t, ColorThemeManager, theme_icon, theme_pixmap
 
 from src.gui.ios.feature_icons import FEATURE_ICONS
+from src.devicemanagement.passcode_support import current_passcode_theme_reason
 
 
 class _StorageThread(QThread):
@@ -215,6 +217,11 @@ class IOSHomePage(QWidget):
         self.control_tabs = QTabWidget(self)
         self.control_tabs.setDocumentMode(True)
         self.control_tabs.setFixedSize(560, 116)
+
+        self._developer_page = None
+        if not getattr(sys, 'frozen', False):
+            from src.gui.ios.developer import DeveloperPanel
+            self._developer_page = DeveloperPanel(self.window, self.control_tabs)
 
         devices_page = QWidget(self.control_tabs)
         self._devices_page = devices_page
@@ -525,6 +532,7 @@ class IOSHomePage(QWidget):
             self._paint_tile_icon(icon_lbl, icon_res)
             title_lbl.setStyleSheet(t("home_tile_title"))
             sub_lbl.setStyleSheet(t("home_tile_subtitle"))
+        self.update_passcode_support()
 
     def populate_device_picker(self):
         self.device_combo.blockSignals(True)
@@ -610,7 +618,7 @@ class IOSHomePage(QWidget):
         self.process_status_lbl.setText(text)
         self.process_status_lbl.show()
         self._hide_timer.stop()
-        if success is not False:
+        if success is not False and not getattr(self.window, "apply_in_progress", False):
             self._hide_timer.start(6000)
 
     def hide_process_status(self):
@@ -678,7 +686,26 @@ class IOSHomePage(QWidget):
                 self.subtitle.setText(QCoreApplication.translate("Nugget", "No device connected"))
         except AttributeError:
             self.subtitle.setText(QCoreApplication.translate("Nugget", "No device connected"))
+        self.update_passcode_support()
         self._refresh_storage()
+
+    def update_passcode_support(self):
+        reason = current_passcode_theme_reason(self.window.device_manager)
+        self.passcode_theme_card.setEnabled(not reason)
+        icon, resource, title, caption = self._tiles[-1]
+        if reason:
+            message = "Your version is not supported" if self.window.device_manager.get_current_device_udid() else "Connect an iPhone"
+            caption.setText(QCoreApplication.translate("Nugget", message))
+        else:
+            caption.setText(QCoreApplication.translate("Nugget", "Custom keypad theme (.passthm)"))
+        self.passcode_theme_card.setAccessibleDescription(reason or "")
+        color = self._c.text_disabled if reason else self._c.text_secondary
+        caption.setStyleSheet(t("home_tile_subtitle") + f"color: {color};")
+        title.setStyleSheet(t("home_tile_title") +
+                           f"color: {self._c.text_disabled if reason else self._c.text_primary};")
+        icon.setPixmap(theme_pixmap(resource,
+            self._c.text_disabled if reason else self._c.text_primary,
+            self.TILE_ICON_PX, self.devicePixelRatioF()))
 
     def _refresh_storage(self):
         # Also feeds the pre-apply warnings in MainWindow, so always collect
@@ -747,6 +774,8 @@ class IOSHomePage(QWidget):
         self.control_tabs.blockSignals(True)
         while self.control_tabs.count():
             self.control_tabs.removeTab(0)
+        if self._developer_page is not None:
+            self.control_tabs.addTab(self._developer_page, QCoreApplication.translate("Nugget", "Developer"))
         self.control_tabs.addTab(self._devices_page, QCoreApplication.translate("Nugget", "Devices"))
         if mode in ("presets", "both"):
             self.control_tabs.addTab(self._presets_page, QCoreApplication.translate("Nugget", "Presets"))
@@ -754,7 +783,8 @@ class IOSHomePage(QWidget):
             self.control_tabs.addTab(self._storage_page, QCoreApplication.translate("Nugget", "Device Storage"))
         if current is not None and self.control_tabs.indexOf(current) >= 0:
             self.control_tabs.setCurrentWidget(current)
-        self.control_tabs.setFixedWidth(640 if mode == "both" else 560)
+        width = 640 if mode == "both" else 560
+        self.control_tabs.setFixedWidth(width + (100 if self._developer_page is not None else 0))
         self.control_tabs.blockSignals(False)
 
     def _on_control_tab_changed(self, index):
