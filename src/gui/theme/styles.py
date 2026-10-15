@@ -234,6 +234,12 @@ STYLES = {
         }}
     """,
 
+    "search_clear_button": """
+        QToolButton {{ background: transparent; border: none; border-radius: 8px;
+            padding: 0px; margin: 0px; min-width: 0px; min-height: 0px; }}
+        QToolButton:hover, QToolButton:focus {{ background: {surface_hover}; }}
+        QToolButton:pressed {{ background: {border}; }}
+    """,
     "list_search": """
         QLineEdit {{
             background-color: {bg_secondary}; color: {text_primary};

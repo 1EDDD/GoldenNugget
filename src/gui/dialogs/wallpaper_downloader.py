@@ -18,8 +18,10 @@ import uuid
 from PySide6.QtCore import Qt, QCoreApplication, QTimer, QUrl, QStandardPaths, QByteArray, QSize
 from PySide6.QtGui import QPixmap, QMovie
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
+from src.gui.ios.components import IOSSearchField
+
 from PySide6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QComboBox,
+    QDialog, QVBoxLayout, QHBoxLayout, QLabel, QComboBox,
     QScrollArea, QGridLayout, QPushButton, QWidget, QMessageBox,
     QProgressBar, QFrame,
 )
@@ -211,9 +213,8 @@ class WallpaperDownloaderDialog(QDialog):
         self.category_drp.currentTextChanged.connect(self._on_category_changed)
         top.addWidget(self.category_drp)
 
-        self.search_box = QLineEdit()
+        self.search_box = IOSSearchField()
         self.search_box.setPlaceholderText(QCoreApplication.translate("Nugget", "Search wallpapers..."))
-        self.search_box.setClearButtonEnabled(True)
         self.search_box.textChanged.connect(self._apply_search)
         top.addWidget(self.search_box, 1)
 

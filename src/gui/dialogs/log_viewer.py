@@ -30,12 +30,12 @@ import os
 from PySide6.QtCore import QCoreApplication, QTimer, Qt, QUrl, QT_TRANSLATE_NOOP
 from PySide6.QtGui import QDesktopServices, QFont, QFontDatabase
 from PySide6.QtWidgets import (
-    QComboBox, QDialog, QHBoxLayout, QLabel, QLineEdit, QPlainTextEdit,
+    QComboBox, QDialog, QHBoxLayout, QLabel, QPlainTextEdit,
     QPushButton, QVBoxLayout,
 )
 
 from src.controllers.nugget_logger import get_log_path
-from src.gui.ios.components import _auto_retheme, IOSSwitch
+from src.gui.ios.components import _auto_retheme, IOSSwitch, IOSSearchField
 from src.gui.theme import t
 
 # Newest slice of the log that is ever held in memory. The rotating handler
@@ -164,9 +164,8 @@ class LogViewerDialog(QDialog):
         filters = QHBoxLayout()
         filters.setSpacing(8)
 
-        self._search = QLineEdit(self)
+        self._search = IOSSearchField(self)
         self._search.setPlaceholderText(QCoreApplication.translate("Nugget", "Search log..."))
-        self._search.setClearButtonEnabled(True)
         self._search.textChanged.connect(self._reapply)
         filters.addWidget(self._search, 1)
 

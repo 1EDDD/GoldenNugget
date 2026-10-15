@@ -31,6 +31,8 @@ class IOSSettingsPage(QWidget):
         super().__init__(parent)
         self.window = window
         self.setObjectName("iosContainer")
+        self.setFocusPolicy(Qt.ClickFocus)
+        self._first_show = True
         self.lang_indexes = []
         self.preset_manager = PresetManager()
         self._tm = ColorThemeManager.instance()
@@ -254,6 +256,9 @@ class IOSSettingsPage(QWidget):
     def showEvent(self, event):
         super().showEvent(event)
         self._sync_setting_dependencies()
+        if self._first_show:
+            self._first_show = False
+            self.setFocus(Qt.OtherFocusReason)
 
     def _report_bug(self):
         url = QUrl('https://github.com/GoldenNugget-Team/GoldenNugget/issues/new')
