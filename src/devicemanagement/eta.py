@@ -2,13 +2,15 @@
 
 The device progress callbacks report a monotonically increasing percentage
 (0..100) with no notion of time. ``ProgressEta`` watches that percentage over
-wall-clock time and turns it into a short "minutes:seconds" estimate for the
+wall-clock time and turns it into a short human-readable estimate for the
 UI. It is intentionally stateful and cheap: feed every numeric progress value
 to :meth:`update` and it returns the formatted remaining time (or ``""`` until
 a stable rate is known).
 """
 
 import time
+
+from PySide6.QtCore import QCoreApplication
 
 
 class ProgressEta:
@@ -36,7 +38,7 @@ class ProgressEta:
         self._last_pct = None
 
     def update(self, percent) -> str:
-        """Feed the latest percentage; return "m:ss" remaining or ""."""
+        """Feed the latest percentage; return a readable estimate or ""."""
         if isinstance(percent, bool):
             return ""
         try:
@@ -89,6 +91,13 @@ def _format_duration(seconds: float | None) -> str:
     if seconds is None:
         return ""
     total = max(0, int(round(seconds)))
-    if total >= 3600:
-        return f"{total // 3600}:{(total % 3600) // 60:02d}:{total % 60:02d}"
-    return f"{total // 60}:{total % 60:02d}"
+    parts = []
+    hours, remainder = divmod(total, 3600)
+    minutes, secs = divmod(remainder, 60)
+    if hours:
+        parts.append(QCoreApplication.translate("Nugget", "{0} hr").format(hours))
+    if minutes:
+        parts.append(QCoreApplication.translate("Nugget", "{0} min").format(minutes))
+    if secs or not parts:
+        parts.append(QCoreApplication.translate("Nugget", "{0} sec").format(secs))
+    return " ".join(parts)

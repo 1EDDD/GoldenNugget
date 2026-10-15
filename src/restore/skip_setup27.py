@@ -3,11 +3,17 @@ from __future__ import annotations
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from uuid import uuid4
+import asyncio
 
 from cryptography import x509
 from cryptography.hazmat.primitives.serialization import Encoding
 from pymobiledevice3.ca import create_keybag_file
 from pymobiledevice3.lockdown import create_using_usbmux, LockdownClient
+
+from src.devicemanagement.session import lockdown_session
+from src.exceptions.nugget_exception import NuggetException
+
+from pymobiledevice3.exceptions import ConnectionTerminatedError
 from pymobiledevice3.services.mobile_config import MobileConfigService
 
 # Canonical list of setup panes to mark as skipped. This is the single source of
@@ -153,9 +159,35 @@ def build_cloud_config(existing: dict | None, supervised: bool = False,
 async def skip_all_setup27(ld: LockdownClient, udid: str | None = None,
                            supervised: bool = False,
                            organization_name: str = ""):
-    async with MobileConfigService(lockdown=ld) as mcs:
-        cloud_config = build_cloud_config(
-            await mcs.get_cloud_configuration(),
-            supervised=supervised,
-            organization_name=organization_name)
-        await mcs.set_cloud_configuration(cloud_config)
+    last_error = None
+    for attempt in range(6):
+        try:
+            if attempt == 0:
+                async with MobileConfigService(lockdown=ld) as mcs:
+                    cloud_config = build_cloud_config(
+                        await mcs.get_cloud_configuration(),
+                        supervised=supervised,
+                        organization_name=organization_name)
+                    await mcs.set_cloud_configuration(cloud_config)
+            else:
+                async with lockdown_session(udid) as fresh_ld:
+                    async with MobileConfigService(lockdown=fresh_ld) as mcs:
+                        cloud_config = build_cloud_config(
+                            await mcs.get_cloud_configuration(),
+                            supervised=supervised,
+                            organization_name=organization_name)
+                        await mcs.set_cloud_configuration(cloud_config)
+            return
+        except (ConnectionTerminatedError, ConnectionError, OSError,
+                asyncio.TimeoutError) as error:
+            last_error = error
+            if attempt == 5 or not udid:
+                break
+            await asyncio.sleep(min(2 + attempt * 3, 15))
+    raise NuggetException(
+        "The restore completed, but the device disconnected while GoldenNugget "
+        "was configuring Setup Assistant. Keep the device connected and retry "
+        "the setup step after it finishes reconnecting. The protective backup "
+        "is preserved.",
+        detailed_text=f"MobileConfigService connection closed: {last_error!r}",
+    ) from last_error

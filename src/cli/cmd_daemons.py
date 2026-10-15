@@ -85,10 +85,6 @@ def add_parser(subp):
         p.add_argument("--no-save", action="store_true")
         p.set_defaults(func=_run_master, state=(state == "on"))
 
-    p = sub.add_parser("screen-time", help="Toggle the ScreenTimeAgent plist clear")
-    p.add_argument("state", choices=["on", "off"])
-    p.add_argument("--no-save", action="store_true")
-    p.set_defaults(func=_run_screen_time)
     return parser
 
 
@@ -165,21 +161,6 @@ def _run_master(args):
     seed_from_autosave()
     _daemons().set_enabled(args.state)
     print("daemons master:", "ON" if args.state else "off")
-    _save_if(args)
-    return 0
-
-
-def _run_screen_time(args):
-    from src.cli.common import load_core_tweaks, resolve_tweak_id, seed_from_autosave
-    load_core_tweaks()
-    seed_from_autosave()
-    tid = resolve_tweak_id("ClearScreenTimeAgentPlist")
-    screen = tweaks.get(tid)
-    if screen is None:
-        print("ERROR: screen-time tweak unavailable.", file=sys.stderr)
-        return 1
-    screen.set_enabled(args.state == "on")
-    print("screen-time:", args.state)
     _save_if(args)
     return 0
 

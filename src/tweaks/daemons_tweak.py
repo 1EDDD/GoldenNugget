@@ -1,11 +1,8 @@
 from enum import Enum
 
 
-# Daemons that must never be disabled — disabling them bootloops the device.
-# Kept empty by design; entries are removed from the codebase entirely rather
-# than blocked at runtime. Every daemon listed in the Daemon enum is considered
-# interface-available and can be toggled on/off freely.
-DANGEROUS_DAEMONS: set["Daemon"] = set()  # filled below, after the class definition
+# Daemon controls remain user-selectable; keep this empty for compatibility
+# with the shared tweak loader's protected-key interface.
 DANGEROUS_KEYS = frozenset()
 
 class Daemon(Enum):
@@ -30,28 +27,16 @@ class Daemon(Enum):
         "com.apple.ReportCrash.Jetsam",
         "com.apple.ReportMemoryException",
         "com.apple.OTACrashCopier",
-        "com.apple.analyticsd",
-        "com.apple.wifianalyticsd",
         "com.apple.aslmanager",
         "com.apple.coresymbolicationd",
         "com.apple.crash_mover",
         "com.apple.crashreportcopymobile",
         "com.apple.DumpBasebandCrash",
         "com.apple.DumpPanic",
-        "com.apple.logd",
-        "com.apple.logd.admin",
-        "com.apple.logd.events",
-        "com.apple.logd.watchdog",
-        "com.apple.logd_helper",
-        "com.apple.logd_reporter",
-        "com.apple.logd_reporter.report_statistics",
-        "com.apple.system.logger",
         "com.apple.hangreporter",
         "com.apple.hangtracerd",
         "com.apple.spindump",
         "com.apple.tailspind",
-        "com.apple.rtcreportingd",
-        "com.apple.syslogd",
         "com.apple.signpost.signpost_reporter",
         "com.apple.pluginkit.pkreporter",
         "com.apple.ProxiedCrashCopier",
@@ -148,6 +133,8 @@ class Daemon(Enum):
         "com.apple.analyticsd.admin",
         "com.apple.analyticsd.events"
     ]
+    AudioAnalytics = ["com.apple.audioanalyticsd"]
+    EcosystemAnalytics = ["com.apple.ecosystemanalyticsd"]
     CallAnalytics = ["com.apple.rtcreportingd"]
     CoreDuet = ["com.apple.coreduetd"]
     Insight = ["com.apple.insightd"]
@@ -166,16 +153,13 @@ class Daemon(Enum):
     Sociald = ["com.apple.sociald"]
 
 
-# Danger list fills in now that the class is defined.
-DANGEROUS_DAEMONS: set["Daemon"] = set()
-DANGEROUS_KEYS = frozenset(k for d in DANGEROUS_DAEMONS for k in d.value)
-
 # Safe one-tap analytics/telemetry disable set — the "Recommended" switch in
 # the daemons UI. Analytics/tracking/logging only; verified safe to disable.
 RECOMMENDED_ANALYTICS = [
-    Daemon.CrashReports, Daemon.Diagnostics, Daemon.UsageTrackingAgent,
+    Daemon.Diagnostics, Daemon.UsageTrackingAgent,
     Daemon.AppleAds, Daemon.FollowUp, Daemon.Feedback, Daemon.Shazam,
     Daemon.SettingsStats, Daemon.WifiAnalytics, Daemon.AnalyticsHelper,
+    Daemon.AudioAnalytics, Daemon.EcosystemAnalytics,
     Daemon.CallAnalytics, Daemon.CoreDuet, Daemon.Insight, Daemon.Metrics,
     Daemon.MediaExperience, Daemon.Symptomsd, Daemon.StatisticalDiagnostic,
     Daemon.WirelessDiagnostics, Daemon.DuetHeuristic, Daemon.DuetExpert,
@@ -183,10 +167,8 @@ RECOMMENDED_ANALYTICS = [
 ]
 
 # Interface-visible daemons: the switches on the Daemons page plus the
-# one-tap Recommended set. Every OTHER enum member (e.g. AskPermissions,
-# Commerce, News, StatusKit, ...) has no UI switch — disabling it broke
-# whole apps on iOS 26.5 — so its keys must never reach the tweak value,
-# a stored preset, or the apply pass.
+# one-tap Recommended set. Any enum member without a visible control is
+# excluded from stored presets and the apply pass.
 INTERFACE_DAEMONS: frozenset["Daemon"] = frozenset({
     # main "Disable" section (src/gui/ios/daemons.py)
     Daemon.thermalmonitord, Daemon.OTA, Daemon.UsageTrackingAgent,
@@ -195,8 +177,15 @@ INTERFACE_DAEMONS: frozenset["Daemon"] = frozenset({
     Daemon.AssistiveTouch, Daemon.iCloud, Daemon.InternetTethering,
     Daemon.PassBook, Daemon.Spotlight, Daemon.NanoTimeKit,
     Daemon.VoiceControl, Daemon.FollowUp, Daemon.Location,
+    Daemon.News, Daemon.FamilySharing, Daemon.VideoSubscriptions,
+    Daemon.WebBookmarks, Daemon.AppleWatchNano, Daemon.SiriServices,
+    Daemon.WifiLogging, Daemon.Maps, Daemon.SafariSuggestions,
+    Daemon.Reminders, Daemon.AirPlay, Daemon.GameKitService,
+    Daemon.Sidecar, Daemon.SpeechRecognition, Daemon.Translate,
+    Daemon.MockLocation, Daemon.DeviceCheck,
     # analytics / telemetry section
-    Daemon.WifiAnalytics, Daemon.AnalyticsHelper, Daemon.CallAnalytics,
+    Daemon.CrashReports, Daemon.WifiAnalytics, Daemon.AnalyticsHelper, Daemon.CallAnalytics,
+    Daemon.AudioAnalytics, Daemon.EcosystemAnalytics,
     Daemon.CoreDuet, Daemon.Insight, Daemon.Metrics, Daemon.MediaExperience,
     Daemon.Symptomsd, Daemon.StatisticalDiagnostic, Daemon.WirelessDiagnostics,
     Daemon.DuetHeuristic, Daemon.DuetExpert, Daemon.Decisiond, Daemon.Triald,

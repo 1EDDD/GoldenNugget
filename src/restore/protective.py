@@ -45,7 +45,9 @@ import pymobiledevice3.exceptions as _pm3_exc
 import pymobiledevice3.service_connection as _sc
 from pymobiledevice3.lockdown import LockdownClient
 from pymobiledevice3.exceptions import NotEnoughDiskSpaceError
-from pymobiledevice3.services.mobilebackup2 import Mobilebackup2Service
+from pymobiledevice3.services.mobilebackup2 import (
+    Mobilebackup2Service, NP_LOCAL_AUTH_PRESENTED, NP_LOCAL_AUTH_DISMISSED,
+)
 
 from PySide6.QtCore import QCoreApplication
 
@@ -639,9 +641,19 @@ class ProtectiveBackupService(Mobilebackup2Service):
       iOS 27+ devices can take a while to spin up mobilebackup2.
     """
 
-    def __init__(self, lockdown, include_posterboard: bool = False):
+    def __init__(self, lockdown, include_posterboard: bool = False, authentication_callback=None):
         super().__init__(lockdown)
         self.include_posterboard = include_posterboard
+        self.authentication_callback = authentication_callback
+
+    def _log_backup_notification(self, event):
+        super()._log_backup_notification(event)
+        name = event.get("Name")
+        if self.authentication_callback is not None:
+            if name == NP_LOCAL_AUTH_PRESENTED:
+                self.authentication_callback(True)
+            elif name == NP_LOCAL_AUTH_DISMISSED:
+                self.authentication_callback(False)
 
     async def connect(self, max_retries: int = 5):
         from src.utils.async_retry import async_retry
@@ -732,6 +744,24 @@ async def perform_protective_backup(
     media_root: str = None,
     afc_media_diff: bool = False,
 ) -> bool:
+    report_progress = progress_callback
+    authentication_presented = False
+
+    def progress_callback(progress):
+        if report_progress is not None and not authentication_presented:
+            report_progress(progress)
+
+    def authentication_changed(presented):
+        nonlocal authentication_presented
+        authentication_presented = presented
+        if report_progress is not None:
+            report_progress(QCoreApplication.translate(
+                "Nugget",
+                "🔐 iOS authentication prompt detected. Check your iPhone and enter its passcode if requested to continue the protective backup."
+                if presented else
+                "iOS authentication prompt closed. Waiting for protective backup progress…"))
+
+    await check_disk_space_for_backup(lockdown_client, path=backup_root)
     if not incremental_ok:
         Path(backup_root).mkdir(parents=True, exist_ok=True)
 
@@ -766,9 +796,35 @@ async def perform_protective_backup(
 
     _pb_names_to_db: list = []
     _totals = {"seen": 0, "kept": 0, "containers": 0}
+    _last_category = [None]
+
+    def _category_for(name: str) -> str:
+        low = name.lower()
+        if "keychaindomain" in low:
+            return "🔐 Keychain"
+        if "messagesdomain" in low:
+            return "💬 Messages"
+        if "camerarolldomain" in low or "mediadomain" in low:
+            return "📷 Photos and videos"
+        if "accounts" in low or "appleaccount" in low:
+            return "👤 Apple account"
+        if "springboard" in low or "home screen" in low:
+            return "📱 Home screen"
+        if "shortcuts" in low:
+            return "⚡ Shortcuts"
+        if "poster" in low:
+            return "🖼️ Wallpaper data"
+        if "preferences" in low or "configurationprofiles" in low:
+            return "⚙️ Settings"
+        return "📦 Device data"
 
     def _filter_callback(backup_file):
         name = backup_file.device_name or ""
+        category = _category_for(name)
+        if category != _last_category[0]:
+            _last_category[0] = category
+            if progress_callback:
+                progress_callback(category + "…")
         keep = is_protective_device_file(
             name,
             include_photos=include_photos,
@@ -787,7 +843,9 @@ async def perform_protective_backup(
 
     is_encrypted = False
     try:
-        async with ProtectiveBackupService(lockdown_client, include_posterboard=include_posterboard) as mb:
+        async with ProtectiveBackupService(
+                lockdown_client, include_posterboard=include_posterboard,
+                authentication_callback=authentication_changed) as mb:
             try:
                 is_encrypted = await mb.get_will_encrypt()
             except Exception:
@@ -808,7 +866,12 @@ async def perform_protective_backup(
                                 progress_callback=progress_callback,
                                 filter_callback=_filter_callback)
             except NotEnoughDiskSpaceError:
-                log_warn("Device sent disk space purge request — ignoring, backup data is preserved")
+                log_warn("Device reported insufficient space during backup; refusing to proceed with a partial backup")
+                if progress_callback:
+                    progress_callback(QCoreApplication.translate(
+                        "Nugget", "⚠️ The device ran out of storage during backup. Free space on the device and try again; tweaks were not applied."))
+                raise NuggetException(QCoreApplication.translate(
+                    "Nugget", "The device ran out of storage during backup. Free space on the device and try again. Tweaks were not applied."))
     except Exception:
         if afc_media_task is not None:
             # The backup failed — the media pull (still uploading user data) is

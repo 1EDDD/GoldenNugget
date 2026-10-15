@@ -5,6 +5,25 @@ import plistlib
 import pymobiledevice3.exceptions as pm3_exc
 
 
+def is_find_my_error(exc: BaseException) -> bool:
+    """Recognize explicit Find My restore errors, including wrapped causes."""
+    pending = [exc]
+    inspected = set()
+    while pending:
+        current = pending.pop()
+        if id(current) in inspected:
+            continue
+        inspected.add(id(current))
+        if "find my" in str(current).casefold():
+            return True
+        pending.extend(cause for cause in
+                       (current.__cause__, current.__context__)
+                       if cause is not None)
+        pending.extend(arg for arg in current.args
+                       if isinstance(arg, BaseException))
+    return False
+
+
 def is_device_locked_error(exc: Exception) -> bool:
     """Check if an exception indicates the device is locked (ErrorCode 208)."""
     msg = str(exc)
@@ -40,6 +59,8 @@ def is_device_lock_required_error(exc: Exception) -> bool:
 
 def is_transient_restore_error(error) -> bool:
     """True for Phase 3 errors that mean 'device still booting, try again'."""
+    if is_find_my_error(error):
+        return False
     name = type(error).__name__
     msg = str(error)
     # ssl.SSLError subclasses OSError, so this covers SSL drops too.

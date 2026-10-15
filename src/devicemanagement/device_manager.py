@@ -1,6 +1,7 @@
 import asyncio
 import os.path
 import plistlib
+import re
 import shutil
 import sys
 import traceback
@@ -21,7 +22,10 @@ import pymobiledevice3.service_connection as _sc
 
 
 from src.devicemanagement.session import lockdown_session
-from src.exceptions.device_errors import is_device_locked_error as _is_device_locked_error
+from src.exceptions.device_errors import (
+    is_device_locked_error as _is_device_locked_error,
+    is_find_my_error,
+)
 from src.controllers.hotload import HotLoad
 from src.restore.skip_setup27 import build_cloud_config
 
@@ -34,6 +38,7 @@ _sc.DEFAULT_SSL_HANDSHAKE_TIMEOUT = 60
 MAX_TENDIES_PER_RESTORE = 5
 
 from src.devicemanagement.constants import Device, Version, is_supported_by_fork
+from src.devicemanagement.device_capabilities import has_dynamic_island
 from src.devicemanagement.data_singleton import DataSingleton
 from src.devicemanagement.eta import ProgressEta
 from .preference_manager import PreferenceManager
@@ -45,6 +50,7 @@ from src.controllers.path_handler import fix_windows_path
 from src.exceptions.nugget_exception import NuggetException
 
 from src.tweaks.tweaks import tweaks, TweakID, BasicPlistTweak, AdvancedPlistTweak, NullifyFileTweak, StatusBarTweak
+from src.tweaks.tweak_classes import ReversibleBooleanPlistTweak
 from src.tweaks.status_bar.statusbar_archive import build_reset_archive
 from src.tweaks.posterboard.posterboard_tweak import PosterboardTweak
 from src.tweaks.posterboard.template_options.templates_tweak import TemplatesTweak
@@ -71,9 +77,10 @@ def get_files_list_str(files_list: list[FileToRestore] = None) -> str:
     return files_str
 
 def show_apply_error(e: Exception, update_label=lambda x: None, files_list: list[FileToRestore] = None):
-    print(traceback.format_exc())
+    traceback_text = "".join(traceback.format_exception(type(e), e, e.__traceback__))
+    print(traceback_text)
     update_label("Failed to restore")
-    if "Find My" in str(e):
+    if is_find_my_error(e):
         return ApplyAlertMessage(QCoreApplication.tr("Find My must be disabled in order to use this tool."),
                        detailed_txt=QCoreApplication.tr("Disable Find My from Settings (Settings -> [Your Name] -> Find My) and then try again."))
     elif "Encrypted Backup MDM" in str(e):
@@ -85,9 +92,20 @@ def show_apply_error(e: Exception, update_label=lambda x: None, files_list: list
         return ApplyAlertMessage(QCoreApplication.tr("Device is password protected! You must trust the computer on your device."),
                        detailed_txt=QCoreApplication.tr("Unlock your device. On the popup, click \"Trust\", enter your password, then try again."))
     elif isinstance(e, ConnectionTerminatedError):
-        files_str: str = get_files_list_str(files_list)
-        return ApplyAlertMessage(QCoreApplication.tr("Device failed in sending files. The file list is possibly corrupted or has duplicates. Click Show Details for more info."),
-                                 detailed_txt=files_str + "TRACEBACK:\n\n" + str(traceback.format_exc()))
+        files_str = get_files_list_str(files_list)
+        is_setup_config = "skip_setup27.py" in traceback_text
+        backup_match = re.search(
+            r"Protective backup kept at:\s*(.+)", traceback_text)
+        backup_path = backup_match.group(1).strip() if backup_match else None
+        if is_setup_config:
+            return ApplyAlertMessage(
+                QCoreApplication.tr("The restore finished, but the device disconnected while configuring Setup Assistant."),
+                detailed_txt="TRACEBACK:\n\n" + traceback_text,
+                backup_path=backup_path)
+        return ApplyAlertMessage(
+            QCoreApplication.tr("The device disconnected during file transfer. This does not by itself mean the file list is corrupted. Click Show Details for more info."),
+            detailed_txt=files_str + "TRACEBACK:\n\n" + traceback_text,
+            backup_path=backup_path)
     elif isinstance(e, AccessDeniedError):
         return ApplyAlertMessage(QCoreApplication.tr("Access denied while sending files."), detailed_txt="Try running the program with sudo.")
     elif isinstance(e, InvalidServiceError):
@@ -102,7 +120,6 @@ def show_apply_error(e: Exception, update_label=lambda x: None, files_list: list
         backup_path = None
         error_str = str(e)
         if "protective backup kept at:" in error_str:
-            import re
             match = re.search(r'protective backup kept at:\s*(\S+)', error_str)
             if match:
                 backup_path = match.group(1)
@@ -159,6 +176,8 @@ class DeviceManager:
         try:
             asyncio.run(asyncio.wait_for(self._get_devices(settings, show_alert), timeout=60))
         except asyncio.TimeoutError:
+            self.devices.clear()
+            self.set_current_device(index=None)
             show_alert(ApplyAlertMessage(
                 txt=QCoreApplication.tr("Getting the device list timed out."),
                 detailed_txt=QCoreApplication.tr(
@@ -170,10 +189,15 @@ class DeviceManager:
             self.pref_manager.settings = settings
             return
         
+        # Keep the selected device stable across a rescan, but only if that
+        # same UDID is present in the newly enumerated device list.
+        selected_udid = self.get_current_device_udid()
         self.devices.clear()
         # handle errors when failing to get connected devices
         try:
-            connected_devices = await usbmux.list_devices()
+            connected_devices = [
+                device for device in await usbmux.list_devices() if device.is_usb
+            ]
         except Exception:
             sysmsg = QCoreApplication.tr("If you are on Linux, make sure you have usbmuxd and libimobiledevice installed.")
             if os.name == 'nt':
@@ -184,7 +208,11 @@ class DeviceManager:
             self.set_current_device(index=None)
             return
         # Connect via usbmuxd
-        for device in connected_devices:
+        seen_udids = set()
+        for device in sorted(connected_devices, key=lambda item: not item.is_usb):
+            normalized_udid = device.serial.replace("-", "").casefold()
+            if normalized_udid in seen_udids:
+                continue
             try:
                 async with lockdown_session(device.serial) as ld:
                     # Check backup encryption status if experimental option not enabled
@@ -248,6 +276,7 @@ class DeviceManager:
                             locale=locale,
                         )
                     self.devices.append(dev)
+                    seen_udids.add(normalized_udid)
             except PasswordRequiredError as e:
                 show_alert(ApplyAlertMessage(txt=QCoreApplication.tr("Device is password protected! You must trust the computer on your device.\n\nUnlock your device. On the popup, click \"Trust\", enter your password, then try again.")))
             except MuxException as e:
@@ -260,7 +289,12 @@ class DeviceManager:
                 show_alert(ApplyAlertMessage(txt=f"{type(e).__name__}: {repr(e)}", detailed_txt=str(traceback.format_exc())))
         
         if len(self.devices) > 0:
-            self.set_current_device(index=0)
+            selected_index = next(
+                (index for index, device in enumerate(self.devices)
+                 if device.udid == selected_udid),
+                0,
+            )
+            self.set_current_device(index=selected_index)
         else:
             self.set_current_device(index=None)
 
@@ -445,12 +479,16 @@ class DeviceManager:
             return
         prog = ""
         if progress != None:
-            prog = f" ({progress:6.1f}% )"
+            prog = f" ({round(progress):d}%)"
             remaining = self._restore_eta.update(progress)
-            if remaining:
-                prog += " " + QCoreApplication.tr("ETA {0}").format(remaining)
-        self.update_label(QCoreApplication.tr("Restoring to device...{0}{1}").format(prog, self.do_not_unplug))
-    def _backup_progress(self, update_label):
+        else:
+            remaining = ""
+        label = QCoreApplication.tr("Restoring to device...{0}{1}").format(
+            prog, self.do_not_unplug)
+        if remaining:
+            label += "\n" + QCoreApplication.tr("⏱ Time Left: {0}").format(remaining)
+        self.update_label(label)
+    def _backup_progress(self, update_label, backup_path=None):
         """Progress callback for the pre-restore device backups.
 
         Unlike ``progress_callback`` it does not depend on ``self.update_label``
@@ -459,17 +497,40 @@ class DeviceManager:
         that is not a number is dropped so the bar never sees garbage.
         """
         eta = ProgressEta()
+        current_stage = [QCoreApplication.tr("Backing up device data...")]
+        last_space_check = [0.0]
+        warned_low_space = [False]
+        low_space_note = [""]
 
         def _cb(progress):
             if isinstance(progress, str):
+                current_stage[0] = progress
                 update_label(progress)
                 return
             if isinstance(progress, bool) or not isinstance(progress, (int, float)):
                 return
-            label = QCoreApplication.tr("Backing up device... ({0:.1f}%)").format(progress)
+            label = QCoreApplication.tr("{0} ({1}%)").format(
+                current_stage[0], round(progress))
+            if backup_path:
+                import shutil
+                import time
+                now = time.monotonic()
+                if now - last_space_check[0] >= 5:
+                    last_space_check[0] = now
+                    try:
+                        free = shutil.disk_usage(backup_path).free
+                        from src.restore.protective import _min_free_disk_bytes
+                        if free < _min_free_disk_bytes() and not warned_low_space[0]:
+                            warned_low_space[0] = True
+                            low_space_note[0] = QCoreApplication.tr(
+                                "⚠️ Low computer storage: {0:.1f} GB free. Free space now; the backup may fail if storage runs out.").format(free / (1024 ** 3))
+                    except OSError:
+                        pass
             remaining = eta.update(progress)
             if remaining:
-                label += " " + QCoreApplication.tr("ETA {0}").format(remaining)
+                label += "\n" + QCoreApplication.tr("⏱ Time Left: {0}").format(remaining)
+            if low_space_note[0]:
+                label += "\n" + low_space_note[0]
             update_label(label)
         return _cb
     def apply_changes(self, update_label=lambda x: None, show_alert=lambda x: None, prompt_password=None, prompt_choice=None):
@@ -758,7 +819,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             # live encryption state — one less round-trip before the backup.
             try:
                 is_encrypted = await perform_protective_backup(
-                    lc, backup_root, progress_callback=self._backup_progress(update_label),
+                    lc, backup_root, progress_callback=self._backup_progress(update_label, backup_root),
                     include_photos=True, include_posterboard=needs_posterboard,
                     include_keychain=None, include_afc_media=use_afc_media)
             except Exception:
@@ -832,7 +893,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             else:
                 update_label(QCoreApplication.tr("Backing up device (cached)..."))
                 master_root = await cache.refresh(
-                    lc, progress_callback=self._backup_progress(update_label),
+                    lc, progress_callback=self._backup_progress(update_label, str(cache.master_root)),
                     include_photos=True, include_posterboard=needs_posterboard,
                     include_keychain=encrypted,
                     include_afc_media=use_afc_media)
@@ -875,7 +936,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                                           encrypted=encrypted)
             update_label(QCoreApplication.tr("Updating backup cache..."))
             master_root = await cache.refresh(
-                lc, progress_callback=self._backup_progress(update_label),
+                lc, progress_callback=self._backup_progress(update_label, str(cache.master_root)),
                 include_photos=True, include_posterboard=False,
                 include_keychain=encrypted,
                 include_afc_media=use_afc_media)
@@ -965,6 +1026,10 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             # set the plist keys
             for tweak_name in tweaks:
                 tweak = tweaks[tweak_name]
+                if (tweak_name in (TweakID.SBAlwaysShowSystemApertureInSnapshots,
+                                   TweakID.HideDICompletely)
+                        and not has_dynamic_island(hotload_model)):
+                    continue
                 # HotLoad: never apply tweaks flagged as dangerous/broken for
                 # this device / iOS version (kill switch off -> no rules match),
                 # and never apply tweaks of a hidden feature.
@@ -973,6 +1038,10 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                                             device_version=hotload_version,
                                             device_model=hotload_model) is not None):
                     hotload_skipped.append(tweak_name)
+                    continue
+                if isinstance(tweak, ReversibleBooleanPlistTweak):
+                    basic_plists = tweak.apply_tweak(basic_plists)
+                    basic_plists_ownership[tweak.file_location] = tweak.owner
                     continue
                 if isinstance(tweak, BasicPlistTweak) or isinstance(tweak, AdvancedPlistTweak):
                     basic_plists = tweak.apply_tweak(basic_plists)
@@ -1023,6 +1092,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
 
             # Generate backup
             update_label(QCoreApplication.tr("Generating backup..."))
+            is_ios27 = Version(self.get_current_device_version()) >= Version("27.0")
             if len(flag_plist) > 0:
                 self.concat_file(
                     contents=plistlib.dumps(flag_plist),
@@ -1042,6 +1112,14 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     files_to_restore=files_to_restore,
                     owner=ownership, group=ownership
                 )
+                app_pref = managed_pref_target(location.value) if is_ios27 else None
+                if app_pref and location != FileLocation.globalPreferences:
+                    self.concat_file(
+                        contents=plistlib.dumps(plist),
+                        path=f"{HOME_PREFIX}{app_pref}",
+                        files_to_restore=files_to_restore,
+                        owner=501, group=501
+                    )
             # iOS 27+: Also write .GlobalPreferences.plist to HomeDomain so
             # tweaks that depend on it survive the Phase 3 protective backup restore.
             # ManagedPreferencesDomain is the primary location; HomeDomain is a

@@ -56,9 +56,9 @@ check("no estimate before min_elapsed", e.update(10) == "")
 # 2. Linear progress yields a proportional estimate (10% at t=0, 20% at t=5
 #    -> 2%/s over the window -> 80% left -> 40s).
 clock.advance(5)
-check("linear estimate (20% -> 0:40)", e.update(20) == "0:40")
+check("linear estimate (20% -> 40 sec)", e.update(20) == "40 sec")
 clock.advance(5)
-check("progressed estimate (40% -> 0:20)", e.update(40) == "0:20")
+check("progressed estimate (40% -> 20 sec)", e.update(40) == "20 sec")
 
 # 3. Completion short-circuits to zero.
 check("100% reports 0:00", new_estimator().update(100) == "0:00")
@@ -69,16 +69,16 @@ e.update(50)
 clock.advance(10)
 check("drop resets the estimator", e.update(5) == "")
 clock.advance(5)
-check("new baseline produces a fresh estimate", e.update(10) == "1:30")
+check("new baseline produces a fresh estimate", e.update(10) == "1 min 30 sec")
 
 # 5. A stalled window (progress pauses but samples keep arriving) falls back
 #    to the overall rate instead of dividing by zero.
 e = new_estimator(window_seconds=4.0, min_elapsed=2.0)
 e.update(10)
 clock.advance(3)
-check("mid-run estimate", e.update(50) == "0:04")
+check("mid-run estimate", e.update(50) == "4 sec")
 clock.advance(3)
-check("stall falls back to overall rate", e.update(50) == "0:06")
+check("stall falls back to overall rate", e.update(50) == "6 sec")
 
 # 6. A gap longer than the window (reboot wait) restarts measurement instead
 #    of extrapolating across the dead time.
@@ -97,10 +97,10 @@ check("None ignored", new_estimator().update(None) == "")
 check("bool ignored", new_estimator().update(True) == "")
 
 # 8. Duration formatting.
-check("seconds format", _format_duration(20) == "0:20")
-check("minute format", _format_duration(125) == "2:05")
-check("hour format", _format_duration(3725) == "1:02:05")
-check("negative clamps", _format_duration(-3) == "0:00")
+check("seconds format", _format_duration(20) == "20 sec")
+check("minute format", _format_duration(125) == "2 min 5 sec")
+check("hour format", _format_duration(3725) == "1 hr 2 min 5 sec")
+check("negative clamps", _format_duration(-3) == "0 sec")
 check("None -> empty", _format_duration(None) == "")
 
 print(f"\nAll {PASS} ETA checks passed.")

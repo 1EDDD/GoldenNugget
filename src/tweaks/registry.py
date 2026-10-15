@@ -53,6 +53,7 @@ class TweakSpec:
     max_version: Optional[str] = None
     iphone_only: bool = False
     ipad_only: bool = False
+    requires_dynamic_island: bool = False
     factory: Optional[Callable[[], object]] = None  # overrides BasicPlistTweak
     description: Optional[str] = None  # detailed "what it does" tooltip
     disabled: bool = False  # True = tweak is cut off: never loaded, never applied, never rendered
@@ -97,6 +98,11 @@ def _usol(member: TweakID, title: str, kind: Kind = Kind.SWITCH, value=True, *,
               description=description, kind=kind, value=value,
               min_value=min_value, max_value=max_value, step=step,
               min_version="27.0")
+
+
+def _reversible_bool(location, key):
+    from .tweak_classes import ReversibleBooleanPlistTweak
+    return ReversibleBooleanPlistTweak(location, key)
 
 
 GP = FileLocation.globalPreferences
@@ -541,11 +547,12 @@ SPECS: tuple[TweakSpec, ...] = (
        min_value=0, max_value=600,
        description=QT_TRANSLATE_NOOP("Nugget", "Sets how many minutes of inactivity before the Lock Screen turns the display off. 0 = never auto-lock.")),
     _t(TweakID.SBAlwaysShowSystemApertureInSnapshots, Section.SPRINGBOARD, "Show Dynamic Island in Screenshots",
-       FileLocation.springboard, "SBAlwaysShowSystemApertureInSnapshots", min_version="17.4", iphone_only=True,
+       FileLocation.springboard, "SBAlwaysShowSystemApertureInSnapshots", min_version="17.4", iphone_only=True, requires_dynamic_island=True,
        description=QT_TRANSLATE_NOOP("Nugget", "Forces the Dynamic Island to appear in screenshots instead of being hidden or shrunk while the screenshot is taken.")),
-    _t(TweakID.HideDICompletely, Section.SPRINGBOARD, "Hide Dynamic Island Completely",
-       FileLocation.springboard, "SBSuppressDynamicIslandCompletely", min_version="17.4", iphone_only=True,
-       description=QT_TRANSLATE_NOOP("Nugget", "Suppresses the Dynamic Island cutout completely so it is never drawn. Can make the screen look odd on devices with a pill cutout.")),
+    _t(TweakID.HideDICompletely, Section.SPRINGBOARD, "Disable Dynamic Island",
+       FileLocation.springboard, "SBSuppressDynamicIslandCompletely", factory=lambda: _reversible_bool(FileLocation.springboard, "SBSuppressDynamicIslandCompletely"),
+       min_version="17.4", iphone_only=True, requires_dynamic_island=True,
+       description=QT_TRANSLATE_NOOP("Nugget", "Disables the Dynamic Island on supported hardware. The setting is written as both on and off so you can undo it later.")),
     _t(TweakID.SBShowAuthenticationEngineeringUI, Section.SPRINGBOARD, "Show Red/Green Authentication Line on Lock Screen",
        FileLocation.springboard, "SBShowAuthenticationEngineeringUI",
        description=QT_TRANSLATE_NOOP("Nugget", "Shows a red/green authentication progress indicator on the Lock Screen while Face ID or passcode checks are running (engineering debug UI).")),
