@@ -75,6 +75,18 @@ class BasicPlistTweak(Tweak):
         else:
             other_tweaks[self.file_location] = {self.key: self.value}
         return other_tweaks
+
+
+class ReversibleBooleanPlistTweak(BasicPlistTweak):
+    """Write both states so disabling a previously applied key takes effect."""
+
+    def apply_tweak(self, other_tweaks: dict, force_disabled: bool = False) -> dict:
+        target = other_tweaks.get(self.file_location)
+        if not isinstance(target, dict):
+            target = {}
+            other_tweaks[self.file_location] = target
+        target[self.key] = False if force_disabled else bool(self.enabled)
+        return other_tweaks
     
 class CompanionKeyTweak(BasicPlistTweak):
     """A plist tweak that writes companion keys alongside its main key.

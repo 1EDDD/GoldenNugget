@@ -72,15 +72,23 @@ def main():
     rows = content._rows
 
     check("rows were collected into the animated block",
-          len(rows._rows) == len(content.daemon_cards) + 2,
+          len(rows._rows) == len(content.daemon_cards) + 3
+          + (1 if content._screen_time_card is not None else 0),
           f"{len(rows._rows)} widgets, {len(content.daemon_cards)} cards")
     check("the Recommended shortcut unrolls with the list, not before it",
           rows._rows[0] is content.recommended_card
-          and rows._rows[-1] is content.daemon_cards[-1])
+          and content._screen_time_group in rows._rows)
     check("block is folded away while modifications are off",
           not rows.isVisible() and rows.maximumHeight() == 0)
     check("Recommended is folded away with the list",
           not content.recommended_card.isVisibleTo(content))
+    check("all dependent switches are disabled with the master",
+          not rows.isEnabled() and not content.recommended_switch.isEnabled()
+          and all(not switch.isEnabled() for _, switch in content.daemon_switches))
+    before = dict(daemons_tweak.value)
+    content._on_daemon_toggled(content.daemon_switches[0][0], True)
+    check("inactive child handlers cannot enable the master or change values",
+          not daemons_tweak.enabled and daemons_tweak.value == before)
     check("no opacity effect while folded away", rows.graphicsEffect() is None)
     check("no row ever carries its own effect (one per block, not per row)",
           all(r.graphicsEffect() is None for r in rows._rows))

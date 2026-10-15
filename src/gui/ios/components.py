@@ -1,20 +1,21 @@
 from PySide6.QtCore import (
     Qt, QCoreApplication, Signal as pyqtSignal, QSize, QRectF,
-    QPropertyAnimation, QEasingCurve, Property,
+    QPropertyAnimation, QEasingCurve, Property, QEvent,
 )
 from PySide6.QtGui import QPainter, QColor
 from PySide6.QtWidgets import (
     QWidget, QHBoxLayout, QLabel, QPushButton, QFrame,
     QSizePolicy, QDialog, QDialogButtonBox, QLineEdit, QSpinBox,
-    QDoubleSpinBox, QVBoxLayout,
+    QDoubleSpinBox, QVBoxLayout, QScrollArea, QButtonGroup,
 )
 
-from src.gui.theme import t, ColorThemeManager
+from src.gui.theme import t, ColorThemeManager, theme_pixmap
+from src.gui.theme.theme_manager import connect_visible_theme
 
 
 def _auto_retheme(widget):
     """Connect a widget's ``_retheme`` to the global theme_changed signal."""
-    ColorThemeManager.instance().theme_changed.connect(widget._retheme)
+    connect_visible_theme(widget)
 
 
 class TextInputDialog(QDialog):
@@ -32,6 +33,7 @@ class TextInputDialog(QDialog):
 
         self.input = QLineEdit()
         self.input.setText(current_value)
+        self.input.setAccessibleName(title)
         self.input.setPlaceholderText(QCoreApplication.translate("TextInputDialog", "Enter value..."))
         layout.addWidget(self.input)
 
@@ -43,6 +45,10 @@ class TextInputDialog(QDialog):
 
     def _retheme(self):
         self.setStyleSheet(t("text_input_dialog"))
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.input.setFocus(Qt.OtherFocusReason)
 
     def get_value(self) -> str:
         return self.input.text()
@@ -152,9 +158,8 @@ class IOSSummaryDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.setModal(True)
-        self.setMinimumWidth(380)
+        self.setMinimumWidth(560)
         self.setMinimumHeight(140)
-        self._retheme()
         _auto_retheme(self)
 
         layout = QVBoxLayout(self)
@@ -164,13 +169,30 @@ class IOSSummaryDialog(QDialog):
         title_lbl = QLabel(title, self)
         title_lbl.setObjectName("confirmTitle")
         title_lbl.setWordWrap(True)
-        layout.addWidget(title_lbl)
+        header = QHBoxLayout()
+        self._summary_icon = QLabel(self)
+        self._summary_icon.setFixedSize(36, 36)
+        header.addWidget(self._summary_icon)
+        header.addWidget(title_lbl, 1)
+        layout.addLayout(header)
 
+        scroll = QScrollArea(self)
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setStyleSheet("background: transparent; border: none;")
+        summary = IOSCard()
+        summary_layout = QVBoxLayout(summary)
+        summary_layout.setContentsMargins(16, 16, 16, 16)
+        summary_layout.setSpacing(12)
         for line in lines:
             row_lbl = QLabel(line, self)
             row_lbl.setObjectName("confirmRow")
             row_lbl.setWordWrap(True)
-            layout.addWidget(row_lbl)
+            summary_layout.addWidget(row_lbl)
+        scroll.setWidget(summary)
+        scroll.setMinimumHeight(140)
+        scroll.setMaximumHeight(320)
+        layout.addWidget(scroll, 1)
 
         if muted:
             muted_lbl = QLabel(muted, self)
@@ -189,7 +211,6 @@ class IOSSummaryDialog(QDialog):
 
         buttons = QHBoxLayout()
         buttons.setSpacing(12)
-        buttons.addStretch()
         if extra_button:
             extra_btn = QPushButton(extra_button, self)
             extra_btn.setObjectName("cancelBtn")
@@ -209,9 +230,16 @@ class IOSSummaryDialog(QDialog):
         self.confirm_btn.setDefault(True)
         buttons.addWidget(self.confirm_btn)
         layout.addLayout(buttons)
+        for button in self.findChildren(QPushButton):
+            button.setMinimumHeight(48)
+        self._retheme()
 
     def _retheme(self):
-        self.setStyleSheet(t("confirm_dialog"))
+        self.setStyleSheet(t("confirm_dialog") + t("summary_dialog"))
+        from src.gui.ios.feature_icons import FEATURE_ICONS
+        self._summary_icon.setPixmap(theme_pixmap(
+            FEATURE_ICONS["Tweaks"], ColorThemeManager.instance().colors.text_primary,
+            36, self.devicePixelRatioF()))
 
 
 class IOSSearchField(QLineEdit):
@@ -221,6 +249,12 @@ class IOSSearchField(QLineEdit):
         self.setPlaceholderText(QCoreApplication.translate("ListSearch", "Search this list…"))
         self.setAccessibleName(self.placeholderText())
         self.setClearButtonEnabled(True)
+        self.setFixedHeight(44)
+        self.setTextMargins(34, 0, 0, 0)
+        self._search_icon = QLabel(self)
+        self._search_icon.setFixedSize(20, 20)
+        self._search_icon.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self._search_icon.setStyleSheet("background: transparent; border: none; padding: 0;")
         self._retheme()
         _auto_retheme(self)
 
@@ -230,6 +264,57 @@ class IOSSearchField(QLineEdit):
 
     def _retheme(self):
         self.setStyleSheet(t("list_search"))
+        self._search_icon.setPixmap(theme_pixmap(
+            ":/icon/search.svg", ColorThemeManager.instance().colors.text_secondary,
+            20, self.devicePixelRatioF()))
+        self._search_icon.move(14, (self.height() - 20) // 2)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self._search_icon.move(14, (self.height() - 20) // 2)
+
+
+class IOSSegmentedFilter(QWidget):
+    currentIndexChanged = pyqtSignal(int)
+
+    def __init__(self, items, parent=None):
+        super().__init__(parent)
+        self.setObjectName("iosSegmentedFilter")
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setFixedHeight(44)
+        self._items = items
+        self._index = 0
+        self._group = QButtonGroup(self)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(4, 4, 4, 4)
+        layout.setSpacing(3)
+        for index, (title, data) in enumerate(items):
+            button = QPushButton(title, self)
+            button.setCheckable(True)
+            button.setFixedHeight(34)
+            button.setCursor(Qt.PointingHandCursor)
+            self._group.addButton(button, index)
+            layout.addWidget(button)
+        self._group.button(0).setChecked(True)
+        self._group.idClicked.connect(self.setCurrentIndex)
+        self._retheme()
+        _auto_retheme(self)
+
+    def currentData(self):
+        return self._items[self._index][1]
+
+    def currentIndex(self):
+        return self._index
+
+    def setCurrentIndex(self, index):
+        if index == self._index or not 0 <= index < len(self._items):
+            return
+        self._index = index
+        self._group.button(index).setChecked(True)
+        self.currentIndexChanged.emit(index)
+
+    def _retheme(self):
+        self.setStyleSheet(t("segmented_filter"))
 
 
 class IOSSearchEmpty(QLabel):
@@ -278,8 +363,8 @@ class IOSCollapsibleSection(QWidget):
     state through ``expanded`` / the ``toggled`` signal.
     """
 
-    EXPANDED_CHEVRON = "\u25be"    # small down triangle
-    COLLAPSED_CHEVRON = "\u25b8"   # small right triangle
+    EXPANDED_CHEVRON = "\u25bc"    # down-pointing disclosure marker
+    COLLAPSED_CHEVRON = "\u25b6"   # right-pointing disclosure marker
 
     toggled = pyqtSignal(bool)
 
@@ -347,73 +432,140 @@ class IOSCollapsibleSection(QWidget):
 
 
 class IOSNavBar(QWidget):
-    """Reusable navigation header."""
-    def __init__(self, title: str = "", on_back=None, right_action=None,
+    """Page identity, actions, and section navigation in one persistent header."""
+
+    def __init__(self, title="", on_back=None, right_action=None,
                  window=None, parent=None):
         super().__init__(parent)
         self.setObjectName("iosNavBar")
-        self.setFixedHeight(56)
-        self.setSizePolicy(QSizePolicy.Policy.Expanding,
-                           QSizePolicy.Policy.Fixed)
-        self._on_back = on_back or (window._go_back if hasattr(window, "_go_back") else None)
-        c = ColorThemeManager.instance().colors
-        self.setStyleSheet(t("nav_bar"))
-
-        layout = QHBoxLayout(self)
-        # Keep the rounded shell clear of the back label and give the title
-        # a stable center even when the label width changes with translation.
-        layout.setContentsMargins(20, 8, 20, 8)
-        layout.setSpacing(0)
-
-        self._left_pad = QWidget(self)
-        self._left_pad.setFixedWidth(96)
-        layout.addWidget(self._left_pad)
-
-        self.back_btn = QPushButton(QCoreApplication.translate("Nugget", "←  Back"), self)
-        self.back_btn.setMinimumWidth(96)
+        self.setAttribute(Qt.WA_StyledBackground, True)
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self._on_back = on_back or getattr(window, "_go_back", None)
+        self._icon_path = None
+        self._category_buttons = []
+        self._right_btn = None
+        root = QVBoxLayout(self)
+        root.setContentsMargins(16, 10, 16, 10)
+        root.setSpacing(8)
+        row = QHBoxLayout()
+        row.setSpacing(12)
+        self.back_btn = QPushButton("‹", self)
+        self.back_btn.setFixedSize(36, 36)
         self.back_btn.setCursor(Qt.PointingHandCursor)
-        self.back_btn.setStyleSheet(t("nav_back_btn"))
+        self.back_btn.setToolTip(QCoreApplication.translate("Nugget", "Back"))
+        self.back_btn.setAccessibleName(self.back_btn.toolTip())
         self.back_btn.clicked.connect(self._handle_back)
-        layout.addWidget(self.back_btn)
-
+        row.addWidget(self.back_btn)
+        self.icon_lbl = QLabel(self)
+        self.icon_lbl.setFixedSize(32, 32)
+        self.icon_lbl.hide()
+        row.addWidget(self.icon_lbl)
         self.title_lbl = QLabel(title, self)
-        self.title_lbl.setAlignment(Qt.AlignCenter)
-        self.title_lbl.setStyleSheet(t("nav_title"))
-        layout.addWidget(self.title_lbl, 1)
-
+        self.title_lbl.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        row.addWidget(self.title_lbl, 1)
         self._right_box = QWidget(self)
         self._right_layout = QHBoxLayout(self._right_box)
         self._right_layout.setContentsMargins(0, 0, 0, 0)
-        self._right_layout.setSpacing(0)
-        layout.addWidget(self._right_box)
-        self._right_btn = None
-        self._left_pad.setVisible(False)
+        row.addWidget(self._right_box)
+        root.addLayout(row)
+        self._categories = QScrollArea(self)
+        self._categories.setWidgetResizable(True)
+        self._categories.setFrameShape(QFrame.NoFrame)
+        self._categories.setHorizontalScrollBarPolicy(Qt.ScrollBarAsNeeded)
+        self._categories.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self._categories.setFixedHeight(44)
+        self._category_content = QWidget()
+        self._category_layout = QHBoxLayout(self._category_content)
+        self._category_layout.setContentsMargins(0, 0, 0, 0)
+        self._category_layout.setSpacing(6)
+        self._categories.setWidget(self._category_content)
+        self._categories.viewport().installEventFilter(self)
+        self._category_content.installEventFilter(self)
+        root.addWidget(self._categories)
+        self._categories.hide()
+        self._retheme()
         _auto_retheme(self)
 
     def _retheme(self):
-        c = ColorThemeManager.instance().colors
         self.setStyleSheet(t("nav_bar"))
         self.back_btn.setStyleSheet(t("nav_back_btn"))
         self.title_lbl.setStyleSheet(t("nav_title"))
+        self._categories.setStyleSheet("QScrollArea { background: transparent; border: none; }")
+        if self._icon_path:
+            self.icon_lbl.setPixmap(theme_pixmap(
+                self._icon_path, ColorThemeManager.instance().colors.text_primary,
+                28, self.devicePixelRatioF()))
+        for button in self._category_buttons:
+            button.setStyleSheet(t("nav_category"))
         if self._right_btn:
             self._right_btn.setStyleSheet(t("nav_right_btn"))
 
-    def set_title(self, title: str):
+    def set_title(self, title):
         self.title_lbl.setText(title)
 
-    def set_back_visible(self, visible: bool):
-        self.back_btn.setVisible(visible)
-        self._left_pad.setVisible(not visible)
+    def set_icon(self, resource_path):
+        self._icon_path = resource_path
+        self.icon_lbl.setVisible(bool(resource_path))
+        self._retheme()
 
-    def set_right_action(self, label_text: str, callback):
+    def set_categories(self, categories):
+        while self._category_layout.count():
+            item = self._category_layout.takeAt(0)
+            if item.widget():
+                item.widget().hide()
+                item.widget().deleteLater()
+        self._category_buttons = []
+        self._categories.setVisible(len(categories) > 1)
+        for title, callback in categories if len(categories) > 1 else []:
+            button = QPushButton(title.replace("&", "&&"), self._category_content)
+            button.setAccessibleName(title)
+            button.installEventFilter(self)
+            button.setCheckable(True)
+            button.setCursor(Qt.PointingHandCursor)
+            button.setFixedHeight(32)
+            button.setStyleSheet(t("nav_category"))
+            button.setFixedWidth(button.sizeHint().width())
+            button.clicked.connect(
+                lambda checked=False, b=button, cb=callback: self._jump(b, cb))
+            self._category_layout.addWidget(button)
+            self._category_buttons.append(button)
+        self._category_layout.addStretch(1)
+        width = sum(button.width() for button in self._category_buttons)
+        width += max(0, len(self._category_buttons) - 1) * 6
+        self._category_content.setMinimumWidth(width)
+        self.setFixedHeight(108 if len(categories) > 1 else 64)
+
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.Wheel:
+            bar = self._categories.horizontalScrollBar()
+            if bar.maximum() > 0:
+                pixels = event.pixelDelta()
+                angles = event.angleDelta()
+                delta = pixels.x() or pixels.y()
+                if not delta:
+                    delta = (angles.x() or angles.y()) / 120 * 64
+                if delta:
+                    bar.setValue(bar.value() - round(delta))
+                    event.accept()
+                    return True
+        return super().eventFilter(watched, event)
+
+    def _jump(self, selected, callback):
+        for button in self._category_buttons:
+            button.setChecked(button is selected)
+        callback()
+
+    def set_back_visible(self, visible):
+        self.back_btn.setVisible(visible)
+
+    def set_right_action(self, label_text, callback):
         self._clear_right()
-        c = ColorThemeManager.instance().colors
-        btn = QPushButton(label_text, self)
-        btn.setCursor(Qt.PointingHandCursor)
-        btn.setStyleSheet(t("nav_right_btn"))
-        btn.clicked.connect(callback)
-        self._right_layout.addWidget(btn)
-        self._right_btn = btn
+        button = QPushButton(label_text, self)
+        button.setCursor(Qt.PointingHandCursor)
+        button.setStyleSheet(t("nav_right_btn"))
+        button.clicked.connect(callback)
+        self._right_layout.addWidget(button)
+        self._right_btn = button
 
     def clear_right_action(self):
         self._clear_right()
@@ -421,13 +573,72 @@ class IOSNavBar(QWidget):
     def _clear_right(self):
         if self._right_btn is not None:
             self._right_layout.removeWidget(self._right_btn)
-            self._right_btn.setParent(None)
             self._right_btn.deleteLater()
             self._right_btn = None
 
     def _handle_back(self):
         if self._on_back:
             self._on_back()
+
+
+class IOSValueRow(QPushButton):
+    """Editable setting with a wrapping title and a separate visible value."""
+
+    def __init__(self, title, parent=None):
+        super().__init__(parent)
+        self._title = title
+        self.setObjectName("iosValueRow")
+        self.setCursor(Qt.PointingHandCursor)
+        policy = QSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
+        policy.setHeightForWidth(True)
+        self.setSizePolicy(policy)
+        self.setMinimumHeight(56)
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(2, 4, 2, 4)
+        layout.setSpacing(12)
+        text = QVBoxLayout()
+        text.setSpacing(4)
+        self.title_label = QLabel(title, self)
+        self.title_label.setObjectName("valueRowTitle")
+        self.value_label = QLabel(self)
+        self.value_label.setObjectName("valueRowValue")
+        for label in (self.title_label, self.value_label):
+            label.setWordWrap(True)
+            label.setTextFormat(Qt.PlainText)
+            label.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+            text.addWidget(label)
+        layout.addLayout(text, 1)
+        arrow = QLabel("›", self)
+        arrow.setObjectName("valueRowArrow")
+        arrow.setFixedSize(20, 28)
+        arrow.setAlignment(Qt.AlignCenter)
+        arrow.setAttribute(Qt.WA_TransparentForMouseEvents, True)
+        layout.addWidget(arrow)
+        self.set_display_value(QCoreApplication.translate("Nugget", "Not set"))
+        self._retheme()
+        _auto_retheme(self)
+
+    def sizeHint(self):
+        return self.layout().sizeHint().expandedTo(QSize(0, 56))
+
+    def minimumSizeHint(self):
+        return QSize(0, 56)
+
+    def heightForWidth(self, width):
+        return max(56, self.layout().totalHeightForWidth(width))
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.setMinimumHeight(self.heightForWidth(self.width()))
+
+    def set_display_value(self, value):
+        self.value_label.setText(str(value))
+        self.setMinimumHeight(self.heightForWidth(self.width()))
+        self.updateGeometry()
+        self.setAccessibleName(f"{self._title}: {value}")
+
+    def _retheme(self):
+        self.setStyleSheet(t("value_row"))
 
 
 class IOSSettingsRow(QPushButton):
@@ -441,6 +652,18 @@ class IOSSettingsRow(QPushButton):
 
     def _retheme(self):
         self.setStyleSheet(t("settings_row"))
+
+
+class IOSSettingsAction(QPushButton):
+    def __init__(self, text, parent=None):
+        super().__init__(text, parent)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setMinimumHeight(48)
+        self._retheme()
+        _auto_retheme(self)
+
+    def _retheme(self):
+        self.setStyleSheet(t("settings_action"))
 
 
 class IOSPrimaryButton(QPushButton):
@@ -554,6 +777,7 @@ class IOSSwitch(QPushButton):
 
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+        painter.setOpacity(1.0 if self.isEnabled() else 0.45)
         painter.setPen(Qt.PenStyle.NoPen)
         painter.setBrush(track)
         painter.drawRoundedRect(

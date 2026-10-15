@@ -5,6 +5,7 @@ import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
@@ -28,6 +29,11 @@ class FavoritesSearchTests(unittest.TestCase):
         QSettings.setDefaultFormat(QSettings.IniFormat)
         QSettings.setPath(QSettings.IniFormat, QSettings.UserScope, self.tmp.name)
         self.addCleanup(lambda: QSettings.setDefaultFormat(QSettings.NativeFormat))
+        store_path = str(Path(self.tmp.name) / 'favorites.ini')
+        settings_patch = patch('src.controllers.favorites.Settings',
+                               side_effect=lambda: QSettings(store_path, QSettings.IniFormat))
+        settings_patch.start()
+        self.addCleanup(settings_patch.stop)
 
     def test_bookmarks_persist_sync_and_respect_compatibility(self):
         manager = SimpleNamespace(get_current_device_version=lambda: '27.0',
@@ -40,7 +46,7 @@ class FavoritesSearchTests(unittest.TestCase):
         self.assertIn(tid.name, TweakFavorites().names())
         self.assertTrue(two._favorite_buttons[tid].isChecked())
         self.assertEqual(before, {tid: (t.enabled, repr(t.value)) for tid, t in tweaks.items()})
-        one.filter_combo.setCurrentIndex(one.filter_combo.findData('favorites'))
+        one.filter_control.setCurrentIndex(2)
         self.assertEqual([tid for card, tid, *_ in one._search_rows if not card.isHidden()], [tid])
         one.rebuild()
         self.assertTrue(one._favorite_buttons[tid].isChecked())

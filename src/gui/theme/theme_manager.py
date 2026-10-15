@@ -1,4 +1,4 @@
-from PySide6.QtCore import QObject, Signal, QSettings
+from PySide6.QtCore import QObject, Signal, QSettings, QEvent
 from PySide6.QtGui import QColor, QPalette
 
 from src.gui.theme.colors import ThemeColors, DARK, ACCENT_PRESETS
@@ -21,6 +21,7 @@ class ColorThemeManager(QObject):
         self._settings = QSettings("GoldenNugget", "GoldenNugget")
         self._accent_name = self._settings.value("accent_color", "blue")
         self._colors = self._build_colors()
+        self._revision = 0
 
     @classmethod
     def instance(cls) -> "ColorThemeManager":
@@ -33,6 +34,10 @@ class ColorThemeManager(QObject):
     @property
     def colors(self) -> ThemeColors:
         return self._colors
+
+    @property
+    def revision(self) -> int:
+        return self._revision
 
     @property
     def mode(self) -> str:
@@ -56,6 +61,7 @@ class ColorThemeManager(QObject):
         self._accent_name = name
         self._settings.setValue("accent_color", name)
         self._colors = self._build_colors()
+        self._revision += 1
         self.theme_changed.emit()
 
     # ---- QPalette for Fusion style ---------------------------------------
@@ -124,3 +130,28 @@ class ColorThemeManager(QObject):
         accent, _, _ = ACCENT_PRESETS[self._accent_name]
         q = QColor(accent)
         return (q.red(), q.green(), q.blue())
+
+
+class _VisibleThemeConnection(QObject):
+    def __init__(self, widget):
+        super().__init__(widget)
+        self._widget = widget
+        self._dirty = False
+        widget.installEventFilter(self)
+        ColorThemeManager.instance().theme_changed.connect(self._apply)
+
+    def _apply(self):
+        if not self._widget.isVisible():
+            self._dirty = True
+            return
+        self._dirty = False
+        self._widget._retheme()
+
+    def eventFilter(self, watched, event):
+        if event.type() == QEvent.Show and self._dirty:
+            self._apply()
+        return super().eventFilter(watched, event)
+
+
+def connect_visible_theme(widget):
+    _VisibleThemeConnection(widget)

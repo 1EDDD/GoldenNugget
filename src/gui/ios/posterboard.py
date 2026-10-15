@@ -10,7 +10,7 @@ from PySide6.QtGui import QPixmap, QIcon, QImageReader
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
 from src.gui.ios.components import IOSCard, IOSPrimaryButton, IOSSwitch
-from src.gui.theme import ColorThemeManager
+from src.gui.theme import ColorThemeManager, t
 from src.tweaks.tweaks import tweaks, TweakID
 
 
@@ -152,6 +152,7 @@ class IOSPosterboardPage(QWidget):
         reset_layout.setSpacing(8)
 
         self._reset_btn = QPushButton(QCoreApplication.translate("Nugget", "Reset PosterBoard"))
+        self._reset_btn.setFixedHeight(52)
         self._reset_btn.setCursor(Qt.PointingHandCursor)
         self._reset_btn.clicked.connect(self._reset_posterboard)
         reset_layout.addWidget(self._reset_btn)
@@ -164,7 +165,6 @@ class IOSPosterboardPage(QWidget):
         self._reset_caption.setWordWrap(True)
         reset_layout.addWidget(self._reset_caption)
 
-        layout.addWidget(reset_card)
 
         # Tab bar
         self.tab_stack = QStackedWidget()
@@ -198,6 +198,11 @@ class IOSPosterboardPage(QWidget):
         tab_layout.addWidget(self.video_tab_btn, 1)
 
         layout.addWidget(self._tab_bar)
+        reset_footer = QWidget(self)
+        reset_footer_layout = QVBoxLayout(reset_footer)
+        reset_footer_layout.setContentsMargins(16, 8, 16, 16)
+        reset_footer_layout.addWidget(reset_card)
+        layout.addWidget(reset_footer)
 
         self._tendie_nam = QNetworkAccessManager(self)
         self._tendie_preview_replies = []
@@ -206,22 +211,10 @@ class IOSPosterboardPage(QWidget):
         self._switch_tab(0)
         self.refresh_tendies()
 
-        ColorThemeManager.instance().theme_changed.connect(self._retheme)
 
     def _retheme(self):
         c = ColorThemeManager.instance().colors
-        self._reset_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {c.scrollbar};
-                border: none;
-                border-radius: 10px;
-                color: {c.error};
-                font-size: 15px;
-                font-weight: 600;
-                padding: 12px;
-            }}
-            QPushButton:hover {{ background-color: {c.surface_hover}; }}
-        """)
+        self._reset_btn.setStyleSheet(t("maintenance_button"))
         self._reset_caption.setStyleSheet(f"color: {c.text_secondary}; font-size: 12px;")
         self._tab_bar.setStyleSheet(
             f"background-color: {c.bg_primary}; border-top: 1px solid {c.bg_secondary};"

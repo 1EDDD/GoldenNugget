@@ -22,7 +22,7 @@ def support_lines(manager):
     if not supported:
         lines.append(tr("Applying tweaks requires iOS 26.2 or newer."))
     elif manager.get_current_device_partially_supported():
-        lines.append(tr("Partially Supported: iOS 27 uses an experimental protective backup and restore workflow. This status does not mean every tweak is unavailable."))
+        lines.append(tr("Developer beta warning: iOS 27 support is experimental and uses a beta backup and restore workflow. Newer tweaks may behave unpredictably and can cause boot loops or require recovery. Keep a separate backup and use newer tweaks cautiously."))
     else:
         lines.append(tr("This iOS version is supported by GoldenNugget."))
     lines.append(tr("Availability below follows the app's compatibility rules; it is not a test of effects on the device."))

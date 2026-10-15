@@ -17,7 +17,7 @@ from src.devicemanagement.constants import Version
 from src.gui.dialogs import AboutProgramDialog
 from src.gui.dialogs.reset_dialog import ResetDialog
 from src.gui.logger import get_logger
-from src.gui.theme import ColorThemeManager
+from src.gui.theme import ColorThemeManager, theme_icon
 from src.gui.thread_workers.apply_worker import (
     ApplyAlertMessage,
     ApplyThread,
@@ -130,15 +130,43 @@ class DeviceBarMixin:
     def refresh_devices(self):
         if not self.refresh_in_progress:
             self.refresh_in_progress = True
+            self._refresh_previous_device_udid = self.device_manager.get_current_device_udid()
             self._last_connection_error = ""
             self.connect_placeholder.set_scan_status(
                 QCoreApplication.translate("Nugget", "Checking connected devices…"), busy=True)
             self.ui.refreshBtn.setDisabled(True)
+            if hasattr(self, "ios_home"):
+                self.ios_home._refresh_btn.setDisabled(True)
             self.refresh_worker_thread = RefreshDevicesThread(manager=self.device_manager, settings=self.settings)
             self.refresh_worker_thread.alert.connect(self._connection_alert)
             self.refresh_worker_thread.finished.connect(self.refresh_devices_finished)
             self.refresh_worker_thread.finished.connect(self.refresh_worker_thread.deleteLater)
             self.refresh_worker_thread.start()
+
+
+    @QtCore.Slot()
+    def on_device_connection_changed(self):
+        self._device_change_refresh_pending = True
+        self._schedule_device_event_refresh()
+
+
+    def _schedule_device_event_refresh(self):
+        if not self._device_change_refresh_pending:
+            return
+        if (self.refresh_in_progress or self.apply_in_progress
+                or getattr(self, "_cache_restore_in_progress", False)):
+            return
+        self._device_refresh_timer.start(450)
+
+
+    @QtCore.Slot()
+    def _refresh_after_device_event(self):
+        if (self.refresh_in_progress or self.apply_in_progress
+                or getattr(self, "_cache_restore_in_progress", False)):
+            return
+        if self._device_change_refresh_pending:
+            self._device_change_refresh_pending = False
+            self.refresh_devices()
 
 
     def _connection_alert(self, alert):
@@ -150,14 +178,28 @@ class DeviceBarMixin:
         self.connect_placeholder.set_scan_status(alert.txt, busy=True)
 
     def warn_for_dev_beta(self):
+        if (getattr(self, "_dev_beta_warning_shown", False)
+                or self.settings.value("hide_dev_beta_warning", False, type=bool)):
+            return
         ver = self.device_manager.get_current_device_version()
         if ver == "":
             return
         if Version(ver) > Version("26.0") and not self.device_manager.get_current_device_build()[-1].isdigit():
-            self.alert_message(ApplyAlertMessage(
-                txt=self.tr("Warning: You are on iOS 26 beta.\n\nThis has been known to cause problems and potentially lead to bootloops.\n\nUse at your own risk!"),
-                title="Warning", icon=QtWidgets.QMessageBox.Warning
-            ), log_to_console=False)
+            self._dev_beta_warning_shown = True
+            # Keep the same standard warning dialog shape used previously by
+            # alert_message; only the optional persistent checkbox is new.
+            dialog = QtWidgets.QMessageBox()
+            dialog.setIcon(QtWidgets.QMessageBox.Warning)
+            dialog.setWindowTitle(self.tr("Warning"))
+            dialog.setText(self.tr(
+                "Warning: You are on iOS 26 beta.\n\n"
+                "This has been known to cause problems and potentially lead to bootloops.\n\n"
+                "Use at your own risk!"))
+            dialog.setCheckBox(QtWidgets.QCheckBox(self.tr("Don't show this warning again"), dialog))
+            dialog.exec()
+            if dialog.checkBox().isChecked():
+                self.settings.setValue("hide_dev_beta_warning", True)
+                self.settings.sync()
 
 
     def refresh_devices_finished(self):
@@ -176,7 +218,11 @@ class DeviceBarMixin:
         except Exception:
             pass
         self.toggle_thread_btns(disabled=False)
-        # clear the picker
+        if hasattr(self, "ios_home"):
+            self.ios_home._refresh_btn.setDisabled(False)
+        # Rebuild without exposing transient -1/0 index changes to the device
+        # selection handler while the new list is being populated.
+        self.ui.devicePicker.blockSignals(True)
         self.ui.devicePicker.clear()
 
         if len(self.device_manager.devices) == 0:
@@ -209,8 +255,15 @@ class DeviceBarMixin:
             self.ui.devicePicker.setEnabled(True)
             # populate the ComboBox with device names
             for device in self.device_manager.devices:
-                tag = " (@ USB)" if device.connected_via_usb else " (@ WiFi)"
-                self.ui.devicePicker.addItem(f"{device.name}{tag}")
+                if not device.connected_via_usb:
+                    continue
+                icon = theme_icon(":/icon/phone.svg", ColorThemeManager.instance().colors.text_primary)
+                self.ui.devicePicker.addItem(icon, device.name)
+                self.ui.devicePicker.setItemData(
+                    self.ui.devicePicker.count() - 1,
+                    QCoreApplication.translate("Nugget", "Connected over USB"),
+                    QtCore.Qt.ItemDataRole.ToolTipRole,
+                )
 
             # show all pages
             self.ui.sidebarDiv1.show()
@@ -229,8 +282,17 @@ class DeviceBarMixin:
             # HotLoad-hidden features are carved out of the Sidebar and iOS home
             self._apply_hidden_feature_gating()
         
-        # update the selected device
-        self.ui.devicePicker.setCurrentIndex(0)
+        # Keep the same phone selected when it remains connected; otherwise
+        # DeviceManager selects the first newly discovered phone (or none).
+        selected_index = self.device_manager.current_device_index if self.device_manager.devices else 0
+        self.ui.devicePicker.setCurrentIndex(selected_index)
+        self.ui.devicePicker.blockSignals(False)
+        if self.device_manager.devices:
+            selected_udid = self.device_manager.get_current_device_udid()
+            self.change_selected_device(
+                selected_index,
+                warn_for_beta=selected_udid != getattr(self, "_refresh_previous_device_udid", None),
+            )
         # HotLoad-hidden features are carved out of the Sidebar and iOS home
         self._apply_hidden_feature_gating()
         # keep the iOS home in sync
@@ -239,10 +301,11 @@ class DeviceBarMixin:
         self.ios_home.update_status()
         # no device -> gate the whole iOS shell behind the connect placeholder
         self._update_device_gate()
+        self._schedule_device_event_refresh()
 
 
-    def change_selected_device(self, index):
-        if len(self.device_manager.devices) > 0:
+    def change_selected_device(self, index, warn_for_beta=True):
+        if len(self.device_manager.devices) > 0 and 0 <= index < len(self.device_manager.devices):
             self.device_manager.set_current_device(index=index)
             # hide sidebar buttons that are for newer versions
             MinTweakVersions = {
@@ -302,7 +365,7 @@ class DeviceBarMixin:
         self.updateInterfaceForNewDevice()
         self.ios_home.update_device_info()
         self.ios_home.update_status()
-        if index > -1:
+        if warn_for_beta and index > -1:
             self.warn_for_dev_beta()
 
 
@@ -484,11 +547,7 @@ class SettingsMixin:
 class NavigationMixin:
     """Page structure, shared IOS nav bar and sidebar selection."""
 
-    # Pages allowed to keep the iOS-style header inside the CLASSIC shell.
-    # Each one has a right action that is otherwise unreachable on the page
-    # itself (Icon Themes "+ Add Icon"). The PosterBoard page keeps its header
-    # in iOS mode only: it already has its own in-page "Import Files" card,
-    # so the header's "+ Add Tendies" would be redundant chrome in classic.
+    # Icon Themes retains the shared navigation header in the classic shell.
     _classic_nav_pages = (10,)
 
     def _update_shared_nav(self, index: int):
@@ -505,12 +564,65 @@ class NavigationMixin:
         title = self._ios_page_titles.get(index, "")
         self.ios_nav.set_title(title)
         self.ios_nav.set_back_visible(True)
+        icons = {
+            1: "toggles", 2: "wallpaper", 3: "hdd", 4: "gear",
+            5: "app-indicator", 6: "check-circle", 7: "phone",
+            8: "gear", 9: "liquid-glass", 10: "brush",
+            11: "lock", 12: "folder",
+        }
+        from src.gui.ios.feature_icons import FEATURE_PAGE_ICONS
+        icon = icons.get(index)
+        path = FEATURE_PAGE_ICONS.get(index, f":/icon/{icon}.svg" if icon else None)
+        self.ios_nav.set_icon(path)
+        page = self.ios_pages.widget(index)
+        categories = []
+        seen = set()
+        for label, _ in self._page_section_targets(page):
+            if label in seen:
+                continue
+            seen.add(label)
+            categories.append((label, lambda p=page, name=label:
+                               self._jump_to_page_section(p, name)))
+        self.ios_nav.set_categories(categories)
         right = self._nav_right_actions.get(index)
         if right:
             self.ios_nav.set_right_action(right[0], right[1])
         else:
             self.ios_nav.clear_right_action()
 
+
+    def _page_section_targets(self, page):
+        from src.gui.ios.components import IOSCollapsibleSection, IOSSectionHeader
+        scrolls = page.findChildren(QtWidgets.QScrollArea)
+        for widget in page.findChildren(QtWidgets.QWidget):
+            if not widget.isVisibleTo(page):
+                continue
+            if not any(area.widget() is not None and
+                       area.widget().isAncestorOf(widget) for area in scrolls):
+                continue
+            if isinstance(widget, IOSCollapsibleSection):
+                yield widget._title, widget
+            elif isinstance(widget, IOSSectionHeader):
+                yield widget.property("navigationTitle") or widget.text(), widget
+
+    def _jump_to_page_section(self, page, name):
+        from src.gui.ios.components import IOSCollapsibleSection
+        for label, target in self._page_section_targets(page):
+            if label != name:
+                continue
+            if isinstance(target, IOSCollapsibleSection):
+                target.set_expanded(True)
+            for scroll in page.findChildren(QtWidgets.QScrollArea):
+                content = scroll.widget()
+                if content is None or not content.isAncestorOf(target):
+                    continue
+                def jump(area=scroll, item=target, body=content):
+                    if body.layout():
+                        body.layout().activate()
+                    position = item.mapTo(body, QtCore.QPoint(0, 0)).y()
+                    area.verticalScrollBar().setValue(max(0, position - 12))
+                QtCore.QTimer.singleShot(0, jump)
+                return
 
     def _sync_sidebar_selection(self):
         """Move the checked highlight of the sidebar to the active view."""
@@ -604,6 +716,11 @@ class NavigationMixin:
         self._stop_page_slide()
         stack.setCurrentIndex(index)
         page = stack.widget(index)
+        if (hasattr(page, "_retheme")
+                and getattr(page, "_applied_theme_revision", -1)
+                != self._color_theme.revision):
+            page._retheme()
+            page._applied_theme_revision = self._color_theme.revision
         if animate and stack.isVisible():
             self._slide_page_in(page, from_left=index == self.HOME_PAGE)
 
@@ -892,8 +1009,9 @@ class ApplyMixin:
                 lines=lines,
                 muted=QCoreApplication.translate(
                     "Nugget",
-                    "Your device reboots when it's done — remember to turn Find My "
-                    "back on afterwards. A protective backup runs first."),
+                    "Your device reboots when it's done. If you turn Find My off "
+                    "for this apply, turn it back on afterwards. A protective "
+                    "backup runs first."),
                 confirm_text=QCoreApplication.translate("Nugget", "Apply"),
                 extra_button=(QCoreApplication.translate("Nugget", "Update Cache")
                               if cache_enabled else ""),
@@ -904,7 +1022,9 @@ class ApplyMixin:
                 # Re-open the summary (with the refreshed cache date) so the
                 # user can review and then confirm or cancel.
                 continue
-            return res == QtWidgets.QDialog.Accepted and self._confirm_tweak_conflicts()
+            if res != QtWidgets.QDialog.Accepted:
+                return False
+            return self._confirm_tweak_conflicts()
 
     def _storage_warning_line(self):
         """Return a warning when the selected device has little free space."""
@@ -1253,6 +1373,7 @@ class ApplyMixin:
                 ), log_to_console=False)
             except Exception:
                 pass
+        self._schedule_device_event_refresh()
 
 
     def _cache_restore_thread_finished(self):
@@ -1324,12 +1445,23 @@ class ApplyMixin:
                 self._save_last_applied_preset()
         else:
             # Show error notification if not already shown via alert
-            if error_msg and "timed out" not in error_msg.lower():
+            if error_msg and not getattr(worker, "error_alert_sent", False) and "timed out" not in error_msg.lower():
+                if "skip_setup27.py" in error_msg:
+                    message = QCoreApplication.translate(
+                        "Nugget",
+                        "Restore finished, but Setup Assistant configuration failed. Check the device connection and restore the retained backup if needed.")
+                elif "ConnectionTerminatedError" in error_msg:
+                    message = QCoreApplication.translate(
+                        "Nugget",
+                        "The device disconnected during restore. The apply did not finish successfully.")
+                else:
+                    message = f"Operation failed: {error_msg}"
                 self.alert_message(ApplyAlertMessage(
-                    txt=f"Operation failed: {error_msg}",
+                    txt=message,
                     title="Error",
                     icon=QtWidgets.QMessageBox.Critical
                 ), log_to_console=False)
+        self._schedule_device_event_refresh()
 
 
     def dismiss_operation_result(self):
@@ -1404,6 +1536,7 @@ class ApplyMixin:
 
 
     def toggle_thread_btns(self, disabled: bool):
+        self.ios_home.support_panel.setVisible(not (disabled or self.apply_in_progress))
         if disabled or not self.apply_in_progress:
             self.ios_apply.set_busy(disabled)
         if disabled or not self.refresh_in_progress:

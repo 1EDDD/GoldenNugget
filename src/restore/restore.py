@@ -40,7 +40,7 @@ from pymobiledevice3.services.mobilebackup2 import Mobilebackup2Service
 from pymobiledevice3.exceptions import ConnectionTerminatedError, PyMobileDevice3Exception, DeviceNotFoundError, PasswordRequiredError, NotPairedError, ConnectionFailedError, InvalidServiceError, CloudConfigurationAlreadyPresentError
 
 from src.exceptions.nugget_exception import NuggetException
-from src.exceptions.device_errors import is_transient_restore_error
+from src.exceptions.device_errors import is_transient_restore_error, is_find_my_error
 from src.exceptions.device_errors import is_connection_error
 
 def concat_regular_file(file: FileToRestore, files_list: list[FileToRestore], last_domain: str, last_path: str):
@@ -351,6 +351,17 @@ async def _restore_protective_backup(lc: LockdownClient, backup_root: str,
         )
 
     def _on_failure(e: Exception) -> None:
+        # Like Nugget-Mobile, classify Find My from the restore failure text;
+        # the restore service does not expose a dependable preflight setting.
+        # Inspect chained causes too, since pymobiledevice3 may wrap the
+        # underlying lockdown error before it reaches this retry boundary.
+        if is_find_my_error(e):
+            raise NuggetException(
+                QCoreApplication.tr("Find My must be disabled in order to use this tool."),
+                detailed_text=QCoreApplication.tr(
+                    "The device's restore service reported a Find My protection error. "
+                    "Turn off Find My iPhone in Settings → [your name] → Find My, "
+                    "then retry the restore. Your protective backup remains on this computer.")) from e
         # The device already told us which file it stubbed on — cross-check
         # the pruned manifest on disk so the log shows exactly which rows
         # are missing their payload (MBErrorDomain/205 post-mortem).
@@ -392,11 +403,9 @@ async def _restore_protective_backup(lc: LockdownClient, backup_root: str,
                 "The device dropped the connection during the data restore.\n\n"
                 "Your data is not lost — the protective backup taken before "
                 "the wipe is kept on this computer.\n\n"
-                "A common cause is Find My still being on: iOS refuses to "
-                "restore a backup while Find My (iCloud ▸ Find My iPhone) is "
-                "enabled. Turn Find My off (Settings ▸ [your name] ▸ Find My), "
-                "keep the iPhone unlocked with the screen on, and apply again "
-                "so the restore can complete.\n\n"
+                "This connection error can have several causes. Keep the iPhone "
+                "unlocked with the screen on and connected by USB. If the device "
+                "reported a Find My protection error, turn Find My off before retrying.\n\n"
                 "Do not erase the phone or set it up as new — the protective "
                 "backup on this computer is the only copy of your data.")
         ) from e

@@ -100,7 +100,6 @@ class IOSPresetsPage(QWidget):
         self._layout.addStretch()
 
         self._retheme()
-        self._tm.theme_changed.connect(self._retheme)
         self.refresh()
 
     def _button(self, text, handler):

@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt, QCoreApplication
+from PySide6.QtCore import Qt, QCoreApplication, QTimer, QSize
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QScrollArea, QHBoxLayout, QLabel,
     QDialog, QPushButton
@@ -6,10 +6,10 @@ from PySide6.QtWidgets import (
 from packaging.version import Version, InvalidVersion
 
 from src.gui.ios.components import (
-    IOSSectionHeader, IOSSwitch, IOSSettingsRow,
+    IOSCard, IOSSectionHeader, IOSSwitch,
     TextInputDialog, NumberInputDialog
 )
-from src.gui.theme import ColorThemeManager
+from src.gui.theme import ColorThemeManager, theme_icon, t
 from src.tweaks.tweaks import tweaks, TweakID
 from src.tweaks.status_bar.status_setter import StatusBarItem
 
@@ -43,14 +43,14 @@ class IOSStatusBarPage(QWidget):
 
         self.content_layout = QVBoxLayout(content)
         self.content_layout.setContentsMargins(16, 16, 16, 32)
-        self.content_layout.setSpacing(8)
+        self.content_layout.setSpacing(10)
 
         # (widget, survives iOS 27) for every card and section header, so the
         # whole page can be re-gated whenever the connected device changes.
         self._rows: list[tuple[QWidget, bool]] = []
 
         # Master enable switch
-        self._header(QCoreApplication.translate("Nugget", "Status Bar Overrides"), survives_ios27=True)
+        self._header(QCoreApplication.translate("Nugget", "Configuration"), survives_ios27=True)
         self.enabled_switch = self._make_switch(
             QCoreApplication.translate("Nugget", "Enable Status Bar Modifications"),
             self.status_manager.enabled,
@@ -59,7 +59,7 @@ class IOSStatusBarPage(QWidget):
         )
 
         # Text rows
-        self._header(QCoreApplication.translate("Nugget", "Text"), survives_ios27=True)
+        self._header(QCoreApplication.translate("Nugget", "Text Overrides"), survives_ios27=True)
         self.time_row = self._make_text_row(
             QCoreApplication.translate("Nugget", "Change Status Bar Time Text*"),
             self.status_manager.is_time_overridden(),
@@ -114,7 +114,7 @@ class IOSStatusBarPage(QWidget):
         )
 
         # Number rows
-        self._header(QCoreApplication.translate("Nugget", "Levels"))
+        self._header(QCoreApplication.translate("Nugget", "Signal & Battery Levels"))
         self.gsm_row = self._make_number_row(
             QCoreApplication.translate("Nugget", "Change Signal Strength"),
             self.status_manager.is_gsm_signal_strength_bars_overridden(),
@@ -161,7 +161,7 @@ class IOSStatusBarPage(QWidget):
         )
 
         # Raw signal strength
-        self._header(QCoreApplication.translate("Nugget", "Raw Signal Strength"))
+        self._header(QCoreApplication.translate("Nugget", "Signal Measurements"))
         self._make_switch(
             QCoreApplication.translate("Nugget", "Show Numeric Cellular Strength"),
             self.status_manager.is_raw_gsm_signal_shown(),
@@ -174,7 +174,7 @@ class IOSStatusBarPage(QWidget):
         )
 
         # Item show/hide toggles
-        self._header(QCoreApplication.translate("Nugget", "Items"))
+        self._header(QCoreApplication.translate("Nugget", "Icon Visibility"))
         for name, item in [
             (QCoreApplication.translate("Nugget", "Disable Focus Mode icon"), StatusBarItem.QuietModeStatusBarItem),
             (QCoreApplication.translate("Nugget", "Disable Airplane Mode icon"), StatusBarItem.AirplaneModeStatusBarItem),
@@ -200,7 +200,7 @@ class IOSStatusBarPage(QWidget):
             )
 
         # Silly mode
-        self._header(QCoreApplication.translate("Nugget", "Extras"))
+        self._header(QCoreApplication.translate("Nugget", "Additional Options"))
         self._make_switch(
             QCoreApplication.translate("Nugget", "Silly Mode"),
             self.status_manager.is_silly_mode_enabled(),
@@ -221,12 +221,13 @@ class IOSStatusBarPage(QWidget):
         self.content_layout.addStretch()
 
         self._retheme()
-        ColorThemeManager.instance().theme_changed.connect(self._retheme)
+        self._sync_controls_enabled()
 
     def showEvent(self, event):
         super().showEvent(event)
         # The page outlives device changes, so re-gate every time it is shown.
         self._apply_ios27_gating()
+        self._sync_controls_enabled()
 
     def _current_version(self) -> str:
         try:
@@ -245,9 +246,23 @@ class IOSStatusBarPage(QWidget):
         for widget, survives in self._rows:
             widget.setVisible(not is_ios27 or survives)
         self._ios27_note.setVisible(is_ios27)
+        pages = getattr(self.window, "ios_pages", None)
+        if pages is not None and hasattr(self.window, "ios_nav"):
+            if pages.currentWidget() is self:
+                QTimer.singleShot(0, lambda: self.window._update_shared_nav(
+                    pages.currentIndex()))
 
     def _header(self, title: str, survives_ios27: bool = False):
         header = IOSSectionHeader(title)
+        tr = lambda text: QCoreApplication.translate("Nugget", text)
+        names = {
+            tr("Text Overrides"): tr("Text"),
+            tr("Signal & Battery Levels"): tr("Signal Levels"),
+            tr("Signal Measurements"): tr("Measurements"),
+            tr("Icon Visibility"): tr("Visibility"),
+            tr("Additional Options"): tr("Options"),
+        }
+        header.setProperty("navigationTitle", names.get(title, title))
         self.content_layout.addWidget(header)
         self._rows.append((header, survives_ios27))
         return header
@@ -284,17 +299,32 @@ class IOSStatusBarPage(QWidget):
                             w.setStyleSheet(f"color: {c.text_secondary}; font-size: 14px;")
                         elif "font-size: 17px" in current:
                             w.setStyleSheet(f"color: {c.accent}; font-size: 17px;")
-            # Style QPushButton (edit buttons) inside cards
-            btn = widget.findChild(QPushButton) if hasattr(widget, 'findChild') else None
-            if btn is not None:
-                btn.setStyleSheet(f"""
-                    QPushButton {{
-                        background-color: transparent;
-                        border: none;
-                        color: {c.accent};
-                        font-size: 17px;
-                    }}
-                """)
+            for button in widget.findChildren(QPushButton):
+                if button.objectName() == "statusBarEdit":
+                    button.setStyleSheet(t("tweak_info_button"))
+                    button.setIcon(theme_icon(":/icon/edit-value.svg", c.text_secondary))
+
+    def _sync_controls_enabled(self):
+        self.enabled_switch.blockSignals(True)
+        self.enabled_switch.setChecked(self.status_manager.enabled)
+        self.enabled_switch.blockSignals(False)
+        master_card = self.enabled_switch.parentWidget()
+        for card, _ in self._rows:
+            if isinstance(card, IOSCard):
+                card.setEnabled(card is master_card or self.status_manager.enabled)
+
+    def _make_edit_button(self, callback):
+        button = QPushButton(self)
+        button.setObjectName("statusBarEdit")
+        button.setFixedSize(44, 36)
+        button.setIconSize(QSize(19, 19))
+        button.setIcon(theme_icon(":/icon/edit-value.svg", ColorThemeManager.instance().colors.text_secondary))
+        button.setToolTip(QCoreApplication.translate("Nugget", "Edit value"))
+        button.setAccessibleName(button.toolTip())
+        button.setCursor(Qt.PointingHandCursor)
+        button.setStyleSheet(t("tweak_info_button"))
+        button.clicked.connect(callback)
+        return button
 
     def _make_item_handler(self, item: StatusBarItem):
         def handler(checked: bool):
@@ -308,50 +338,46 @@ class IOSStatusBarPage(QWidget):
 
     def _make_switch(self, title: str, checked: bool, on_toggled, survives_ios27: bool = False):
         c = ColorThemeManager.instance().colors
-        card = QWidget()
+        card = IOSCard()
         row = QHBoxLayout(card)
-        row.setContentsMargins(16, 10, 16, 10)
+        row.setContentsMargins(16, 12, 16, 12)
         row.setSpacing(12)
         label = QLabel(title)
+        label.setWordWrap(True)
         label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
         row.addWidget(label, 1)
         switch = IOSSwitch(checked)
         switch.toggled.connect(on_toggled)
         row.addWidget(switch)
+        row.addSpacing(56)
         self.content_layout.addWidget(card)
         self._rows.append((card, survives_ios27))
         return switch
     def _make_text_row(self, title: str, overridden: bool, current: str, setter, unsetter, survives_ios27: bool = False):
         c = ColorThemeManager.instance().colors
-        card = QWidget()
+        card = IOSCard()
         row = QHBoxLayout(card)
-        row.setContentsMargins(16, 10, 16, 10)
+        row.setContentsMargins(16, 12, 16, 12)
         row.setSpacing(12)
 
         label = QLabel(title)
+        label.setWordWrap(True)
         label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
         row.addWidget(label, 1)
 
+        card.setProperty("overrideValue", current)
         value_lbl = QLabel(current if overridden else QCoreApplication.translate("Nugget", "Default"))
         value_lbl.setStyleSheet(f"color: {c.text_secondary}; font-size: 14px;")
+        value_lbl.setMaximumWidth(180)
+        value_lbl.setWordWrap(True)
         row.addWidget(value_lbl)
 
         switch = IOSSwitch(overridden)
-        switch.toggled.connect(lambda checked: self._on_text_row_toggled(checked, setter, unsetter, label, value_lbl, current))
+        switch.toggled.connect(lambda checked: self._on_text_row_toggled(checked, setter, unsetter, label, value_lbl, card.property("overrideValue")))
         row.addWidget(switch)
 
-        edit_btn = IOSSettingsRow("")
-        edit_btn.setFixedWidth(44)
-        edit_btn.setText("✎")
-        edit_btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: transparent;
-                border: none;
-                color: {c.accent};
-                font-size: 17px;
-            }}
-        """)
-        edit_btn.clicked.connect(lambda: self._on_text_row_edit(title, current, setter, label, value_lbl))
+        edit_btn = self._make_edit_button(lambda: self._on_text_row_edit(
+            title, card.property("overrideValue"), setter, label, value_lbl))
         row.addWidget(edit_btn)
 
         self.content_layout.addWidget(card)
@@ -369,32 +395,40 @@ class IOSStatusBarPage(QWidget):
         if dialog.exec() == QDialog.Accepted:
             value = dialog.get_value()
             setter(value)
+            card = value_lbl.parentWidget()
+            card.setProperty("overrideValue", value)
+            switch = card.findChild(IOSSwitch)
+            switch.blockSignals(True)
+            switch.setChecked(True)
+            switch.blockSignals(False)
             value_lbl.setText(value if value else QCoreApplication.translate("Nugget", "Default"))
             label.setText(title)
 
     def _make_number_row(self, title: str, overridden: bool, current: int, setter, unsetter, min_val: int, max_val: int, survives_ios27: bool = False):
         c = ColorThemeManager.instance().colors
-        card = QWidget()
+        card = IOSCard()
         row = QHBoxLayout(card)
-        row.setContentsMargins(16, 10, 16, 10)
+        row.setContentsMargins(16, 12, 16, 12)
         row.setSpacing(12)
 
         label = QLabel(title)
+        label.setWordWrap(True)
         label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
         row.addWidget(label, 1)
 
+        card.setProperty("overrideValue", current)
         value_lbl = QLabel(str(current) if overridden else QCoreApplication.translate("Nugget", "Default"))
         value_lbl.setStyleSheet(f"color: {c.text_secondary}; font-size: 14px;")
+        value_lbl.setMaximumWidth(180)
+        value_lbl.setWordWrap(True)
         row.addWidget(value_lbl)
 
         switch = IOSSwitch(overridden)
-        switch.toggled.connect(lambda checked: self._on_number_row_toggled(checked, setter, unsetter, value_lbl, current))
+        switch.toggled.connect(lambda checked: self._on_number_row_toggled(checked, setter, unsetter, value_lbl, card.property("overrideValue")))
         row.addWidget(switch)
 
-        edit_btn = QLabel("✎")
-        edit_btn.setStyleSheet(f"color: {c.accent}; font-size: 17px;")
-        edit_btn.setCursor(Qt.PointingHandCursor)
-        edit_btn.mousePressEvent = lambda e: self._on_number_row_edit(title, current, setter, value_lbl, min_val, max_val)
+        edit_btn = self._make_edit_button(lambda: self._on_number_row_edit(
+            title, card.property("overrideValue"), setter, value_lbl, min_val, max_val))
         row.addWidget(edit_btn)
 
         self.content_layout.addWidget(card)
@@ -412,7 +446,14 @@ class IOSStatusBarPage(QWidget):
         if dialog.exec() == QDialog.Accepted:
             value = dialog.get_value()
             setter(value)
+            card = value_lbl.parentWidget()
+            card.setProperty("overrideValue", value)
+            switch = card.findChild(IOSSwitch)
+            switch.blockSignals(True)
+            switch.setChecked(True)
+            switch.blockSignals(False)
             value_lbl.setText(str(value))
 
     def _on_enabled_toggled(self, checked: bool):
         self.status_manager.set_enabled(checked)
+        self._sync_controls_enabled()
