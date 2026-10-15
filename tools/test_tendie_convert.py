@@ -137,6 +137,8 @@ class TendieRowTests(unittest.TestCase):
 
     def test_retheme_restyles_the_caption(self):
         _, row = self._row()
+        row.show()
+        self.app.processEvents()
         row.format_lbl.setStyleSheet("")
         ColorThemeManager.instance().theme_changed.emit()
         self.app.processEvents()

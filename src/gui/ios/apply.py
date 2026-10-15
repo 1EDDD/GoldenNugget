@@ -46,7 +46,8 @@ class IOSApplyPage(QWidget):
         apply_desc = QLabel(QCoreApplication.translate(
             "Nugget",
             "Applies every enabled tweak to your device. The device reboots "
-            "when done — remember to turn Find My back on afterwards."))
+            "when done. If you turn Find My off for this apply, turn it back "
+            "on afterwards."))
         apply_desc.setWordWrap(True)
         apply_desc.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px;")
         self.apply_desc = apply_desc

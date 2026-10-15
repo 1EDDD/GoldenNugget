@@ -44,21 +44,41 @@ class OperationResultCard(IOSCard):
         layout.setContentsMargins(16, 12, 16, 12)
         self.title = QLabel(self)
         self.title.setTextFormat(Qt.PlainText)
+        layout.setSpacing(12)
         layout.addWidget(self.title)
+        self.summary = QLabel(self)
+        self.summary.setWordWrap(True)
+        self.summary.setTextFormat(Qt.PlainText)
+        layout.addWidget(self.summary)
+        self.expand_btn = QPushButton(self)
+        self.expand_btn.setCheckable(True)
+        self.expand_btn.setMinimumHeight(44)
+        self.expand_btn.setCursor(Qt.PointingHandCursor)
+        self.expand_btn.toggled.connect(self._set_expanded)
+        layout.addWidget(self.expand_btn)
         self.details = QPlainTextEdit(self)
         self.details.setReadOnly(True)
         self.details.setMinimumHeight(120)
         self.details.setMaximumHeight(220)
         layout.addWidget(self.details)
+        self.log_details = QPlainTextEdit(self)
+        self.log_details.setReadOnly(True)
+        self.log_details.setMinimumHeight(160)
+        self.log_details.setMaximumHeight(260)
+        self.log_details.setAccessibleName(QCoreApplication.translate("Nugget", "Recent application log"))
+        layout.addWidget(self.log_details)
         actions = QHBoxLayout()
         self.logs_btn = QPushButton(QCoreApplication.translate("Nugget", "Open application log"))
         self.logs_btn.clicked.connect(open_logs)
         self.close_btn = QPushButton(QCoreApplication.translate("Nugget", "Dismiss"))
+        self.close_btn.setMinimumHeight(44)
+        self.close_btn.setCursor(Qt.PointingHandCursor)
         self.close_btn.clicked.connect(dismiss)
         actions.addWidget(self.logs_btn)
         actions.addStretch()
         actions.addWidget(self.close_btn)
         layout.addLayout(actions)
+        self._set_expanded(False)
         self._retheme()
         self.hide()
 
@@ -66,15 +86,36 @@ class OperationResultCard(IOSCard):
         self._success = success
         self.title.setText(QCoreApplication.translate("Nugget",
             "Defaults restored!" if success and is_reset else "Apply complete!" if success else "Operation failed or stopped"))
+        self.summary.setText(QCoreApplication.translate("Nugget",
+            "Check the result on your iPhone. Turn Find My back on if you disabled it."
+            if success else
+            "Completion was not confirmed. Expand details and logs before retrying; follow any recovery instructions shown."))
         self.details.setPlainText(text)
+        self.expand_btn.setChecked(False)
+        self._set_expanded(False)
         self._retheme()
         self.show()
+
+    def _set_expanded(self, expanded):
+        self.details.setVisible(expanded)
+        self.log_details.setVisible(expanded)
+        self.logs_btn.setVisible(expanded)
+        self.expand_btn.setText(QCoreApplication.translate("Nugget",
+            "Hide details and logs ▴" if expanded else "View details and logs ▾"))
+        if expanded:
+            from src.controllers.nugget_logger import get_log_tail
+            self.log_details.setPlainText(get_log_tail() or QCoreApplication.translate(
+                "Nugget", "No application log is available for this session."))
+            self.log_details.verticalScrollBar().setValue(self.log_details.verticalScrollBar().maximum())
 
     def _retheme(self):
         super()._retheme()
         if not hasattr(self, 'title'):
             return
         self.title.setStyleSheet(t("process_status_green" if self._success else "process_status_red"))
+        self.summary.setStyleSheet(t("home_subtitle"))
         self.details.setStyleSheet(t("apply_preview_text"))
+        self.log_details.setStyleSheet(t("apply_preview_text"))
+        self.expand_btn.setStyleSheet(t("settings_action"))
         self.logs_btn.setStyleSheet(t("mini_button"))
         self.close_btn.setStyleSheet(t("mini_button"))

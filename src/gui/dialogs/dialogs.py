@@ -137,29 +137,15 @@ class AboutProgramDialog(QDialog):
         credits_layout.setContentsMargins(8, 8, 8, 8)
         
         # Credits data - from original home page
-        credits = [
-            ("Main Developer", "awesomenull", "https://github.com/awesomenull-dev"),
-            ("Co-Developer", "Wind0ws11Aero", "https://github.com/Wind0ws11Aero"),
-            ("Nugget Creator", "leminlemiz", "https://github.com/leminlemiz"),
-            ("PosterRestore Team", "PosterRestore Discord", "https://discord.gg/gWtzTVhMvh"),
-            ("PosterBoard Help", "dootskyre, Middo, dulark, forcequitOS, pingubow", "https://twitter.com/dootskyre"),
-            ("Wallpaper Website", "SerStars", "https://cowabun.ga/wallpapers"),
-            ("Global Flags", "disfordottie", "https://twitter.com/disfordottie"),
-            ("Springboard/Internal", "iTechExpert", "https://twitter.com/iTechExpert21"),
-            ("Quiet Daemon", "Mikasa-san", "https://github.com/Mikasa-san/QuietDaemon"),
-            ("pymobiledevice3", "doronz88", "https://github.com/doronz88/pymobiledevice3"),
-            ("PySide6", "Qt Company", "https://doc.qt.io/qtforpython-6/"),
-            ("AAR Handling", "Snoolie", "https://github.com/0xilis/python-aar-stuff"),
-            ("AI Eligibility", "f1shy-dev", "https://github.com/f1shy-dev"),
-            ("PosterBoard Icons", "JJTech", "https://github.com/JJTech0130"),
-        ]
+        from src.gui.credits import CREDITS
+        credits = CREDITS
         
         for title, name, url in credits:
             item = QWidget()
             item_layout = QHBoxLayout(item)
             item_layout.setContentsMargins(0, 0, 0, 0)
             
-            title_label = QLabel(f"{title}:")
+            title_label = QLabel(f"{self.tr(title)}:")
             title_label.setStyleSheet(f"color: {c.text_secondary}; font-size: 14px; font-weight: 500; min-width: 160px;")
             item_layout.addWidget(title_label)
             

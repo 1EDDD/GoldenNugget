@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
     QMessageBox, QFileDialog, QDialog,
 )
 
+from src.gui.dialogs.confirmation import ask_confirmation
 from src.gui.theme import ColorThemeManager, t
 from src.gui.ios.components import _auto_retheme
 from src.controllers.preset_manager import PresetManager
@@ -128,13 +129,14 @@ def load_preset_flow(parent, window, pm: PresetManager, name: str,
     desc = meta.get("description", "") if meta else ""
     model = meta.get("device_model", "Unknown") if meta else "Unknown"
     ios = meta.get("ios_version", "Unknown") if meta else "Unknown"
-    confirm = QMessageBox.question(
-        parent, _T("Nugget", "Load Preset"),
-        _T("Nugget",
+    confirm = ask_confirmation(parent,
+            _T("Nugget", "Load Preset"),
+            _T("Nugget",
            "Load preset \"{0}\"?\n\nDescription: {1}\nDevice: {2} • iOS {3}"
            "\n\nThis will replace your current configuration.").format(
-               shown_name, desc, model, ios))
-    if confirm != QMessageBox.StandardButton.Yes:
+               shown_name, desc, model, ios),
+            confirm_text=QCoreApplication.translate("Nugget", "Load Preset"))
+    if not confirm:
         return False
 
     dm = window.device_manager
@@ -154,10 +156,10 @@ def load_preset_flow(parent, window, pm: PresetManager, name: str,
 
     compat_msg = daemon_compat_warning(name, meta, window)
     if compat_msg:
-        reply = QMessageBox.warning(
+        reply = ask_confirmation(
             parent, _T("Nugget", "Daemon Compatibility"), compat_msg,
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel)
-        if reply != QMessageBox.StandardButton.Yes:
+            confirm_text=_T("Nugget", "Load Anyway"))
+        if not reply:
             return False
 
     if pm.preset_has_daemon_changes(name):
@@ -224,10 +226,12 @@ def delete_preset_flow(parent, pm: PresetManager, name: str) -> bool:
             parent, _T("Nugget", "Delete Preset"),
             _T("Nugget", "Select a preset to delete first."))
         return False
-    confirm = QMessageBox.question(
-        parent, _T("Nugget", "Delete Preset"),
-        _T("Nugget", "Delete preset \"{0}\"?").format(name))
-    if confirm != QMessageBox.StandardButton.Yes:
+    confirm = ask_confirmation(parent,
+            _T("Nugget", "Delete Preset"),
+            _T("Nugget", "Delete preset \"{0}\"?").format(name),
+            confirm_text=QCoreApplication.translate("Nugget", "Delete Preset"),
+            destructive=True)
+    if not confirm:
         return False
     if not pm.delete_preset(name):
         QMessageBox.critical(

@@ -11,6 +11,7 @@ from PySide6.QtWidgets import (
 )
 
 from src.gui.theme import ColorThemeManager
+from src.gui.theme.theme_manager import connect_visible_theme
 
 
 class PresetBanner(QFrame):
@@ -43,7 +44,7 @@ class PresetBanner(QFrame):
         layout.addWidget(self.manage_btn)
 
         self._retheme()
-        ColorThemeManager.instance().theme_changed.connect(self._retheme)
+        connect_visible_theme(self)
 
     def _retheme(self):
         c = ColorThemeManager.instance().colors
@@ -120,7 +121,7 @@ class PresetWidget(QWidget):
         layout.addWidget(self.banner)
 
         self._retheme()
-        ColorThemeManager.instance().theme_changed.connect(self._retheme)
+        connect_visible_theme(self)
 
     def _retheme(self):
         c = ColorThemeManager.instance().colors
