@@ -36,6 +36,8 @@ from PySide6.QtWidgets import QApplication, QDialog, QHBoxLayout, QVBoxLayout, Q
 
 from src.controllers.nugget_logger import get_log_path, get_log_tail
 from src.exceptions.device_errors import is_connection_error, is_device_locked_error
+from src.exceptions.nugget_exception import BackupDiskSpaceError
+from pymobiledevice3.exceptions import NotEnoughDiskSpaceError
 
 logger = logging.getLogger("GoldenNugget.crash")
 
@@ -83,6 +85,10 @@ def _classify(exc_type, exc_value) -> dict:
     if is_device_locked_error(exc_value):
         severity, fault, friendly = "Moderate", "Your device", \
             "Your device is locked. Unlock it and keep it awake, then try again."
+    elif issubclass(exc_type, (BackupDiskSpaceError, NotEnoughDiskSpaceError)):
+        severity, fault, friendly = "Moderate", "Your computer's storage", \
+            (msg or "The backup drive does not have enough free disk space. "
+             "Free space or choose another backup location in Settings.")
     # --- File / OS / user-data issues (subclasses of OSError, so they MUST be
     # checked before the generic connection/OSError branch below). ---
     elif issubclass(exc_type, FileNotFoundError):

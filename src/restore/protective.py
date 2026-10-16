@@ -53,7 +53,7 @@ from pymobiledevice3.services.mobilebackup2 import (
 
 from PySide6.QtCore import QCoreApplication
 
-from src.exceptions.nugget_exception import NuggetException
+from src.exceptions.nugget_exception import BackupDiskSpaceError, NuggetException
 from src.restore.afc_media import (  # noqa: F401  (re-exported public API)
     AFC_MEDIA_TREES,
     afc_media_dir_for,
@@ -97,9 +97,8 @@ class PreparedBackup:
 # Backups can easily reach several GB (photos, app data), so filling the disk
 # mid-backup is a real hazard. Overridable via GOLDENNUGGET_MIN_FREE_GB.
 #
-# Note the destinations differ: the PosterBoard backup still
-# write to the system temp directory, while live protective backups go to the
-# persistent app-data folder (see ``protective_persistent_base``). Callers that
+# PosterBoard workspaces and live protective backups use the configured
+# backup storage volume. Callers that
 # pass a path must pass the one they actually write to — on a multi-volume Mac
 # the check has to measure the right disk.
 MIN_FREE_DISK_GB = 5.0
@@ -129,7 +128,7 @@ def check_disk_space(path: str = None, min_free_bytes: int = None) -> None:
     if usage.free < min_free_bytes:
         free_gb = usage.free / (1024 ** 3)
         required_gb = min_free_bytes / (1024 ** 3)
-        raise NuggetException(
+        raise BackupDiskSpaceError(
             QCoreApplication.translate(
                 "Nugget",
                 "Not enough free disk space: only {0} GB available, at least {1} GB is required for the backup. "
@@ -489,16 +488,35 @@ def _posterboard_db_match(device_name: str) -> bool:
     return POSTERBOARD_DB_NAME in name
 
 
+def backup_disk_space_message(path, available_bytes=None) -> str:
+    """Describe a host-side backup space refusal using the actual destination."""
+    if available_bytes is None:
+        try:
+            available_bytes = shutil.disk_usage(path).free
+        except OSError:
+            pass
+    available = (QCoreApplication.translate("Nugget", "Available on that drive: {0} GiB.")
+                 .format(f"{available_bytes / (1024 ** 3):.1f}")
+                 if available_bytes is not None else "")
+    return QCoreApplication.translate(
+        "Nugget",
+        "The device refused the backup because the backup drive does not have enough free disk space.\n\n"
+        "Backup location: {0}\n{1}\n\n"
+        "Free space on that drive, or choose a drive with more room in Settings → Backup → "
+        "Backup/Cache Location, then retry. A filtered backup can still require space for "
+        "the device's full backup estimate.").format(path, available)
+
+
 def _install_device_link_verbose() -> None:
-    """Log DeviceLink free-space / purge traffic once, process-wide.
+    """Log free-space traffic and answer purge requests without aborting the link.
 
     The device decides how much it uploads (and whether it trims large app
     containers like PosterBoard) based on the free-space value the host reports
     on ``DLMessageGetFreeDiskSpace`` — the only platform-forked part of the
-    whole backup path (APFS purgeable space on macOS). This wrapper keeps the
-    upstream behaviour identical and only adds visibility into the exchanged
-    values, so a failing run shows whether the device was told there was too
-    little room.
+    whole backup path (APFS purgeable space on macOS). A purge request is not
+    the device's final verdict. Match the upstream fix after pinned 10.7.1:
+    reply that no space was reclaimed, then wait for success or a real error.
+    https://github.com/doronz88/pymobiledevice3/issues/1879
     """
     try:
         from pymobiledevice3.services.device_link import DeviceLink
@@ -507,6 +525,7 @@ def _install_device_link_verbose() -> None:
         return
     if getattr(DeviceLink, "_gn_verbose_installed", False):
         return
+    original_receive_message = DeviceLink.receive_message
 
     async def get_free_disk_space(self, _message):
         statvfs = shutil.disk_usage(self.root_path).free
@@ -520,15 +539,32 @@ def _install_device_link_verbose() -> None:
         freespace = max(statvfs, important) if important is not None else statvfs
         log_info(f"DeviceLink free-space query | root={self.root_path} | "
                  f"statvfs={statvfs} | purgeable_aware={important} | reported={freespace}")
+        self._gn_reported_free_space = freespace
         await self.status_response(0, status_dict=freespace)
 
-    async def purge_disk_space(self, _message):
-        log_warn("DeviceLink: device requested DISK PURGE — it believes the host "
-                 "is low on free space; a full backup would likely be refused/trimmed")
-        raise NotEnoughDiskSpaceError()
+    async def purge_disk_space(self, message):
+        self._gn_purge_requested = True
+        amount = message[1] if len(message) > 1 else None
+        log_warn(f"DeviceLink: device requested host DISK PURGE | root={self.root_path} | "
+                 f"requested_bytes={amount}; no space reclaimed, waiting for device verdict")
+        # The amount is a purge request, not a reliable required-backup size.
+        # Never report fabricated free space or delete user files to satisfy it.
+        await self.status_response(-1, "DLPurgeDiskSpace failed to purge", status_dict=0)
+
+    async def receive_message(self):
+        message = await original_receive_message(self)
+        # Preserve the pinned dl_loop's handling of every other message/error.
+        # MBErrorDomain/105 after a host purge request is an actual refusal.
+        if (getattr(self, "_gn_purge_requested", False)
+                and len(message) > 1 and message[0] == "DLMessageProcessMessage"
+                and isinstance(message[1], dict) and message[1].get("ErrorCode") == 105):
+            raise NotEnoughDiskSpaceError(backup_disk_space_message(
+                self.root_path, getattr(self, "_gn_reported_free_space", None)))
+        return message
 
     DeviceLink.get_free_disk_space = get_free_disk_space
     DeviceLink.purge_disk_space = purge_disk_space
+    DeviceLink.receive_message = receive_message
     DeviceLink._gn_verbose_installed = True
 
 
@@ -868,13 +904,12 @@ async def perform_protective_backup(
                 await mb.backup(full=not incremental_ok, backup_directory=backup_root,
                                 progress_callback=progress_callback,
                                 filter_callback=_filter_callback)
-            except NotEnoughDiskSpaceError:
-                log_warn("Device reported insufficient space during backup; refusing to proceed with a partial backup")
+            except NotEnoughDiskSpaceError as e:
+                message = str(e).strip() or backup_disk_space_message(backup_root)
+                log_warn(message)
                 if progress_callback:
-                    progress_callback(QCoreApplication.translate(
-                        "Nugget", "The device ran out of storage during backup. Free space on the device and try again; tweaks were not applied."))
-                raise NuggetException(QCoreApplication.translate(
-                    "Nugget", "The device ran out of storage during backup. Free space on the device and try again. Tweaks were not applied."))
+                    progress_callback(message)
+                raise BackupDiskSpaceError(message) from e
     except Exception:
         if afc_media_task is not None:
             # The backup failed — the media pull (still uploading user data) is

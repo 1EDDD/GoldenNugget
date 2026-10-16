@@ -211,7 +211,7 @@ class FakeBackupClient:
 
 
 class FakeBackup2:
-    def __init__(self, sp):
+    def __init__(self, sp, include_posterboard=False):
         pass
 
     async def __aenter__(self):
@@ -223,7 +223,7 @@ class FakeBackup2:
 
 import src.devicemanagement.session as session_mod
 pbb.lockdown_session = lambda udid: FakeLockdown()
-pbb.Mobilebackup2Service = FakeBackup2
+pbb.ProtectiveBackupService = FakeBackup2
 pbb.is_supported_by_fork = lambda v: True
 protective.extract_posterboard_db = fake
 delays = []

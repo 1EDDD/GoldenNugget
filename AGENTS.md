@@ -576,6 +576,16 @@ backup in the persistent app-data store
 
 ## PosterBoard Backup (src/gui/dialogs/pb_dialog.py)
 
+- PosterBoard fetch/rebuild scratch backups live under `posterboard_dir()/.work/`
+  on the configured backup volume, with a local free-space preflight. Both use
+  `ProtectiveBackupService(include_posterboard=True)`. A host disk-space failure
+  raises `BackupDiskSpaceError` and stops apply with its original message.
+- A DeviceLink purge request is not a final failure: respond with status -1,
+  `DLPurgeDiskSpace failed to purge`, zero reclaimed bytes, and wait for the
+  device verdict. Never fabricate available bytes or delete user files.
+  A subsequent error 105 is surfaced with the destination and available space.
+  Regression suite: `tools/test_posterboard_backup_space.py`.
+
 ### `targeted_posterboard_database_backup` (wizard channel)
 - The "Fetch Database File" wizard (`PosterBoardDBWizard`) backs up ONLY the
   PosterBoard container via `targeted_posterboard_database_backup` in
