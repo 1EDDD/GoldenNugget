@@ -191,7 +191,7 @@ class IOSHomePage(QWidget):
         self._logo = QLabel(self)
         self._logo.setFixedSize(88, 88)
         self._logo.setScaledContents(True)
-        pixmap = QPixmap(":/credits/nugget_half_eaten.png")
+        pixmap = QPixmap(":/credits/big_nugget.png")
         if not pixmap.isNull():
             self._logo.setPixmap(pixmap)
         else:
