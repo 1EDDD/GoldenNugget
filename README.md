@@ -2,6 +2,10 @@
 
 # GoldenNugget
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
+[![Offline tests](https://github.com/GoldenNugget-Team/GoldenNugget/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/GoldenNugget-Team/GoldenNugget/actions/workflows/tests.yml)
+
+[Download](https://github.com/GoldenNugget-Team/GoldenNugget/releases/latest) · [Wiki](https://github.com/GoldenNugget-Team/GoldenNugget/wiki) · [Report a bug](https://github.com/GoldenNugget-Team/GoldenNugget/issues/new/choose) · [Discussions](https://github.com/GoldenNugget-Team/GoldenNugget/discussions)
+
 > [!WARNING]
 > **Back up your device before applying tweaks.** GoldenNugget can cause data loss, boot loops, or other unexpected device problems. Use this project at your own risk; the authors are not responsible for damage to your device or data. See the [full disclaimer](docs/DISCLAIMER.md).
 
@@ -12,6 +16,12 @@ Customize your device with animated wallpapers, disable pesky daemons, and more!
 Make sure you have installed the [requirements](#requirements) if you are on Windows or Linux.
 
 ## Quick Start
+
+For a packaged app, download the archive for your platform from the
+[latest release](https://github.com/GoldenNugget-Team/GoldenNugget/releases/latest).
+See the [installation guide](https://github.com/GoldenNugget-Team/GoldenNugget/wiki/Installation-and-first-launch) for setup help.
+
+To run from source, download or clone this repository and open a terminal in its folder.
 
 1. Install the device connection tools listed in [Requirements](#requirements).
 2. Create and activate a virtual environment:
@@ -44,10 +54,10 @@ to open the interface with mock devices and no iPhone connected.
 | Python | 3.10+ | Use the pinned packages in `requirements.txt`. |
 
 ## Discord server
-Wanted support? Join our [Discord Server][server].
+Need support? Join our [Discord Server][server].
 
 ## On-device mobile version
-We already developed a on-device GoldenNugget Mobile that do not need computer. [Here][mobile] it is.
+[GoldenNugget Mobile][mobile] runs on your device without a computer.
 
 ## Features
 <details>
@@ -162,21 +172,21 @@ We already developed a on-device GoldenNugget Mobile that do not need computer. 
 
 **Thanks everyone who contributes to project!** 🎉
 
-<a href="https://github.com/awesomenull-dev/GoldenNugget/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=awesomenull-dev/GoldenNugget" alt="Contributors" />
+<a href="https://github.com/GoldenNugget-Team/GoldenNugget/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=GoldenNugget-Team/GoldenNugget" alt="Contributors" />
 </a>
 
-Want to see your name here? Open [Pull Request](https://github.com/awesomenull-dev/GoldenNugget/pulls)!
+Want to see your name here? Open [Pull Request](https://github.com/GoldenNugget-Team/GoldenNugget/pulls)!
 
 </div>
 
 ## Star History
 
-<a href="https://www.star-history.com/?type=date&repos=awesomenull-dev%2FGoldenNugget">
+<a href="https://www.star-history.com/?type=date&repos=GoldenNugget-Team%2FGoldenNugget">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=awesomenull-dev/GoldenNugget&type=date&theme=dark&legend=top-left&sealed_token=3Suw7Y0hFqwuBPijtmeM2A7pzK2ZCvEPoousYMJzOVFnPza-Aq5SzgNnEcgveIpQsBLEOL2QRtxwZbmaxn_S_3Lf9l0jINrMfRWkjFWGo3dVYCrFRpN6dA" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=awesomenull-dev/GoldenNugget&type=date&legend=top-left&sealed_token=3Suw7Y0hFqwuBPijtmeM2A7pzK2ZCvEPoousYMJzOVFnPza-Aq5SzgNnEcgveIpQsBLEOL2QRtxwZbmaxn_S_3Lf9l0jINrMfRWkjFWGo3dVYCrFRpN6dA" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=awesomenull-dev/GoldenNugget&type=date&legend=top-left&sealed_token=3Suw7Y0hFqwuBPijtmeM2A7pzK2ZCvEPoousYMJzOVFnPza-Aq5SzgNnEcgveIpQsBLEOL2QRtxwZbmaxn_S_3Lf9l0jINrMfRWkjFWGo3dVYCrFRpN6dA" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=GoldenNugget-Team/GoldenNugget&type=date&theme=dark&legend=top-left&sealed_token=3Suw7Y0hFqwuBPijtmeM2A7pzK2ZCvEPoousYMJzOVFnPza-Aq5SzgNnEcgveIpQsBLEOL2QRtxwZbmaxn_S_3Lf9l0jINrMfRWkjFWGo3dVYCrFRpN6dA" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=GoldenNugget-Team/GoldenNugget&type=date&legend=top-left&sealed_token=3Suw7Y0hFqwuBPijtmeM2A7pzK2ZCvEPoousYMJzOVFnPza-Aq5SzgNnEcgveIpQsBLEOL2QRtxwZbmaxn_S_3Lf9l0jINrMfRWkjFWGo3dVYCrFRpN6dA" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=GoldenNugget-Team/GoldenNugget&type=date&legend=top-left&sealed_token=3Suw7Y0hFqwuBPijtmeM2A7pzK2ZCvEPoousYMJzOVFnPza-Aq5SzgNnEcgveIpQsBLEOL2QRtxwZbmaxn_S_3Lf9l0jINrMfRWkjFWGo3dVYCrFRpN6dA" />
  </picture>
 </a>
 
@@ -214,40 +224,20 @@ Want to see your name here? Open [Pull Request](https://github.com/awesomenull-d
 
 > All pinned deps are in `requirements.txt` (incl. PyInstaller for building).
 
-## Running the Python Program
-> [!NOTE]
-> It is highly recommended to use a virtual environment:
-> ```py
-> python3 -m venv .env # only needed once
-> ```
-macOS/Linux:
-```py
-source .env/bin/activate
-```
-Windows:
-```py
-.env/Scripts/activate.bat
-```
-Install Packages:
-```py
-pip3 install -r requirements.txt # only needed once
-python3 main_app.py
-```
-> [!NOTE]
-> Depending on your system configuration, use either `python/pip` or `python3/pip3`.
+## Documentation
+
+- [Wiki](https://github.com/GoldenNugget-Team/GoldenNugget/wiki): installation, tweaks, presets, wallpapers and troubleshooting.
+- [Portable presets and diagnostics](docs/PORTABLE_AND_DIAGNOSTICS.md): `.gnpreset` files, diagnostic archives, JSON CLI output and offline wallpaper checks.
+- [Architecture](docs/ARCHITECTURE.md): device connections, background operations and backup/restore internals.
+- [Contributing](CONTRIBUTING.md): contribution guidelines and offline checks.
 
 ## Building
 
-Portable presets (`.gnpreset`), diagnostic archives, JSON CLI output and offline
-wallpaper checks are documented in
-[Portable presets and offline inspection](docs/PORTABLE_AND_DIAGNOSTICS.md).
+Follow [Quick Start](#quick-start) to install the dependencies first.
+The generated `src/qt/mainwindow_ui.py` is committed; no Designer UI generation
+step is required for the current interface.
 
-To compile `mainwindow.ui` for Python, run the following command:
-```py
-pyside6-uic --from-imports src/qt/mainwindow.ui -o src/qt/mainwindow_ui.py
-```
-
-To compile the resources file for Python, run the following command:
+When changing Qt resources, regenerate the resource module:
 ```py
 pyside6-rcc src/qt/resources.qrc -o src/qt/resources_rc.py
 ```
@@ -258,10 +248,17 @@ pyside6-lupdate main_app.py src/gui/main_window.py src/gui/pages/page.py src/gui
 pyside6-lrelease src/qt/translations/Nugget_{language code}.ts -qm src/qt/translations/Nugget_{language code}.qm # compile to binary
 ```
 
-The application itself can be compiled by running `compile.py`.
+Build the application for your current platform:
 
-# Contributing and forking.
-See [CONTRIBUTING.md](https://github.com/awesomenull-dev/GoldenNugget/blob/main/CONTRIBUTING.md), want fork instead? Then see [FORKING.md](https://github.com/awesomenull-dev/GoldenNugget/blob/main/FORKING.md)
+```bash
+python compile.py
+```
+
+Build output is written to `dist/`.
+
+## Contributing and forking
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contributions and [FORKING.md](FORKING.md) for forks.
 
 ## Credits
 - [awesomenull] Lead developer

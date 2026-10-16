@@ -258,6 +258,20 @@ broken on iOS 26+).
 
 ## src/restore/ — how it gets written
 
+PosterBoard database fetches and rebuild pulls store temporary backups under
+`posterboard_dir()/.work/`, so **Backup/Cache Location** and
+`GOLDENNUGGET_BACKUP_DIR` cover scratch space too. Both use
+`ProtectiveBackupService(include_posterboard=True)` and check that destination's
+free space before opening a device connection. A filtered upload can still be
+refused against the device's full backup estimate.
+
+The DeviceLink shim answers `DLMessagePurgeDiskSpace` with a failed-purge status
+and zero reclaimed bytes, then waits for the device's final result. It reports
+real free space and never deletes user data to satisfy a purge. A subsequent
+MBErrorDomain/105 becomes an actionable host-storage error with the backup path;
+the apply path preserves it instead of reporting a missing PosterBoard DB.
+Offline regressions: `tools/test_posterboard_backup_space.py`.
+
 ### `restore.py` — six-phase restore (`_restore_ios27`)
 All supported devices (26.2+) take this path:
 

@@ -45,7 +45,7 @@ from src.utils.alerts import ApplyAlertMessage
 from src.utils.pages import Page
 from src.controllers.path_handler import fix_windows_path
 
-from src.exceptions.nugget_exception import NuggetException
+from src.exceptions.nugget_exception import BackupDiskSpaceError, NuggetException
 
 from src.tweaks.tweaks import tweaks, TweakID, BasicPlistTweak, AdvancedPlistTweak, NullifyFileTweak, StatusBarTweak
 from src.tweaks.tweak_classes import ReversibleBooleanPlistTweak
@@ -996,8 +996,8 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
         (``targeted_posterboard_database_backup`` in ``src/restore/posterboard_backup.py``):
         only the PosterBoard container is pulled off the device and everything
         else the device uploads is drained mid-stream, so no full backup is
-        ever written. Failure is non-fatal: the apply continues and config mode
-        surfaces its own clear error later.
+        ever written. A disk-space failure stops the apply with the original
+        destination/action message; other failures keep the legacy fallback.
         """
         udid = self.get_current_device_udid()
         if not udid:
@@ -1025,6 +1025,10 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                 raise NuggetException("The PosterBoard database is not of the correct format!")
             pb.config_manager.update_for_saved_database(udid)
             update_label(QCoreApplication.tr("PosterBoard database backed up successfully."))
+        except BackupDiskSpaceError:
+            # Do not replace the actionable storage error with the later
+            # misleading "PosterBoard database file not selected" error.
+            raise
         except Exception as e:
             log_error(f"Failed to back up PosterBoard database: {e}\n{traceback.format_exc()}")
             print(f"Failed to back up PosterBoard database: {e}")

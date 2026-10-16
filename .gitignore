@@ -23,6 +23,7 @@ homedomain_extracted
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+test-results/
 status_setter_windows.exe
 AARCH64-64-cpu0x0.c
 docs/DATA_LOSS_AUDIT.md

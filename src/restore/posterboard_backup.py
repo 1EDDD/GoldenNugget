@@ -10,18 +10,41 @@ Kept GUI-independent so the backend apply path
   and what the "Fetch Database File" wizard calls.
 """
 
+import errno
 import os
 import sqlite3
 import tempfile
+from contextlib import contextmanager
 
 from PySide6.QtCore import QCoreApplication
-from pymobiledevice3.services.mobilebackup2 import Mobilebackup2Service
+from pymobiledevice3.exceptions import NotEnoughDiskSpaceError
 
 from src.devicemanagement.session import lockdown_session
+from src.restore.protective import (
+    ProtectiveBackupService, backup_disk_space_message, check_disk_space,
+)
 from src.restore.storage import posterboard_dir as _posterboard_dir
-from src.exceptions.nugget_exception import NuggetException
+from src.exceptions.nugget_exception import BackupDiskSpaceError, NuggetException
 from src.devicemanagement.constants import is_supported_by_fork
 from src.utils.async_retry import async_retry
+
+
+@contextmanager
+def _posterboard_workspace(prefix):
+    """Keep scratch backup bytes on the chosen backup volume, not system temp."""
+    work_root = _posterboard_dir() / ".work"
+    try:
+        work_root.mkdir(parents=True, exist_ok=True)
+        check_disk_space(path=str(work_root))
+        with tempfile.TemporaryDirectory(prefix=prefix, dir=work_root) as backup_dir:
+            yield backup_dir
+    except NotEnoughDiskSpaceError as e:
+        raise BackupDiskSpaceError(str(e).strip() or backup_disk_space_message(work_root)) from e
+    except OSError as e:
+        if e.errno != errno.ENOSPC:
+            raise
+        # An exhausted local disk must not be retried as a lost USB connection.
+        raise BackupDiskSpaceError(backup_disk_space_message(work_root)) from e
 
 
 async def targeted_posterboard_database_backup(udid: str, update_label=lambda x: None,
@@ -70,14 +93,14 @@ async def targeted_posterboard_database_backup(udid: str, update_label=lambda x:
                         delay, attempt, total))
 
     async def _attempt():
-        with tempfile.TemporaryDirectory(prefix="nugget_pb_only_") as backup_dir:
+        with _posterboard_workspace("nugget_pb_only_") as backup_dir:
             async with lockdown_session(udid) as service_provider:
                 if not is_supported_by_fork(service_provider.all_values.get("ProductVersion", "0.0")):
                     raise NuggetException(
                         "This version of iOS is not supported by this fork.\n\n"
                         "GoldenNugget only supports iOS 26.2 and newer. "
                         "Please use the original Nugget for iOS 26.1 and earlier.")
-                async with Mobilebackup2Service(service_provider) as backup_client:
+                async with ProtectiveBackupService(service_provider, include_posterboard=True) as backup_client:
                     def _pb_only(backup_file):
                         device_name = backup_file.device_name or ""
                         return (_domain_match(device_name, POSTERBOARD_DB_DOMAIN)
@@ -162,7 +185,7 @@ async def pull_posterboard_container(udid: str, out_dir: str,
     from src.tweaks.posterboard.db_validate import IncompletePosterBoardSnapshot
 
     if not os.path.exists(out_dir):
-        os.makedirs(out_dir, exist_ok=True)
+        os.makedirs(out_dir)
 
     max_retries = 3
 
@@ -177,14 +200,14 @@ async def pull_posterboard_container(udid: str, out_dir: str,
                     delay, attempt, total))
 
     async def _attempt():
-        with tempfile.TemporaryDirectory(prefix="nugget_pb_pull_") as backup_dir:
+        with _posterboard_workspace("nugget_pb_pull_") as backup_dir:
             async with lockdown_session(udid) as service_provider:
                 if not is_supported_by_fork(service_provider.all_values.get("ProductVersion", "0.0")):
                     raise NuggetException(
                         "This version of iOS is not supported by this fork.\n\n"
                         "GoldenNugget only supports iOS 26.2 and newer. "
                         "Please use the original Nugget for iOS 26.1 and earlier.")
-                async with Mobilebackup2Service(service_provider) as backup_client:
+                async with ProtectiveBackupService(service_provider, include_posterboard=True) as backup_client:
                     def _pb_only(backup_file):
                         device_name = backup_file.device_name or ""
                         # iOS 26 uploads the container as AppDomain-*; iOS 27
@@ -214,7 +237,7 @@ async def pull_posterboard_container(udid: str, out_dir: str,
             device_dir = os.path.dirname(manifest)
 
             update_label("Reading PosterBoard database...")
-            with tempfile.TemporaryDirectory(prefix="nugget_pb_db_") as db_dir:
+            with tempfile.TemporaryDirectory(prefix="nugget_pb_db_", dir=backup_dir) as db_dir:
                 extracted = extract_posterboard_db(
                     device_dir, udid, os.path.join(db_dir, "posterboard.sqlite3"))
             if extracted is None:
