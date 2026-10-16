@@ -2,13 +2,16 @@
 
 The device progress callbacks report a monotonically increasing percentage
 (0..100) with no notion of time. ``ProgressEta`` watches that percentage over
-wall-clock time and turns it into a short "minutes:seconds" estimate for the
+wall-clock time and turns it into a short human-readable estimate for the
 UI. It is intentionally stateful and cheap: feed every numeric progress value
 to :meth:`update` and it returns the formatted remaining time (or ``""`` until
 a stable rate is known).
 """
 
 import time
+import math
+
+from PySide6.QtCore import QCoreApplication
 
 
 class ProgressEta:
@@ -16,12 +19,12 @@ class ProgressEta:
 
     The rate is measured over a sliding window of recent samples so an
     estimate stays responsive when a fresh phase runs at a different speed,
-    but falls back to the overall average while the window is still filling.
+    using a fitted trend rather than a single pair of progress callbacks.
     A progress value that drops (a retry/restart) resets the estimator.
     """
 
     def __init__(self, window_seconds: float = 30.0,
-                 min_elapsed: float = 5.0, min_delta: float = 1.0):
+                 min_elapsed: float = 2.0, min_delta: float = 0.25):
         self._window_seconds = window_seconds
         self._min_elapsed = min_elapsed
         self._min_delta = min_delta
@@ -36,19 +39,28 @@ class ProgressEta:
         self._last_pct = None
 
     def update(self, percent) -> str:
-        """Feed the latest percentage; return "m:ss" remaining or ""."""
+        """Feed the latest percentage; return a readable estimate or ""."""
         if isinstance(percent, bool):
             return ""
         try:
             pct = float(percent)
         except (TypeError, ValueError):
             return ""
-        if pct <= 0:
+        if not math.isfinite(pct):
+            return ""
+        if pct < 0 or pct > 100:
+            return ""
+        now = time.monotonic()
+        if pct == 0:
+            if self._last_pct is None or self._last_pct > 0:
+                self.reset()
+                self._start = now
+                self._samples.append((now, 0.0))
+                self._last_pct = 0.0
+            return ""
+        if pct == 100:
             self.reset()
             return ""
-        if pct >= 100:
-            return "0:00"
-        now = time.monotonic()
         # A lower value means the operation (re)started — start over.
         if self._last_pct is not None and pct + 0.01 < self._last_pct:
             self.reset()
@@ -73,22 +85,32 @@ class ProgressEta:
         t0, p0 = self._samples[0]
         dt = now - t0
         dp = pct - p0
-        if dt <= 0 or dp < self._min_delta:
-            # the window barely moved (phase boundary) — use the overall rate
-            dt = now - self._start
-            dp = pct
-        if dt <= 0 or dp <= 0:
+        if dt < self._min_elapsed or dp < self._min_delta:
             return None
-        rate = dp / dt  # percent per second
+        mean_time = sum(t - t0 for t, _ in self._samples) / len(self._samples)
+        mean_pct = sum(p for _, p in self._samples) / len(self._samples)
+        variance = sum((t - t0 - mean_time) ** 2 for t, _ in self._samples)
+        if variance <= 0:
+            return None
+        rate = sum((t - t0 - mean_time) * (p - mean_pct)
+                   for t, p in self._samples) / variance
         if rate <= 0:
             return None
         return (100.0 - pct) / rate
+
 
 
 def _format_duration(seconds: float | None) -> str:
     if seconds is None:
         return ""
     total = max(0, int(round(seconds)))
-    if total >= 3600:
-        return f"{total // 3600}:{(total % 3600) // 60:02d}:{total % 60:02d}"
-    return f"{total // 60}:{total % 60:02d}"
+    parts = []
+    hours, remainder = divmod(total, 3600)
+    minutes, secs = divmod(remainder, 60)
+    if hours:
+        parts.append(QCoreApplication.translate("Nugget", "{0} hour" if hours == 1 else "{0} hours").format(hours))
+    if minutes:
+        parts.append(QCoreApplication.translate("Nugget", "{0} minute" if minutes == 1 else "{0} minutes").format(minutes))
+    if secs or not parts:
+        parts.append(QCoreApplication.translate("Nugget", "{0} second" if secs == 1 else "{0} seconds").format(secs))
+    return " ".join(parts)

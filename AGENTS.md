@@ -6,30 +6,29 @@ This document describes the background threads, async backup/restore operations,
 
 ## Color Theme System (src/gui/theme/)
 
-**Accent-only. There is no light mode — do not go looking for one.**
+**Dark and light modes are explicit user choices, independent of the accent.**
 
-- `colors.py` — frozen dataclass `ThemeColors` and a single palette,
-  **`DARK`** (named slots: `bg_primary`, `bg_secondary`, `bg_tertiary`,
+- `colors.py` — frozen dataclass `ThemeColors` and two palettes,
+  **`DARK` / `LIGHT`** (named slots: `bg_primary`, `bg_secondary`, `bg_tertiary`,
   `bg_input`, `bg_elevated`, `text_primary`, `text_secondary`, `accent`,
   `divider`, `error`, `success`, `warning`, `border`, `scrollbar`,
-  `surface_hover`, `danger_text`, ...). There is **no `LIGHT` constant**;
-  adding a light mode means adding the palette here, a `set_mode()` that
-  swaps it in `_build_colors()`, a Settings switch, and QPalette work in
-  `build_palette()`. `ACCENT_PRESETS` holds 8 accent hex colors
-  (blue/purple/pink/red/orange/yellow/green/teal).
+  `surface_hover`, `danger_text`, ...). `ACCENT_PRESETS` holds 8 dark-mode
+  accent choices (blue/purple/pink/red/orange/yellow/green/teal).
+  `LIGHT_ACCENT_PRESETS` provides the same hues with sufficient contrast for
+  links and white button text on light surfaces. Keep the two sets in sync.
 - `theme_manager.py` — `ColorThemeManager` singleton (`instance()`):
-  `colors` (the active `ThemeColors`), `set_accent(name)`, `c(slot)` (color
+  `colors` (the active `ThemeColors`), `set_mode("dark"|"light")`,
+  `set_accent(name)`, `c(slot)` (color
   accessor), `build_palette()` (QPalette for native widgets), `accent_hex()`,
-  `accent_rgb()`. Persisted via QSettings (`accent_color`). Emits
+  `accent_rgb()`. Persisted via QSettings (`color_mode`, `accent_color`). Emits
   `theme_changed` (no payload) on any color change.
-- **Two properties are stubs, not real state: `mode` hardcodes `"dark"` and
-  `is_dark` hardcodes `True`.** They are the seam a light mode would grow
-  into, so read them if you must, but never branch on them expecting a
-  persisted user choice — there is none, and no `color_mode` QSettings key.
-- `set_mode()`, `set_system_theme()`, `apply_system_theme()` and
-  `QStyleHints.colorSchemeChanged` handling **do not exist**; the app does
-  not follow the OS theme. Do not call them and do not "restore" the wiring
-  without adding the code as well.
+- `mode` / `is_dark` reflect real persisted state; dark remains the default.
+  `accent_name` is the stable user choice, while `accent_hex()` / `accent_rgb()`
+  return its current mode's actual color. Native QPalette roles are applied
+  for active, inactive and disabled widgets on every change.
+- The app does not follow the OS theme. `set_system_theme()`,
+  `apply_system_theme()` and `QStyleHints.colorSchemeChanged` wiring do not
+  exist; do not introduce calls to them without implementing them.
 - `styles.py` — `STYLES` dict of Qt stylesheet templates using `{slot}` named
   placeholders (literal braces are doubled `{{`/`}}`).
 - `accent_picker.py` — `AccentPicker` widget: row of circular preset buttons,
@@ -126,13 +125,12 @@ This document describes the background threads, async backup/restore operations,
   `main_window.run_first_launch_prompts`.
 - Old `src/gui/ios/theme_manager.py` (`CLASSIC`/`IOS`) is layout-only
   (Classic vs iOS-style chrome) and stays untouched side-by-side.
-- The only theme UI is Settings → **Appearance** (`src/gui/ios/settings.py`):
-  an "Accent Color" `AccentPicker` driving `set_accent(...)`. There is **no
-  Dark Mode switch** — the section is accent-only.
+- Theme UI lives in Settings → **Appearance** (`src/gui/ios/settings.py`):
+  "Accent Color" selects the accent via `set_accent(...)`. The light/dark
+  selector was removed from the page; the saved `color_mode` still applies at startup.
 - The app does **not** follow the OS colour scheme: nothing is connected to
-  `QStyleHints.colorSchemeChanged` in `main_app.py`, and the palette is built
-  once from `DARK` in `MainWindow._on_color_theme_changed` /
-  `main_app` via `build_palette()`.
+  `QStyleHints.colorSchemeChanged` in `main_app.py`. The persisted palette is
+  applied at startup and rebuilt on mode/accent changes via `build_palette()`.
 
 ## HotLoad Safety Rules (src/controllers/hotload.py)
 

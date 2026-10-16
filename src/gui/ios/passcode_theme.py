@@ -42,6 +42,7 @@ from src.gui.ios.components import (
     IOSSectionHeader, IOSCard, IOSPrimaryButton,
 )
 from src.gui.theme import ColorThemeManager
+from src.devicemanagement.passcode_support import current_passcode_theme_reason, passcode_theme_unavailable_reason
 
 _NUGGET = "Nugget"
 
@@ -113,6 +114,11 @@ class PasscodeThemeWriteThread(QThread):
                         "this computer isn't trusted yet, unlock your iPhone "
                         "and tap \u201cTrust This Computer\u201d now."))
                     async with lockdown_session(self.udid) as lockdown:
+                        values = lockdown.all_values
+                        reason = passcode_theme_unavailable_reason(
+                            values.get("ProductVersion"), values.get("BuildVersion"), values.get("ProductType"))
+                        if reason:
+                            raise AirliftError(reason)
                         if not getattr(lockdown, "paired", True):
                             # lockdown_session already refuses unpaired clients,
                             # but keep the belt-and-suspenders check so we
@@ -396,7 +402,7 @@ class IOSPasscodeThemePage(QWidget):
         text_col = QVBoxLayout()
         text_col.setSpacing(2)
         name = QLabel(os.path.basename(self._theme_path) or self._theme_path)
-        name.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {c.text_primary};")
+        name.setStyleSheet(f"font-size: 14px; font-weight: 600; color: {c.text_primary}; background-color: transparent;")
         name.setWordWrap(True)
         text_col.addWidget(name)
         size = theme_size(self._theme_path)
@@ -406,7 +412,7 @@ class IOSPasscodeThemePage(QWidget):
         elif size == 2:
             size_hint = QCoreApplication.translate("Nugget", ", big keys")
         detail = QLabel(QCoreApplication.translate("Nugget", "{0} key images{1}").format(self._key_digits, size_hint))
-        detail.setStyleSheet(f"font-size: 12px; color: {c.text_secondary};")
+        detail.setStyleSheet(f"font-size: 12px; color: {c.text_secondary}; background-color: transparent;")
         text_col.addWidget(detail)
         row.addLayout(text_col, 1)
 
@@ -429,7 +435,19 @@ class IOSPasscodeThemePage(QWidget):
         except Exception:
             return ""
 
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._refresh_device_line()
+
     def _refresh_device_line(self):
+        reason = current_passcode_theme_reason(self.window.device_manager)
+        busy = self._worker is not None and self._worker.isRunning()
+        self._write_btn.setEnabled(not reason and not busy)
+        if reason:
+            self._device_lbl.setText(reason)
+            self._device_lbl.setStyleSheet(
+                f"color: {ColorThemeManager.instance().colors.error}; font-size: 13px;")
+            return
         c = ColorThemeManager.instance().colors
         dm = self.window.device_manager
         device = None
@@ -442,7 +460,7 @@ class IOSPasscodeThemePage(QWidget):
                 "No trusted iPhone connected. Plug it in, unlock it, tap "
                 "\u201cTrust This Computer\u201d when iOS asks, and wait for it "
                 "to appear here."))
-            self._device_lbl.setStyleSheet(f"color: {c.error}; font-size: 13px;")
+            self._device_lbl.setStyleSheet(f"color: {c.error}; font-size: 13px; background-color: transparent;")
             return
         version = getattr(device, "version", "")
         build = getattr(device, "build", "")
@@ -452,14 +470,18 @@ class IOSPasscodeThemePage(QWidget):
             "the write runs immediately — no \u201cTrust This Computer\u201d "
             "pop-up will appear.").format(
                 model or QCoreApplication.translate("Nugget", "iPhone"), version or "?", build or "?"))
-        self._device_lbl.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px;")
+        self._device_lbl.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px; background-color: transparent;")
         if not dm.data_singleton.device_available:
             self._device_lbl.setText(QCoreApplication.translate("Nugget", 
                 "Device present, but it is not supported for AirLift (needs an "
                 "iPhone on iOS 26.2+)."))
-            self._device_lbl.setStyleSheet(f"color: {c.error}; font-size: 13px;")
+            self._device_lbl.setStyleSheet(f"color: {c.error}; font-size: 13px; background-color: transparent;")
 
     def start_write(self):
+        reason = current_passcode_theme_reason(self.window.device_manager)
+        if reason:
+            self._show_status(reason, "error")
+            return
         self._save_options()
         self._refresh_device_line()
         if not self._theme_path:
@@ -512,7 +534,7 @@ class IOSPasscodeThemePage(QWidget):
         self._show_status(message, "info")
 
     def _on_done(self, success: bool, message: str):
-        self._write_btn.setEnabled(True)
+        self._write_btn.setEnabled(not current_passcode_theme_reason(self.window.device_manager))
         self._show_status(message, "success" if success else "error")
         try:
             if self.window.isVisible():
@@ -535,7 +557,7 @@ class IOSPasscodeThemePage(QWidget):
     def _show_status(self, text: str, kind: str):
         c = ColorThemeManager.instance().colors
         color = {"success": c.success, "error": c.error}.get(kind, c.accent)
-        self._status_lbl.setStyleSheet(f"font-size: 13px; color: {color};")
+        self._status_lbl.setStyleSheet(f"font-size: 13px; color: {color}; background-color: transparent;")
         self._status_lbl.setText(text)
         self._status_lbl.show()
 
@@ -545,14 +567,14 @@ class IOSPasscodeThemePage(QWidget):
         c = ColorThemeManager.instance().colors
         self._scroll.setStyleSheet(
             f"background-color: {c.bg_primary}; border: none;")
-        self._hint.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px;")
+        self._hint.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px; background-color: transparent;")
         self.theme_placeholder.setStyleSheet(
-            f"color: {c.text_secondary}; font-size: 15px; padding: 24px 0;")
+            f"color: {c.text_secondary}; font-size: 15px; padding: 24px 0; background-color: transparent;")
         self._lang_combo.setStyleSheet(
             f"QComboBox {{ background-color: {c.bg_secondary}; color: {c.text_primary}; "
             f"border: 1px solid {c.border}; border-radius: 10px; padding: 6px 10px; }}")
         self._bold_combo.setStyleSheet(self._lang_combo.styleSheet())
         self._target_combo.setStyleSheet(self._lang_combo.styleSheet())
-        self._status_lbl.setStyleSheet(f"font-size: 13px; color: {c.accent};")
+        self._status_lbl.setStyleSheet(f"font-size: 13px; color: {c.accent}; background-color: transparent;")
         self._refresh_theme_area()
         self._refresh_device_line()

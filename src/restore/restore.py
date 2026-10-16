@@ -8,6 +8,7 @@ import time
 from pathlib import Path
 
 from PySide6.QtCore import QCoreApplication
+from src.devicemanagement.progress_status import OperationStatus
 
 from . import backup, perform_restore, reboot_device
 from src.utils.file_to_restore import FileToRestore, _FileMode
@@ -40,7 +41,7 @@ from pymobiledevice3.services.mobilebackup2 import Mobilebackup2Service
 from pymobiledevice3.exceptions import ConnectionTerminatedError, PasswordRequiredError, InvalidServiceError, CloudConfigurationAlreadyPresentError
 
 from src.exceptions.nugget_exception import NuggetException
-from src.exceptions.device_errors import is_transient_restore_error
+from src.exceptions.device_errors import is_transient_restore_error, is_find_my_error
 from src.exceptions.device_errors import is_connection_error
 
 def concat_regular_file(file: FileToRestore, files_list: list[FileToRestore], last_domain: str, last_path: str):
@@ -196,10 +197,14 @@ async def _wait_for_device(udid: str, progress_callback,
         saw_password_required = False
         while True:
             elapsed = int(time.monotonic() - start)
-            progress_callback(
-                f"Waiting for device after security recovery "
-                f"({elapsed // 60}:{elapsed % 60:02d} elapsed)..."
-            )
+            if isinstance(last_error, PasswordRequiredError):
+                progress_callback(OperationStatus(
+                    "Your iPhone is locked. Unlock it and enter its passcode to continue.",
+                    "authentication"))
+            else:
+                progress_callback(
+                    f"Waiting for device after reboot "
+                    f"({elapsed // 60}:{elapsed % 60:02d} elapsed)...")
             try:
                 ld = await create_using_usbmux(serial=udid, autopair=False)
                 if not getattr(ld, "paired", False):
@@ -249,6 +254,9 @@ async def _wait_for_device(udid: str, progress_callback,
                 last_error = e
                 if isinstance(e, PasswordRequiredError):
                     saw_password_required = True
+                    progress_callback(OperationStatus(
+                        "Your iPhone is locked. Unlock it and enter its passcode to continue.",
+                        "authentication"))
             if time.monotonic() + delay > deadline:
                 break
             await asyncio.sleep(delay)
@@ -351,6 +359,17 @@ async def _restore_protective_backup(lc: LockdownClient, backup_root: str,
         )
 
     def _on_failure(e: Exception) -> None:
+        # Like Nugget-Mobile, classify Find My from the restore failure text;
+        # the restore service does not expose a dependable preflight setting.
+        # Inspect chained causes too, since pymobiledevice3 may wrap the
+        # underlying lockdown error before it reaches this retry boundary.
+        if is_find_my_error(e):
+            raise NuggetException(
+                QCoreApplication.tr("Find My must be disabled in order to use this tool."),
+                detailed_text=QCoreApplication.tr(
+                    "The device's restore service reported a Find My protection error. "
+                    "Turn off Find My iPhone in Settings → [your name] → Find My, "
+                    "then retry the restore. Your protective backup remains on this computer.")) from e
         # The device already told us which file it stubbed on — cross-check
         # the pruned manifest on disk so the log shows exactly which rows
         # are missing their payload (MBErrorDomain/205 post-mortem).
@@ -392,11 +411,9 @@ async def _restore_protective_backup(lc: LockdownClient, backup_root: str,
                 "The device dropped the connection during the data restore.\n\n"
                 "Your data is not lost — the protective backup taken before "
                 "the wipe is kept on this computer.\n\n"
-                "A common cause is Find My still being on: iOS refuses to "
-                "restore a backup while Find My (iCloud ▸ Find My iPhone) is "
-                "enabled. Turn Find My off (Settings ▸ [your name] ▸ Find My), "
-                "keep the iPhone unlocked with the screen on, and apply again "
-                "so the restore can complete.\n\n"
+                "This connection error can have several causes. Keep the iPhone "
+                "unlocked with the screen on and connected by USB. If the device "
+                "reported a Find My protection error, turn Find My off before retrying.\n\n"
                 "Do not erase the phone or set it up as new — the protective "
                 "backup on this computer is the only copy of your data.")
         ) from e
@@ -423,7 +440,7 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                           afc_media: bool = False,
                           merge_phases: bool = True,
                           supervised: bool = False,
-                          organization_name: str = ""):
+                          organization_name: str = "", stage_callback=None):
     """iOS 27+ restore: backup → tweak → wipe → restore → skip setup → reboot.
 
     Phase 1 (0-40%):  Selective backup of photos, Apple ID, user
@@ -553,6 +570,8 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                 pass
 
         # === Phase 1: selective protective backup (0-40%) ===
+        if stage_callback:
+            stage_callback("backup", "")
         progress_callback(0)
         if using_cache:
             log_info("Phase 1: Using prepared protective backup "
@@ -565,7 +584,7 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
             log_info("Phase 1: Starting protective backup (photos, Apple ID, settings, home screen)")
             await perform_protective_backup(
                 lockdown_client, backup_root,
-                progress_callback=_scaled_callback(progress_callback, 0, _PHASE_BACKUP_END),
+                progress_callback=progress_callback,
                 include_photos=True,
                 include_keychain=include_keychain,
                 include_afc_media=bool(media_dir),
@@ -633,7 +652,7 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                 log_error(f"{len(missing_payloads)} manifest rows lack payloads "
                           f"(e.g. {missing_payloads[:5]}) — Phase 3 will likely fail with MBErrorDomain/205")
 
-        progress_callback(_PHASE_BACKUP_END)
+        progress_callback(100)
 
         # === Phase 2: apply tweaks → reboot (40-60%) ===
         if len(back.files) == 0:
@@ -644,8 +663,11 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
             log_info("Phase 2: nothing to sparse-restore — skipping the partial "
                      "restore; tweaks are delivered by the protective "
                      "restore (Phase 3)")
-            progress_callback(_PHASE_TWEAK_END)
+            progress_callback(100)
         else:
+            if stage_callback:
+                stage_callback("tweaks", "")
+            progress_callback(0)
             log_info(f"Phase 2: Applying tweaks via sparse restore ({len(back.files)} files)")
             sparse_progress = {"last": None, "calls": 0}
 
@@ -655,8 +677,7 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                 sparse_progress["calls"] += 1
                 if isinstance(value, (int, float)) and not isinstance(value, bool):
                     sparse_progress["last"] = value
-                progress_callback(_scaled_callback(
-                    progress_callback, _PHASE_BACKUP_END, _PHASE_TWEAK_END)(value))
+                progress_callback(value)
 
             # The cache session finishes right before Phase 2 starts; on some
             # devices backupd needs a moment before accepting another mobilebackup2
@@ -696,8 +717,11 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                         log_info(f"Phase 2: Device rebooted during sparse restore "
                                  f"(expected; last progress {sparse_progress['last']:.1f}%)")
                     break
-            progress_callback(_PHASE_TWEAK_END)
+            progress_callback(100)
 
+        if stage_callback:
+            stage_callback("restore", "media_pending" if media_dir else "")
+        progress_callback(0)
         # === Phase 3: reconnect + restore protective backup (60-90%) ===
         merge_fallback_done = False
         if merge_phases:
@@ -732,7 +756,7 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                     try:
                         await _restore_protective_backup(
                             lc, backup_root, udid, False,
-                            _scaled_callback(progress_callback, _PHASE_TWEAK_END, 90),
+                            progress_callback,
                             backup_password=backup_password,
                             skip_apps=not any(
                                 getattr(f, "domain", "").startswith("AppDomain")
@@ -817,13 +841,15 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
             # gives the media restore and skip_all_setup27 a freshly-booted
             # device (Phase 5) and the final reboot (Phase 6) lets the skip take
             # effect on the next boot.
+            if stage_callback:
+                stage_callback("restore", "restart" if reboot and skip_setup else "waiting")
             pre_skip_reboot = reboot and skip_setup
             if pre_skip_reboot:
                 progress_callback("Rebooting device...")
                 log_info("Phase 4: Rebooting device before skipping setup")
                 await reboot_device(reboot=True, lockdown_client=lc)
                 log_info("Phase 4: Reboot command sent")
-            progress_callback(95)
+
 
             # === Phase 5: reconnect (if rebooted) + push media + skip setup (95-98%) ===
             if pre_skip_reboot:
@@ -850,6 +876,9 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                         f"AFC media store is missing or empty ({media_dir}) — "
                         f"the photos were not backed up before the wipe. "
                         f"Aborting instead of pretending the restore finished.")
+                if stage_callback:
+                    stage_callback("media", "photos")
+                progress_callback(0)
                 log_info(f"Phase 5: Pushing photos/videos back over AFC "
                          f"({describe_media_store(media_dir)})")
                 pushed = await restore_media_via_afc(
@@ -878,6 +907,8 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                 log_info("Phase 5: Media restored over AFC")
 
             if skip_setup:
+                if stage_callback:
+                    stage_callback("setup", "settings")
                 progress_callback("Skipping setup panes...")
                 log_info("Phase 5: Skipping setup panes via MobileConfigService")
                 try:
@@ -892,6 +923,8 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
 
             # === Phase 6: final reboot so the skipped setup takes effect (98-100%) ===
             if reboot:
+                if stage_callback:
+                    stage_callback("setup", "restart")
                 progress_callback("Rebooting device...")
                 log_info("Phase 6: Rebooting device")
                 await reboot_device(reboot=True, lockdown_client=lc)
@@ -958,7 +991,7 @@ def _is_ios27_scaffolding(file) -> bool:
 
 
 # files is a list of FileToRestore objects
-async def restore_files(files: list[FileToRestore], reboot: bool = False, lockdown_client: LockdownClient = None, progress_callback = lambda x: None, backup_password: str = "", prepared_backup_root: PreparedBackup = None, skip_setup: bool = True, skip_protective_backup: bool = False, include_keychain: bool = False, prompt_choice=None, afc_media: bool = False, merge_phases: bool = True, supervised: bool = False, organization_name: str = ""):
+async def restore_files(files: list[FileToRestore], reboot: bool = False, lockdown_client: LockdownClient = None, progress_callback = lambda x: None, backup_password: str = "", prepared_backup_root: PreparedBackup = None, skip_setup: bool = True, skip_protective_backup: bool = False, include_keychain: bool = False, prompt_choice=None, afc_media: bool = False, merge_phases: bool = True, supervised: bool = False, organization_name: str = "", stage_callback=None):
     # create the files to be backed up
     files_list = [
     ]
@@ -1165,7 +1198,8 @@ async def restore_files(files: list[FileToRestore], reboot: bool = False, lockdo
                                  afc_media=afc_media,
                                  merge_phases=merge_phases,
                                  supervised=supervised,
-                                 organization_name=organization_name)
+                                 organization_name=organization_name,
+                                 stage_callback=stage_callback)
     else:
         # iOS 26.x: plain sparse restore — no security recovery wipe,
         # no protective backup needed.  When all files use the path-traversal

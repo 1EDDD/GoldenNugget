@@ -197,9 +197,14 @@ class HotLoad:
     def hidden_feature_reasons(self, device_version=None, device_model=None,
                                app_version=None) -> dict:
         """Matching hidden pages and their reasons, for the compatibility UI."""
-        if not self.is_enabled():
-            return {}
         hidden = {}
+        if not self.is_enabled():
+            return hidden
+        if device_version is not None and self._compare(str(device_version), "26.6.1") == 0:
+            hidden["Daemons"] = (
+                "Daemon changes are blocked on iOS 26.6.1 because a reported "
+                "configuration caused the device to freeze at the passcode screen."
+            )
         for rule in self._rules.get("rules", []):
             try:
                 if rule.get("action") != HIDE_ACTION:

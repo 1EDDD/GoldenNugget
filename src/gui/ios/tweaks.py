@@ -1,15 +1,16 @@
-from PySide6.QtCore import QCoreApplication, Qt
+from PySide6.QtCore import QCoreApplication, Qt, QSize, QTimer
+from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QScrollArea, QDialog, QLabel, QHBoxLayout, QComboBox, QPushButton
+    QWidget, QVBoxLayout, QScrollArea, QDialog, QLabel, QHBoxLayout, QPushButton
 )
 
 from src.gui.ios.components import (
-    IOSCollapsibleSection, IOSCard, IOSSettingsRow,
+    IOSCollapsibleSection, IOSCard, IOSValueRow,
     IOSSwitch, TextInputDialog, NumberInputDialog, decimals_for_step,
-    IOSSearchField, IOSSearchEmpty,
+    IOSSearchField, IOSSearchEmpty, IOSSegmentedFilter,
 )
 from src.gui.ios.compat import device_family, is_tweak_compatible
-from src.gui.theme import ColorThemeManager, t
+from src.gui.theme import ColorThemeManager, t, theme_icon, theme_pixmap
 from src.tweaks.tweaks import tweaks, TweakID
 from src.tweaks.registry import SPECS_BY_SECTION, SECTION_FEATURES, Kind, Section
 from src.tweaks.tweak_loader import load_plist_tweaks
@@ -86,28 +87,27 @@ class IOSSectionContent(QWidget):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(0)
         self.search = IOSSearchField(self)
-        self.filter_combo = QComboBox(self)
-        self.filter_combo.addItem(
-            QCoreApplication.translate("Nugget", "All tweaks"), "all")
-        self.filter_combo.addItem(
-            QCoreApplication.translate("Nugget", "Enabled only"), "enabled")
-        self.filter_combo.addItem(
-            QCoreApplication.translate("Nugget", "Favorites"), "favorites")
-        self.filter_combo.setSizeAdjustPolicy(QComboBox.AdjustToContents)
-        self.filter_combo.setAccessibleName(
-            QCoreApplication.translate("Nugget", "Tweak filter"))
+        self.search.setPlaceholderText(QCoreApplication.translate("Nugget", "Search tweaks…"))
+        self.search.setAccessibleName(self.search.placeholderText())
+        self.filter_control = IOSSegmentedFilter([
+            (QCoreApplication.translate("Nugget", "All"), "all"),
+            (QCoreApplication.translate("Nugget", "Enabled"), "enabled"),
+            (QCoreApplication.translate("Nugget", "Favorites"), "favorites"),
+        ], self)
+        self.filter_control.setAccessibleName(QCoreApplication.translate("Nugget", "Tweak filter"))
         search_row = QHBoxLayout()
         search_row.setContentsMargins(16, 16, 16, 0)
         search_row.setSpacing(8)
         search_row.addWidget(self.search, 1)
-        search_row.addWidget(self.filter_combo)
+        search_row.addWidget(self.filter_control)
         root.addLayout(search_row)
         self._inner = None
 
         self.rebuild()
         self.search.textChanged.connect(self._apply_search)
-        self.filter_combo.currentIndexChanged.connect(self._apply_search)
+        self.filter_control.currentIndexChanged.connect(self._apply_search)
         self._favorites.changed.connect(self._refresh_favorites)
+        ColorThemeManager.instance().theme_changed.connect(self._refresh_action_icons)
 
     def rebuild(self):
         """(Re)build the section controls for the currently selected device.
@@ -127,7 +127,7 @@ class IOSSectionContent(QWidget):
 
         layout = QVBoxLayout()
         layout.setContentsMargins(16, 16, 16, 32)
-        layout.setSpacing(8)
+        layout.setSpacing(10)
         inner = QWidget(self)
         inner.setLayout(layout)
         self._inner = inner
@@ -166,21 +166,20 @@ class IOSSectionContent(QWidget):
             if not is_compatible(tweak_id):
                 card.hide()
             row_layout = QHBoxLayout(card)
-            row_layout.setContentsMargins(0, 0, 0, 0)
+            row_layout.setContentsMargins(16, 12, 16, 12)
             row_layout.setSpacing(12)
 
             c = ColorThemeManager.instance().colors
             label = QLabel(title)
             label.setWordWrap(True)
-            label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+            label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px; background-color: transparent;")
             self._switch_labels.append(label)
             row_layout.addWidget(label, 1)
-            row_layout.addWidget(self._make_favorite_button(tweak_id, title))
-            row_layout.addWidget(self._make_info_button(tweak_id, title))
-
             switch = IOSSwitch(tweak.enabled)
             switch.toggled.connect(lambda checked: tweak.set_enabled(checked))
             row_layout.addWidget(switch)
+            row_layout.addWidget(self._make_favorite_button(tweak_id, title))
+            row_layout.addWidget(self._make_info_button(tweak_id, title))
 
             if description:
                 label.setToolTip(description)
@@ -200,14 +199,15 @@ class IOSSectionContent(QWidget):
             tweak = tweaks[tweak_id]
             card = IOSCard()
             card_layout = QHBoxLayout(card)
-            card_layout.setContentsMargins(0, 0, 0, 0)
-            row = IOSSettingsRow(title)
+            card_layout.setContentsMargins(14, 8, 14, 8)
+            card_layout.setSpacing(10)
+            row = IOSValueRow(title)
             if description:
                 row.setToolTip(description)
             current = ""
-            if hasattr(tweak, 'value') and tweak.value:
+            if getattr(tweak, 'value', None) is not None:
                 current = str(tweak.value)
-                row.setText(f"{title}  ({current})")
+                row.set_display_value(current if current else QCoreApplication.translate("Nugget", "Empty"))
             row.clicked.connect(lambda: self._show_text_input_dialog(tweak_id, title, current, row))
             card_layout.addWidget(row, 1)
             card_layout.addWidget(self._make_favorite_button(tweak_id, title))
@@ -226,17 +226,18 @@ class IOSSectionContent(QWidget):
             tweak = tweaks[tweak_id]
             card = IOSCard()
             card_layout = QHBoxLayout(card)
-            card_layout.setContentsMargins(0, 0, 0, 0)
-            row = IOSSettingsRow(title)
+            card_layout.setContentsMargins(14, 8, 14, 8)
+            card_layout.setSpacing(10)
+            row = IOSValueRow(title)
             if description:
                 row.setToolTip(f"{description}\n\n"
                                + QCoreApplication.translate("Nugget", "Range: {0} – {1}")
                                .format(_fmt_number(min_val), _fmt_number(max_val)))
             decimals = decimals_for_step(step)
             current = 0
-            if hasattr(tweak, 'value') and tweak.value:
+            if getattr(tweak, 'value', None) is not None:
                 current = int(tweak.value) if decimals == 0 else float(tweak.value)
-                row.setText(f"{title}  ({_fmt_number(current)})")
+                row.set_display_value(_fmt_number(current))
             row.clicked.connect(lambda: self._show_number_input_dialog(
                 tweak_id, title, current, row, min_val, max_val, step))
             card_layout.addWidget(row, 1)
@@ -299,10 +300,15 @@ class IOSSectionContent(QWidget):
         if self._solarium_visible is not None and self.force_solarium_fallback_card is not None:
             self.force_solarium_fallback_card.setVisible(self._solarium_visible)
         self._apply_search()
+        pages = getattr(self.window, "ios_pages", None)
+        if pages is not None and hasattr(self.window, "ios_nav"):
+            if pages.currentWidget().isAncestorOf(self):
+                QTimer.singleShot(0, lambda: self.window._update_shared_nav(
+                    pages.currentIndex()))
 
     def _apply_search(self, *_args):
         searching = bool(self.search.text().strip())
-        filter_mode = self.filter_combo.currentData()
+        filter_mode = self.filter_control.currentData()
         filtering = searching or filter_mode != "all"
         favorites = self._favorites.names()
         matches = 0
@@ -349,15 +355,18 @@ class IOSSectionContent(QWidget):
 
     def _make_favorite_button(self, tweak_id, title):
         button = QPushButton(self)
-        button.setFixedSize(30, 30)
+        button.setFixedSize(44, 44)
         button.setCheckable(True)
         button.setChecked(tweak_id.name in self._favorites.names())
-        button.setText("★" if button.isChecked() else "☆")
+        self._set_favorite_icon(button, button.isChecked())
+        button.setIconSize(QSize(23, 23))
         button.setCursor(Qt.PointingHandCursor)
         button.setAccessibleName(QCoreApplication.translate("Nugget", "Favorite: {0}").format(title))
         button.setToolTip(QCoreApplication.translate("Nugget", "Add or remove from favorites"))
         button.setStyleSheet(t("tweak_favorite_button"))
-        button.toggled.connect(lambda selected: self._favorites.set_favorite(tweak_id.name, selected))
+        button.toggled.connect(
+            lambda selected, b=button, name=tweak_id.name:
+            self._on_favorite_toggled(b, name, selected))
         self._favorite_buttons[tweak_id] = button
         return button
 
@@ -367,13 +376,35 @@ class IOSSectionContent(QWidget):
             selected = tid.name in names
             button.blockSignals(True)
             button.setChecked(selected)
-            button.setText("★" if selected else "☆")
+            self._set_favorite_icon(button, selected)
             button.blockSignals(False)
         self._apply_search()
 
+    def _on_favorite_toggled(self, button, name, selected):
+        self._set_favorite_icon(button, selected)
+        self._favorites.set_favorite(name, selected)
+
+    def _set_favorite_icon(self, button, selected):
+        colors = ColorThemeManager.instance().colors
+        color = colors.accent if selected else colors.text_secondary
+        icon = ":/icon/star-fill.svg" if selected else ":/icon/star.svg"
+        button.setIcon(QIcon(theme_pixmap(
+            icon, color, 23, button.devicePixelRatioF())))
+
+    def _refresh_action_icons(self):
+        for button in self._favorite_buttons.values():
+            self._set_favorite_icon(button, button.isChecked())
+        for button in self._info_buttons:
+            button.setIcon(theme_icon(
+                ":/icon/questionmark.circle.svg",
+                ColorThemeManager.instance().colors.text_secondary))
+
     def _make_info_button(self, tweak_id, title):
-        button = QPushButton("ⓘ", self)
-        button.setFixedSize(30, 30)
+        button = QPushButton(self)
+        button.setFixedSize(36, 36)
+        button.setIcon(theme_icon(":/icon/questionmark.circle.svg",
+                                  ColorThemeManager.instance().colors.text_secondary))
+        button.setIconSize(QSize(19, 19))
         button.setCursor(Qt.PointingHandCursor)
         help_text = QCoreApplication.translate("Nugget", "About {0}").format(title)
         button.setToolTip(help_text)
@@ -397,43 +428,32 @@ class IOSSectionContent(QWidget):
 
     def _retheme(self):
         c = ColorThemeManager.instance().colors
-        self.filter_combo.setStyleSheet(f"""
-            QComboBox {{
-                background-color: {c.bg_input};
-                border: 1px solid {c.border};
-                border-radius: 9px;
-                color: {c.text_primary};
-                padding: 7px 10px;
-                min-height: 18px;
-            }}
-            QComboBox::drop-down {{ border: none; width: 20px; }}
-            QComboBox QAbstractItemView {{
-                background-color: {c.bg_tertiary};
-                color: {c.text_primary};
-                selection-background-color: {c.accent};
-            }}
-        """)
+        self.filter_control._retheme()
         for lbl in self._switch_labels:
-            lbl.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+            lbl.setStyleSheet(f"color: {c.text_primary}; font-size: 15px; background-color: transparent;")
         for button in self._info_buttons:
             button.setStyleSheet(t("tweak_info_button"))
         for button in self._favorite_buttons.values():
             button.setStyleSheet(t("tweak_favorite_button"))
 
-    def _show_text_input_dialog(self, tweak_id: TweakID, title: str, current: str, row: IOSSettingsRow):
+    def _show_text_input_dialog(self, tweak_id: TweakID, title: str, current: str, row: IOSValueRow):
+        saved = tweaks[tweak_id].value
+        current = "" if saved is None else str(saved)
         dialog = TextInputDialog(title, current, self)
         if dialog.exec() == QDialog.Accepted:
             value = dialog.get_value()
             tweaks[tweak_id].set_value(value, toggle_enabled=True)
-            display = value if value else "(empty)"
-            row.setText(f"{title}  ({display})")
+            display = value if value else QCoreApplication.translate("Nugget", "Empty")
+            row.set_display_value(display)
 
-    def _show_number_input_dialog(self, tweak_id: TweakID, title: str, current, row: IOSSettingsRow, min_val, max_val, step: float = 1.0):
+    def _show_number_input_dialog(self, tweak_id: TweakID, title: str, current, row: IOSValueRow, min_val, max_val, step: float = 1.0):
+        saved = tweaks[tweak_id].value
+        current = 0 if saved is None else saved
         dialog = NumberInputDialog(title, current, min_val, max_val, self, step=step)
         if dialog.exec() == QDialog.Accepted:
             value = dialog.get_value()
             tweaks[tweak_id].set_value(value, toggle_enabled=True)
-            row.setText(f"{title}  ({_fmt_number(value)})")
+            row.set_display_value(_fmt_number(value))
 
 
 class IOSTweaksPage(QWidget):
@@ -454,7 +474,6 @@ class IOSTweaksPage(QWidget):
         layout.addWidget(scroll)
 
         self._retheme()
-        ColorThemeManager.instance().theme_changed.connect(self._retheme)
 
     def _retheme(self):
         c = ColorThemeManager.instance().colors
@@ -489,7 +508,6 @@ class IOSSectionPage(QWidget):
         layout.addWidget(scroll)
 
         self._retheme()
-        ColorThemeManager.instance().theme_changed.connect(self._retheme)
 
     def _retheme(self):
         c = ColorThemeManager.instance().colors

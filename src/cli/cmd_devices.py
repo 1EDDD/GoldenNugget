@@ -22,6 +22,10 @@ def run(args) -> int:
     settings = bootstrap()
     dm = make_device_manager(settings)
     list_devices(dm, settings)
+    from src.cli.output import set_result
+    fields = ('name', 'udid', 'version', 'build', 'model', 'hardware', 'cpu', 'locale', 'connected_via_usb')
+    devices = [device for device in dm.devices if not args.udid or device.udid == args.udid]
+    set_result({'devices': [{key: getattr(device, key, None) for key in fields} for device in devices]})
 
     if not getattr(dm, "devices", None):
         print("No devices connected.")

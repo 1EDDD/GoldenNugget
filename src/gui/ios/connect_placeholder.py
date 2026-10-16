@@ -102,7 +102,6 @@ class ConnectDevicePlaceholder(QWidget):
         layout.addWidget(self._continue_btn, 0, Qt.AlignHCenter)
 
         self._retheme()
-        ColorThemeManager.instance().theme_changed.connect(self._retheme)
 
     def _refresh(self):
         try:

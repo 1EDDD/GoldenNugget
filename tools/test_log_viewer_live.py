@@ -26,7 +26,7 @@ _TMP_DIR = tempfile.mkdtemp(prefix="gn_logviewer_live_")
 os.environ["GOLDENNUGGET_LOG_FILE"] = os.path.join(_TMP_DIR, "session.log")
 
 import logging
-from PySide6.QtCore import QEventLoop, QTimer
+from PySide6.QtCore import QEventLoop, QTimer, QSettings
 from PySide6.QtWidgets import QApplication, QWidget
 
 app = QApplication.instance() or QApplication([])
@@ -73,13 +73,16 @@ class FakeWindow(QWidget):
 
     def __init__(self):
         super().__init__()
-        self.settings = None
+        self.settings = QSettings(os.path.join(_TMP_DIR, "settings.ini"), QSettings.IniFormat)
         self.device_manager = FakeDM()
 
     def show_ios_page(self, i):
         pass
 
     def refresh_devices(self):
+        pass
+
+    def dismiss_operation_result(self):
         pass
 
 

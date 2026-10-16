@@ -1,11 +1,9 @@
 ![Artboard][NuggetLogo]
 
 # GoldenNugget
-
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
 > [!WARNING]
 > **Back up your device before applying tweaks.** GoldenNugget can cause data loss, boot loops, or other unexpected device problems. Use this project at your own risk; the authors are not responsible for damage to your device or data. See the [full disclaimer](docs/DISCLAIMER.md).
-
-[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
 
 Unlock your device's full potential, with iOS 27 support!
 
@@ -239,6 +237,11 @@ python3 main_app.py
 > Depending on your system configuration, use either `python/pip` or `python3/pip3`.
 
 ## Building
+
+Portable presets (`.gnpreset`), diagnostic archives, JSON CLI output and offline
+wallpaper checks are documented in
+[Portable presets and offline inspection](docs/PORTABLE_AND_DIAGNOSTICS.md).
+
 To compile `mainwindow.ui` for Python, run the following command:
 ```py
 pyside6-uic --from-imports src/qt/mainwindow.ui -o src/qt/mainwindow_ui.py

@@ -1,11 +1,22 @@
 <RCC>
     <qresource prefix="/">
         <file>credits/LeminLimez.png</file>
+        <file>credits/awesomenull.webp</file>
+        <file>credits/windows11aero.webp</file>
         <file>icon/app-indicator.svg</file>
         <file>icon/arrow-clockwise.svg</file>
         <file>icon/brush.svg</file>
         <file>icon/caret-down-fill.svg</file>
         <file>icon/check-circle.svg</file>
+        <file>icon/clock.svg</file>
+        <file>icon/restore-warning.svg</file>
+        <file>icon/find-my.svg</file>
+        <file>icon/phone-restart.svg</file>
+        <file>icon/phone-download.svg</file>
+        <file>icon/merge.svg</file>
+        <file>icon/cable.svg</file>
+        <file>icon/chat.svg</file>
+        <file>icon/person.svg</file>
         <file>icon/compass.svg</file>
         <file>icon/gear.svg</file>
         <file>icon/hdd.svg</file>
@@ -25,12 +36,17 @@
         <file>icon/currency-dollar.svg</file>
         <file>icon/geo-alt.svg</file>
         <file>icon/star.svg</file>
+        <file>icon/features/passcode-theme.svg</file>
+        <file>icon/star-fill.svg</file>
         <file>icon/pencil.svg</file>
+        <file>icon/edit-value.svg</file>
+        <file>icon/search.svg</file>
         <file>icon/import.svg</file>
         <file>icon/plus.svg</file>
         <file>icon/iphone-island.svg</file>
         <file>icon/flag.svg</file>
         <file>credits/big_nugget.png</file>
+        <file>credits/nugget_half_eaten.png</file>
         <file>icon/photo-stack.svg</file>
         <file>icon/photo.svg</file>
         <file>icon/shippingbox.svg</file>

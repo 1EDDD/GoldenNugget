@@ -51,6 +51,7 @@ from src.gui.ios.statusbar import IOSStatusBarPage
 from src.gui.ios.icon_themes import IOSIconThemesPage
 from src.gui.ios.passcode_theme import IOSPasscodeThemePage
 from src.gui.ios.connect_placeholder import ConnectDevicePlaceholder
+from src.gui.thread_workers.apply_worker import DeviceMonitorThread
 from src.tweaks.registry import Section
 
 from src.gui.theme import ColorThemeManager, t, theme_icon, themed_stylesheet
@@ -108,6 +109,10 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.noneText = self.tr("None")
         self.apply_in_progress = False
         self.refresh_in_progress = False
+        self._device_change_refresh_pending = False
+        self._device_refresh_timer = QtCore.QTimer(self)
+        self._device_refresh_timer.setSingleShot(True)
+        self._device_refresh_timer.timeout.connect(self._refresh_after_device_event)
         # False until the first device scan resolves; the connect placeholder
         # must not be shown while that scan is still running (the device list
         # is empty then, even with a phone plugged in).
@@ -207,8 +212,6 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         }
         self._nav_right_actions = {
             2: ("+ Add Tendies", self.ios_posterboard.show_add_tendies_dialog),
-            10: (QtCore.QCoreApplication.translate("Nugget", "+ Add Icon"),
-                 self.ios_iconthemes.show_add_icon_dialog),
             11: (QCoreApplication.translate("Nugget", "+ Theme"),
                  self.ios_passthemes.choose_theme_dialog),
         }
@@ -289,6 +292,12 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.pages[Page.Home].load()
         
         ## DEVICE BAR
+        self.ui.refreshBtn.clicked.connect(self.refresh_devices)
+        self.ui.refreshBtn.setToolTip(QCoreApplication.translate("Nugget", "Refresh connected devices"))
+        self.ui.devicePicker.currentIndexChanged.connect(self.change_selected_device)
+        self._device_monitor_thread = DeviceMonitorThread(self)
+        self._device_monitor_thread.devices_changed.connect(self.on_device_connection_changed)
+        self._device_monitor_thread.start()
         self.refresh_devices()
         # The refresh above runs on a worker thread, so the device list is still
         # empty here. _update_device_gate() deliberately does NOT show the
@@ -296,9 +305,6 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         # "No device connected" screen stayed up for the whole scan (seconds)
         # even when a supported phone was already plugged in.
         self._update_device_gate()
-
-        self.ui.refreshBtn.clicked.connect(self.refresh_devices)
-        self.ui.devicePicker.currentIndexChanged.connect(self.change_selected_device)
 
         ## SIDE BAR ACTIONS
         self.ui.homePageBtn.clicked.connect(self.on_homePageBtn_clicked)
@@ -351,12 +357,13 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
     def _apply_global_stylesheet(self):
         """Re-apply the global stylesheet using the current color theme."""
         self.setStyleSheet(t("global"))
+        self._applied_color_mode = self._color_theme.mode
         # Also update the QPalette so native widgets pick up the colors
         QtWidgets.QApplication.instance().setPalette(self._color_theme.build_palette())
         # Re-style the ios_pages stack
         self.ios_pages.setStyleSheet(t("page_bg"))
-        # Re-style the classic chrome (sidebar icons, device bar, home toolbar)
-        self._retheme_classic()
+        if self.theme_manager.current_theme == ThemeManager.CLASSIC:
+            self._retheme_classic()
 
     def _retheme_classic(self):
         """Re-color the classic shell: chrome icons, device picker, version
@@ -405,12 +412,15 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
 
     def _on_color_theme_changed(self):
         """Called when the color theme (dark/light or accent) changes."""
-        self._apply_global_stylesheet()
-        # Force re-render of all iOS page stylesheets by re-applying them
-        for i in range(self.ios_pages.count()):
-            page = self.ios_pages.widget(i)
-            if page and hasattr(page, '_retheme'):
-                page._retheme()
+        if self.theme_manager.current_theme == ThemeManager.CLASSIC:
+            self._apply_global_stylesheet()
+            return
+        if getattr(self, '_applied_color_mode', None) != self._color_theme.mode:
+            self._apply_global_stylesheet()
+        page = self.ios_pages.currentWidget()
+        if page is not None and hasattr(page, "_retheme"):
+            page._retheme()
+            page._applied_theme_revision = self._color_theme.revision
 
     def closeEvent(self, event):
         """Guard window close so device threads never get destroyed mid-run.
@@ -467,6 +477,13 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         if _still_running(scan_worker):
             try:
                 scan_worker.wait(8000)
+            except RuntimeError:
+                pass
+        monitor_worker = getattr(self, "_device_monitor_thread", None)
+        if _still_running(monitor_worker):
+            monitor_worker.request_stop()
+            try:
+                monitor_worker.wait(10000)
             except RuntimeError:
                 pass
         super().closeEvent(event)

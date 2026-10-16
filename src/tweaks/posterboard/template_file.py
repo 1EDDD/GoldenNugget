@@ -76,11 +76,11 @@ class TemplateFile(TendieFile):
                     self.min_version = data['min_version']
                     # check the device version
                     # TODO: need to make this check also happen when connected device is updated
-                    if Version(self.min_version) > Version(device_version):
+                    if device_version and Version(self.min_version) > Version(device_version):
                         raise PBTemplateException(path, QtCore.QCoreApplication.tr("This template requires iOS {0}.\nYour iOS version (iOS {1}) is too outdated!").format(self.min_version, device_version))
                 if 'max_version' in data:
                     self.max_version = data['max_version']
-                    if Version(self.max_version) < Version(device_version):
+                    if device_version and Version(self.max_version) < Version(device_version):
                         raise PBTemplateException(path, QtCore.QCoreApplication.tr("This template requires iOS {0}.\nYour iOS version (iOS {1}) is too new!").format(self.max_version, device_version))
 
                 # load the previews

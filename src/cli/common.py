@@ -152,7 +152,7 @@ def autosave_preset(dm=None):
         device_model=model or "", ios_version=version or "")
 
 
-def load_default_preset(source: Optional[str] = None, dm=None):
+def load_default_preset(source: Optional[str] = None, dm=None, preview_only=False):
     """Load a preset the CLI apply flow should start from.
 
     ``source`` given -> load exactly that preset. Otherwise mimic the GUI:
@@ -163,9 +163,9 @@ def load_default_preset(source: Optional[str] = None, dm=None):
     if source:
         if source.lower() == "none":
             return
-        if not pm.load_preset(source):
+        if not pm.load_preset(source, preview_only=preview_only):
             print(f"ERROR: preset '{source}' not found or failed to load.", file=sys.stderr)
             raise SystemExit(1)
         return
     if "AutoSave" in pm.list_presets():
-        pm.load_preset("AutoSave")
+        pm.load_preset("AutoSave", preview_only=preview_only)

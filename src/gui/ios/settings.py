@@ -1,14 +1,15 @@
-from PySide6.QtCore import Qt, QCoreApplication, QTimer, QPropertyAnimation, QEasingCurve
+from PySide6.QtCore import Qt, QCoreApplication, QTimer, QPropertyAnimation, QEasingCurve, QSize, QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QScrollArea,
     QComboBox, QLineEdit, QListWidget, QListWidgetItem, QMessageBox, QInputDialog,
-    QFileDialog, QDialog, QProgressDialog, QGraphicsOpacityEffect, QAbstractButton
+    QFileDialog, QDialog, QProgressDialog, QGraphicsOpacityEffect, QAbstractButton, QPushButton
 )
 from pathlib import Path
 
 from src.exceptions.nugget_exception import NuggetException
 from src.gui.ios.components import (
-    IOSSectionHeader, IOSSwitch, IOSPrimaryButton, IOSSearchField, IOSSearchEmpty, IOSCollapsibleSection
+    IOSCard, IOSSectionHeader, IOSSwitch, IOSSettingsAction, IOSSearchField, IOSSearchEmpty, IOSCollapsibleSection
 )
 from src.gui.pages.main.settings import available_languages
 from src.controllers.video_handler import set_ignore_frame_limit
@@ -16,7 +17,8 @@ from src.controllers.preset_manager import PresetManager
 from src.controllers.hotload import HotLoad
 from src.tweaks.tweaks import tweaks, TweakID
 from src.gui.thread_workers.apply_worker import ResetPairingThread
-from src.gui.theme import ColorThemeManager, AccentPicker, t
+from src.gui.dialogs.confirmation import ask_confirmation
+from src.gui.theme import ColorThemeManager, AccentPicker, t, theme_icon
 
 
 class IOSSettingsPage(QWidget):
@@ -24,6 +26,8 @@ class IOSSettingsPage(QWidget):
         super().__init__(parent)
         self.window = window
         self.setObjectName("iosContainer")
+        self.setFocusPolicy(Qt.ClickFocus)
+        self._first_show = True
         self.lang_indexes = []
         self.preset_manager = PresetManager()
         self._tm = ColorThemeManager.instance()
@@ -52,14 +56,14 @@ class IOSSettingsPage(QWidget):
 
         self.content_layout = QVBoxLayout(content)
         self.content_layout.setContentsMargins(16, 16, 16, 32)
-        self.content_layout.setSpacing(8)
+        self.content_layout.setSpacing(10)
 
         # --- Appearance ---
         self.content_layout.addWidget(IOSSectionHeader(QCoreApplication.translate("Nugget", "Appearance")))
 
-        accent_row_card = QWidget()
+        accent_row_card = IOSCard()
         accent_row = QHBoxLayout(accent_row_card)
-        accent_row.setContentsMargins(16, 10, 16, 10)
+        accent_row.setContentsMargins(16, 12, 16, 12)
         accent_row.setSpacing(12)
         accent_label = QLabel(QCoreApplication.translate("Nugget", "Accent Color"))
         accent_row.addWidget(accent_label, 1)
@@ -68,9 +72,9 @@ class IOSSettingsPage(QWidget):
         self.content_layout.addWidget(accent_row_card)
 
         # Choose which widget the home screen shows next to the device picker.
-        home_widget_card = QWidget()
+        home_widget_card = IOSCard()
         home_widget_row = QHBoxLayout(home_widget_card)
-        home_widget_row.setContentsMargins(16, 10, 16, 10)
+        home_widget_row.setContentsMargins(16, 12, 16, 12)
         home_widget_row.setSpacing(12)
         home_widget_label = QLabel(QCoreApplication.translate("Nugget", "Home Widget"))
         home_widget_row.addWidget(home_widget_label, 1)
@@ -79,6 +83,8 @@ class IOSSettingsPage(QWidget):
             QCoreApplication.translate("Nugget", "Device Storage"), "storage")
         self._home_widget_combo.addItem(
             QCoreApplication.translate("Nugget", "Presets"), "presets")
+        self._home_widget_combo.addItem(
+            QCoreApplication.translate("Nugget", "Presets and Device Storage"), "both")
         _current_widget = self.window.settings.value("home_widget", "presets", type=str)
         _widget_index = self._home_widget_combo.findData(_current_widget)
         self._home_widget_combo.setCurrentIndex(_widget_index if _widget_index >= 0 else 1)
@@ -91,7 +97,7 @@ class IOSSettingsPage(QWidget):
 
         # HotLoad safety rules
         self.content_layout.addWidget(
-            IOSSectionHeader(QCoreApplication.translate("Nugget", "Safety (HotLoad)")))
+            IOSSectionHeader(QCoreApplication.translate("Nugget", "Safety")))
         self._hotload = HotLoad(self.window.settings)
         self._make_switch(
             QCoreApplication.translate("Nugget",
@@ -114,7 +120,7 @@ class IOSSettingsPage(QWidget):
             self._make_setting_handler("auto_reboot"),
         )
 
-        reset_pairing_btn = IOSPrimaryButton(QCoreApplication.translate("Nugget", "Reset Device Pairing"))
+        reset_pairing_btn = IOSSettingsAction(QCoreApplication.translate("Nugget", "Reset Device Pairing"))
         reset_pairing_btn.clicked.connect(self._on_reset_pairing_clicked)
         self.content_layout.addWidget(reset_pairing_btn)
 
@@ -157,8 +163,6 @@ class IOSSettingsPage(QWidget):
 
         # Backup
         self.content_layout.addWidget(IOSSectionHeader(QCoreApplication.translate("Nugget", "Backup")))
-        self.content_layout = self.advanced_section.body_layout
-        self.content_layout.addWidget(IOSSectionHeader(QCoreApplication.translate("Nugget", "Backup options")))
 
         cache_switch = self._make_switch(
             QCoreApplication.translate("Nugget", "Use Fast Backup Cache (Experimental)"),
@@ -181,7 +185,7 @@ class IOSSettingsPage(QWidget):
         self.content_layout = standard_layout
         self._make_backup_location_row()
 
-        restore_btn = IOSPrimaryButton(
+        restore_btn = IOSSettingsAction(
             QCoreApplication.translate("Nugget", "Restore Data From Backup"))
         restore_btn.setToolTip(QCoreApplication.translate(
             "Nugget",
@@ -192,23 +196,22 @@ class IOSSettingsPage(QWidget):
 
         self._make_history_section()
 
-        self.content_layout = self.advanced_section.body_layout
         # Setup
         self.content_layout.addWidget(IOSSectionHeader(QCoreApplication.translate("Nugget", "Setup")))
 
-        self._make_switch(
+        self.skip_setup_switch = self._make_switch(
             QCoreApplication.translate("Nugget", "Skip Setup * (non-exploit files only)"),
             pref.skip_setup,
             self._make_setting_handler("skip_setup"),
         )
 
-        self._make_switch(
+        self.supervision_switch = self._make_switch(
             QCoreApplication.translate("Nugget", "Enable Supervision * (requires Skip Setup)"),
             pref.supervised,
             self._make_setting_handler("supervised"),
         )
 
-        self._make_text_row(
+        self.organization_card = self._make_text_row(
             QCoreApplication.translate("Nugget", "Enter Organization Name"),
             pref.organization_name,
             self._on_org_name_edited,
@@ -219,21 +222,57 @@ class IOSSettingsPage(QWidget):
         # About
         self.content_layout.addWidget(IOSSectionHeader(QCoreApplication.translate("Nugget", "About")))
 
-        about_btn = IOSPrimaryButton(QCoreApplication.translate("Nugget", "About GoldenNugget"))
+        about_btn = IOSSettingsAction(QCoreApplication.translate("Nugget", "About GoldenNugget"))
         about_btn.clicked.connect(self.show_about)
         self.content_layout.addWidget(about_btn)
 
+        diagnostics_btn = IOSSettingsAction(QCoreApplication.translate('Nugget', 'Export Diagnostics'))
+        diagnostics_btn.clicked.connect(self._export_diagnostics)
+        self.content_layout.addWidget(diagnostics_btn)
+
+        self.report_bug_btn = IOSSettingsAction(
+            QCoreApplication.translate('Nugget', 'Report a Bug'))
+        self.report_bug_btn.clicked.connect(self._report_bug)
+        self.content_layout.addWidget(self.report_bug_btn)
+
         self.content_layout.addStretch()
 
+        self._sync_setting_dependencies()
         self._index_search_rows()
         self.search.textChanged.connect(self._filter_settings)
 
         self._retheme()
-        self._tm.theme_changed.connect(self._retheme)
+
+    def _sync_setting_dependencies(self):
+        pref = self.window.device_manager.pref_manager
+        self.supervision_switch.parentWidget().setEnabled(pref.skip_setup)
+        self.organization_card.setEnabled(pref.skip_setup and pref.supervised)
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self._sync_setting_dependencies()
+        if self._first_show:
+            self._first_show = False
+            self.setFocus(Qt.OtherFocusReason)
+
+    def _report_bug(self):
+        url = QUrl('https://github.com/GoldenNugget-Team/GoldenNugget/issues/new')
+        if not QDesktopServices.openUrl(url):
+            QMessageBox.warning(
+                self, QCoreApplication.translate('Nugget', 'Report a Bug'),
+                QCoreApplication.translate(
+                    'Nugget', 'Could not open the browser. Open this link to report a bug:\n{0}').format(url.toString()))
+
+    def _export_diagnostics(self):
+        from src.gui.dialogs.diagnostics import DiagnosticsDialog
+        DiagnosticsDialog(self.window.settings, self.window.device_manager, self).exec()
 
     def _on_advanced_toggled(self, expanded):
         self.window.settings.setValue('advanced_settings_expanded', expanded)
         self.window.settings.sync()
+        pages = getattr(self.window, "ios_pages", None)
+        if pages is not None and hasattr(self.window, "ios_nav"):
+            QTimer.singleShot(0, lambda: self.window._update_shared_nav(pages.currentIndex()))
 
     def _index_search_rows(self):
         """Index static labels/actions, excluding editable values and history entries."""
@@ -308,12 +347,14 @@ class IOSSettingsPage(QWidget):
 
     def _retheme(self):
         c = self._tm.colors
+        for label in [*self.findChildren(QLabel), *self.findChildren(QAbstractButton)]:
+            style_key = label.property('theme_style_key')
+            if style_key:
+                label.setStyleSheet(t(style_key))
         self._scroll.setStyleSheet(
             f"background-color: {c.bg_primary}; border: none;"
         )
-        self._accent_picker.setStyleSheet(
-            f"background-color: {c.bg_primary};"
-        )
+        self._accent_picker.setStyleSheet("background-color: transparent;")
         if hasattr(self, '_home_widget_combo'):
             self._retheme_home_widget_dropdown()
         if hasattr(self, '_lang_drp'):
@@ -327,8 +368,8 @@ class IOSSettingsPage(QWidget):
         c = self._tm.colors
         self._home_widget_combo.setStyleSheet(f"""
             QComboBox {{
-                background-color: {c.bg_input};
-                border: none;
+                background-color: {c.bg_tertiary};
+                border: 1px solid {c.border};
                 border-radius: 10px;
                 color: {c.text_primary};
                 font-size: 10.5pt;
@@ -336,7 +377,7 @@ class IOSSettingsPage(QWidget):
                 min-width: 140px;
             }}
             QComboBox::drop-down {{ border: none; width: 24px; }}
-            QComboBox::down-arrow {{ image: none; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid {c.text_secondary}; margin-right: 10px; }}
+            QComboBox::down-arrow {{ image: url(:/icon/chevron.down.svg); width: 12px; height: 8px; margin-right: 8px; }}
             QComboBox QAbstractItemView {{
                 background-color: {c.bg_tertiary};
                 border: 1px solid {c.border};
@@ -350,8 +391,8 @@ class IOSSettingsPage(QWidget):
         c = self._tm.colors
         self._lang_drp.setStyleSheet(f"""
             QComboBox {{
-                background-color: {c.bg_input};
-                border: none;
+                background-color: {c.bg_tertiary};
+                border: 1px solid {c.border};
                 border-radius: 10px;
                 color: {c.text_primary};
                 font-size: 10.5pt;
@@ -359,7 +400,7 @@ class IOSSettingsPage(QWidget):
                 min-width: 140px;
             }}
             QComboBox::drop-down {{ border: none; width: 24px; }}
-            QComboBox::down-arrow {{ image: none; border-left: 5px solid transparent; border-right: 5px solid transparent; border-top: 6px solid {c.text_secondary}; margin-right: 10px; }}
+            QComboBox::down-arrow {{ image: url(:/icon/chevron.down.svg); width: 12px; height: 8px; margin-right: 8px; }}
             QComboBox QAbstractItemView {{
                 background-color: {c.bg_tertiary};
                 border: 1px solid {c.border};
@@ -386,15 +427,19 @@ class IOSSettingsPage(QWidget):
 
     # ---------- helpers ----------
 
+    def _style_label(self, label, key):
+        label.setProperty('theme_style_key', key)
+        label.setStyleSheet(t(key))
+
     def _make_switch(self, title: str, checked: bool, on_toggled) -> IOSSwitch:
         c = self._tm.colors
-        card = QWidget()
+        card = IOSCard()
         row = QHBoxLayout(card)
-        row.setContentsMargins(16, 10, 16, 10)
+        row.setContentsMargins(16, 12, 16, 12)
         row.setSpacing(12)
 
         label = QLabel(title)
-        label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        self._style_label(label, 'row_title')
         label.setWordWrap(True)
         row.addWidget(label, 1)
 
@@ -409,6 +454,7 @@ class IOSSettingsPage(QWidget):
         def handler(checked: bool):
             setattr(pref, pref_attr, checked)
             self.window.settings.setValue(pref_attr, checked)
+            self._sync_setting_dependencies()
             self.window._sync_settings()
         return handler
 
@@ -418,7 +464,7 @@ class IOSSettingsPage(QWidget):
         return handler
 
     def _on_home_widget_changed(self, index: int):
-        """Switch the home top-bar widget between storage and presets."""
+        """Choose the available home-screen widget categories."""
         mode = self._home_widget_combo.itemData(index)
         if mode:
             self.window.ios_home.set_home_widget(mode)
@@ -474,31 +520,31 @@ class IOSSettingsPage(QWidget):
             )
 
     def _on_restore_data_clicked(self):
-        reply = QMessageBox.question(
-            self.window,
+        reply = ask_confirmation(self.window,
             "Restore Data From Backup?",
             "This restores photos, messages, contacts and settings from the "
             "last protective backup on this computer.\n\n"
             "Applied tweaks and GoldenNugget wallpapers are KEPT.\n\n"
             "Make sure the iPhone is connected, unlocked and awake, "
             "then do you want to continue?",
-        )
-        if reply != QMessageBox.StandardButton.Yes:
+            confirm_text=QCoreApplication.translate("Nugget", "Restore Data"))
+        if not reply:
             return
         self.window._start_cache_restore()
 
     def _on_backup_cache_toggled(self, checked: bool, switch):
         pref = self.window.device_manager.pref_manager
         if checked:
-            reply = QMessageBox.question(
+            reply = ask_confirmation(
                 self.window,
                 "Enable Fast Backup Cache?",
                 "WARNING: The cached backup feature is experimental and, when it "
                 "fails, can leave your device without wallpaper data or on the "
                 "Setup screen.\n\n"
                 "Enable the fast backup cache anyway?",
-            )
-            if reply != QMessageBox.StandardButton.Yes:
+                confirm_text=QCoreApplication.translate("Nugget", "Enable Cache"),
+                destructive=True)
+            if not reply:
                 switch.blockSignals(True)
                 switch.setChecked(False)
                 switch.blockSignals(False)
@@ -510,7 +556,7 @@ class IOSSettingsPage(QWidget):
     def _on_encrypted_backup_toggled(self, checked: bool, switch):
         pref = self.window.device_manager.pref_manager
         if checked:
-            reply = QMessageBox.question(
+            reply = ask_confirmation(
                 self.window,
                 "Enable Encrypted Backups?",
                 "WARNING: Using encrypted backups with GoldenNugget is experimental "
@@ -518,8 +564,9 @@ class IOSSettingsPage(QWidget):
                 "screen after applying tweaks.\n\n"
                 "Make sure you know your backup password before continuing.\n\n"
                 "Enable encrypted backups anyway?",
-            )
-            if reply != QMessageBox.StandardButton.Yes:
+                confirm_text=QCoreApplication.translate("Nugget", "Enable Encryption"),
+                destructive=True)
+            if not reply:
                 switch.blockSignals(True)
                 switch.setChecked(False)
                 switch.blockSignals(False)
@@ -558,21 +605,20 @@ class IOSSettingsPage(QWidget):
 
     def _make_backup_location_row(self):
         c = self._tm.colors
-        card = QWidget()
+        card = IOSCard()
         row = QVBoxLayout(card)
         row.setContentsMargins(16, 12, 16, 12)
         row.setSpacing(8)
 
         title = QLabel(QCoreApplication.translate("Nugget", "Backup/Cache Location"))
-        title.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        self._style_label(title, 'row_title')
         row.addWidget(title)
 
         custom = self._custom_backup_dir_value()
         self.backup_location_lbl = QLabel(
             custom if custom else self._default_backup_dir_text())
         self.backup_location_lbl.setWordWrap(True)
-        self.backup_location_lbl.setStyleSheet(
-            f"color: {c.text_secondary}; font-size: 13px;")
+        self._style_label(self.backup_location_lbl, 'muted_caption')
         row.addWidget(self.backup_location_lbl)
 
         hint = QLabel(QCoreApplication.translate(
@@ -581,7 +627,7 @@ class IOSSettingsPage(QWidget):
             "backup/restore files for iOS 27 are stored in this folder. "
             "Useful when the system drive is small (e.g. C: 28 GB)."))
         hint.setWordWrap(True)
-        hint.setStyleSheet(f"color: {c.text_secondary}; font-size: 12px;")
+        self._style_label(hint, 'small_hint')
         row.addWidget(hint)
 
         btns = QHBoxLayout()
@@ -625,26 +671,32 @@ class IOSSettingsPage(QWidget):
 
     def _make_text_row(self, title: str, current: str, on_submit):
         c = self._tm.colors
-        card = QWidget()
+        card = IOSCard()
         row = QHBoxLayout(card)
-        row.setContentsMargins(16, 10, 16, 10)
+        row.setContentsMargins(16, 12, 16, 12)
         row.setSpacing(12)
 
         label = QLabel(title)
-        label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        self._style_label(label, 'row_title')
         row.addWidget(label, 1)
 
         self.org_value_lbl = QLabel(current if current else QCoreApplication.translate("MainWindow", "None"))
-        self.org_value_lbl.setStyleSheet(f"color: {c.text_secondary}; font-size: 14px;")
+        self._style_label(self.org_value_lbl, 'value_label')
         row.addWidget(self.org_value_lbl)
 
-        edit_btn = QLabel("\u270e")
-        edit_btn.setStyleSheet(f"color: {c.accent}; font-size: 17px;")
+        edit_btn = QPushButton(self)
+        edit_btn.setFixedSize(44, 36)
+        edit_btn.setIcon(theme_icon(":/icon/edit-value.svg", c.text_secondary))
+        edit_btn.setIconSize(QSize(19, 19))
+        edit_btn.setStyleSheet(t("tweak_info_button"))
         edit_btn.setCursor(Qt.PointingHandCursor)
-        edit_btn.mousePressEvent = lambda e: self._on_text_row_edit(title, on_submit)
+        edit_btn.setToolTip(QCoreApplication.translate("Nugget", "Edit organization name"))
+        edit_btn.setAccessibleName(edit_btn.toolTip())
+        edit_btn.clicked.connect(lambda: self._on_text_row_edit(title, on_submit))
         row.addWidget(edit_btn)
 
         self.content_layout.addWidget(card)
+        return card
 
     def _on_text_row_edit(self, title: str, on_submit):
         c = self._tm.colors
@@ -652,27 +704,7 @@ class IOSSettingsPage(QWidget):
         dialog.setWindowTitle(title)
         dialog.setLabelText(QCoreApplication.translate("Nugget", "Enter value:"))
         dialog.setTextValue(self.window.device_manager.pref_manager.organization_name)
-        dialog.setStyleSheet(f"""
-            QDialog, QInputDialog {{ background-color: {c.bg_primary}; }}
-            QLabel {{ color: {c.text_primary}; font-size: 15px; }}
-            QLineEdit {{
-                background-color: {c.bg_input};
-                border: none;
-                border-radius: 10px;
-                color: {c.text_primary};
-                font-size: 15px;
-                padding: 10px 14px;
-            }}
-            QPushButton {{
-                background-color: {c.accent};
-                border-radius: 10px;
-                color: {c.text_primary};
-                font-size: 15px;
-                font-weight: 600;
-                padding: 10px 20px;
-                border: none;
-            }}
-        """)
+        dialog.setStyleSheet(t('text_input_dialog'))
         if dialog.exec() == QDialog.Accepted:
             text = dialog.textValue()
             on_submit(text)
@@ -686,13 +718,13 @@ class IOSSettingsPage(QWidget):
 
     def _make_language_row(self):
         c = self._tm.colors
-        card = QWidget()
+        card = IOSCard()
         row = QHBoxLayout(card)
-        row.setContentsMargins(16, 10, 16, 10)
+        row.setContentsMargins(16, 12, 16, 12)
         row.setSpacing(12)
 
         label = QLabel(QCoreApplication.translate("Nugget", "App Language"))
-        label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        self._style_label(label, 'row_title')
         row.addWidget(label, 1)
 
         self.lang_drp = QComboBox()
@@ -740,12 +772,12 @@ class IOSSettingsPage(QWidget):
             self._on_pb_rebuild,
         )
 
-        ids_card = QWidget()
+        ids_card = IOSCard()
         ids_layout = QVBoxLayout(ids_card)
         ids_layout.setContentsMargins(16, 12, 16, 12)
         ids_layout.setSpacing(8)
         ids_title = QLabel(QCoreApplication.translate("Nugget", "Saved Configuration IDs"))
-        ids_title.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        self._style_label(ids_title, 'row_title')
         ids_layout.addWidget(ids_title)
 
         self.saved_ids_list = QListWidget()
@@ -766,32 +798,32 @@ class IOSSettingsPage(QWidget):
 
     def _make_label_row(self, title: str, value: str):
         c = self._tm.colors
-        card = QWidget()
+        card = IOSCard()
         row = QHBoxLayout(card)
-        row.setContentsMargins(16, 10, 16, 10)
+        row.setContentsMargins(16, 12, 16, 12)
         row.setSpacing(12)
 
         label = QLabel(title)
-        label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px;")
+        self._style_label(label, 'row_title')
         row.addWidget(label, 1)
 
         self.pb_db_lbl = QLabel(value)
-        self.pb_db_lbl.setStyleSheet(f"color: {c.text_secondary}; font-size: 14px;")
+        self._style_label(self.pb_db_lbl, 'value_label')
         row.addWidget(self.pb_db_lbl)
         self.content_layout.addWidget(card)
 
     def _make_button_row(self, title: str, on_click):
-        btn = IOSPrimaryButton(title)
-        btn.setFixedHeight(44)
+        btn = IOSSettingsAction(title)
+        btn.setFixedHeight(48)
         btn.clicked.connect(on_click)
         self.content_layout.addWidget(btn)
 
     def _make_history_section(self):
         self.content_layout.addWidget(IOSSectionHeader(
             QCoreApplication.translate("Nugget", "Operation History")))
-        card = QWidget()
+        card = IOSCard()
         layout = QVBoxLayout(card)
-        layout.setContentsMargins(16, 10, 16, 10)
+        layout.setContentsMargins(16, 12, 16, 12)
         self.history_list = QListWidget()
         self.history_list.setMinimumHeight(120)
         self.history_search = QLineEdit()
@@ -907,20 +939,10 @@ class IOSSettingsPage(QWidget):
 
     def _make_mini_button(self, title: str):
         from PySide6.QtWidgets import QPushButton
-        c = self._tm.colors
         btn = QPushButton(title)
         btn.setCursor(Qt.PointingHandCursor)
-        btn.setStyleSheet(f"""
-            QPushButton {{
-                background-color: {c.scrollbar};
-                border: none;
-                border-radius: 10px;
-                color: {c.text_primary};
-                font-size: 13px;
-                padding: 8px 12px;
-            }}
-            QPushButton:hover {{ background-color: {c.surface_hover}; }}
-        """)
+        btn.setProperty('theme_style_key', 'mini_button')
+        btn.setStyleSheet(t('mini_button'))
         return btn
 
     def _on_pb_get_db(self):
@@ -968,16 +990,17 @@ class IOSSettingsPage(QWidget):
                 self, QCoreApplication.translate("Nugget", "Rebuild Database"),
                 QCoreApplication.translate("QCoreApplication", "Please connect a device."))
             return
-        confirm = QMessageBox.question(
-            self, QCoreApplication.translate("Nugget", "Rebuild Database"),
+        confirm = ask_confirmation(self,
+            QCoreApplication.translate("Nugget", "Rebuild Database"),
             QCoreApplication.translate(
                 "Nugget",
                 "Repack all Marble/Lavender wallpapers already on this device "
                 "into the Clownfish format (enables the Depth effect) in place?\n\n"
                 "Mercury spatial posters and every other family are left "
                 "untouched.\n\nThe device must be unlocked and have Find My "
-                "turned off, and it will restart when the rebuild finishes."))
-        if confirm != QMessageBox.StandardButton.Yes:
+                "turned off, and it will restart when the rebuild finishes."),
+            confirm_text=QCoreApplication.translate("Nugget", "Rebuild Database"))
+        if not confirm:
             return
         worker = PBRebuildThread(manager=self.window.device_manager, udid=current.udid)
         self._pb_rebuild_thread = worker  # keep a strong ref while running
@@ -1018,10 +1041,12 @@ class IOSSettingsPage(QWidget):
             self.saved_ids_list.addItems([item.to_str() for item in saved_ids])
 
     def _on_clear_saved_ids(self):
-        confirm = QMessageBox.question(
-            self, QCoreApplication.translate("Nugget", "Clear Saved IDs"),
-            QCoreApplication.translate("Nugget", "Clear all saved configuration IDs?"))
-        if confirm != QMessageBox.StandardButton.Yes:
+        confirm = ask_confirmation(self,
+            QCoreApplication.translate("Nugget", "Clear Saved IDs"),
+            QCoreApplication.translate("Nugget", "Clear all saved configuration IDs?"),
+            confirm_text=QCoreApplication.translate("Nugget", "Clear IDs"),
+            destructive=True)
+        if not confirm:
             return
         tweaks[TweakID.PosterBoard].config_manager.saved_items.clear()
         self._refresh_saved_ids()

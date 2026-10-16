@@ -31,6 +31,8 @@ Design rules:
   the Media tree and would duplicate content.
 """
 
+from src.devicemanagement.progress_status import OperationStatus
+
 import asyncio
 import json
 import os
@@ -560,7 +562,7 @@ async def open_afc_for_media(lockdown_client, progress_callback=None,
                     announced = True
                     log_warn("AFC media restore: the device is locked - waiting "
                              "for it to be unlocked")
-                    _log("Waiting for the device to be unlocked to restore your photos...")
+                    _log(OperationStatus("Your iPhone is locked. Unlock it and enter its passcode to continue restoring your photos and videos.", "authentication"))
                 elif not locked:
                     log_warn(f"AFC media restore: {type(e).__name__}: {e} - retrying")
                 if (time.monotonic() + delay > deadline
@@ -569,6 +571,8 @@ async def open_afc_for_media(lockdown_client, progress_callback=None,
                 await asyncio.sleep(delay)
                 delay = min(delay * 1.5, _AFC_OPEN_MAX_DELAY)
                 continue
+            if announced:
+                _log(OperationStatus("Connected. Continuing the photo and video transfer…", "transfer_ready"))
             try:
                 yield service
             finally:

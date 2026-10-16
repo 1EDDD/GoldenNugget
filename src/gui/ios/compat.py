@@ -8,6 +8,7 @@ import re
 from PySide6.QtCore import QCoreApplication
 
 from src.devicemanagement.constants import Version
+from src.devicemanagement.device_capabilities import has_dynamic_island
 from src.tweaks.registry import SPECS_BY_ID
 
 
@@ -61,6 +62,8 @@ def compatibility_reasons(tweak_id, device_version: str, model: str = "",
         reasons.append(tr("is for iPad only"))
     if spec.iphone_only and family != "iphone":
         reasons.append(tr("is for iPhone only"))
+    if spec.requires_dynamic_island and not has_dynamic_island(model):
+        reasons.append(tr("requires an iPhone with Dynamic Island hardware"))
     return reasons
 
 

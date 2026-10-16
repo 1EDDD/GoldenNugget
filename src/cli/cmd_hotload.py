@@ -7,6 +7,8 @@ block dangerous/broken tweaks. These commands inspect and update that cache.
 import argparse
 import sys
 
+from src.cli.output import set_result
+
 from src.controllers.hotload import RULES_URL, _rules_path, FEATURE_TWEAKS
 
 
@@ -20,10 +22,10 @@ def _hotload(settings):
     return HotLoad(settings)
 
 
-def _connected_device(dm):
+def _connected_device(dm, udid=None):
     from src.cli.common import ensure_device
     try:
-        return ensure_device(dm, dm.pref_manager.settings, None)
+        return ensure_device(dm, dm.pref_manager.settings, udid)
     except SystemExit:
         return None
 
@@ -39,6 +41,7 @@ def add_parser(subp):
     sub = parser.add_subparsers(dest="hotload_sub", required=True)
 
     p = sub.add_parser("status", help="Show rules + what applies to this device")
+    p.add_argument('--udid', default=None, help='Target device UDID')
     p.set_defaults(func=_run_status)
 
     p = sub.add_parser("refresh", help="Fetch fresh rules from the remote")
@@ -66,6 +69,9 @@ def _run_status(args):
     settings = _settings()
     hotload = _hotload(settings)
     summary = _rules_summary(hotload)
+    result = dict(enabled=hotload.is_enabled(), **summary, device=None,
+                  flagged=[], hidden_features=[], forced_daemons={})
+    set_result(result)
     print("HotLoad kill switch:", "ON" if hotload.is_enabled() else "OFF (rules ignored)")
     print(f"rules version:  {summary['version']}")
     print(f"rules count:    {summary['count']}")
@@ -77,7 +83,7 @@ def _run_status(args):
 
     from src.cli.common import make_device_manager
     dm = make_device_manager(settings)
-    device = _connected_device(dm)
+    device = _connected_device(dm, getattr(args, 'udid', None))
     if not summary["count"]:
         if not hotload.is_enabled():
             print("(kill switch is off — no rules are applied)")
@@ -88,6 +94,7 @@ def _run_status(args):
 
     version = getattr(device, "version", "") or ""
     model = getattr(device, "model", "") or ""
+    result['device'] = dict(model=model, ios=version)
     print(f"\ndevice: {getattr(device, 'name', '?')} iOS {version} ({model})")
 
     names = set()
@@ -106,8 +113,11 @@ def _run_status(args):
         print("\nno tweaks flagged for this device.")
 
     hidden = hotload.hidden_features(device_version=version, device_model=model)
+    result['flagged'] = [dict(tweak=name, reason=reason) for name, reason in flagged]
+    result['hidden_features'] = sorted(hidden)
     print("\nhidden features: " + (", ".join(sorted(hidden)) or "none"))
     forced = hotload.disabled_daemons(device_version=version, device_model=model)
+    result['forced_daemons'] = forced
     if forced:
         print("\nforce-disabled daemons:")
         for name, reason in sorted(forced.items()):
@@ -125,6 +135,7 @@ def _run_refresh(args):
     ok = hotload.update(args.url)
     if ok:
         summary = _rules_summary(hotload)
+        set_result(dict(refreshed=True, **summary))
         print(f"Rules refreshed: version {summary['version']}, "
               f"{summary['count']} rules.")
         return 0
@@ -136,6 +147,7 @@ def _run_enable(args):
     settings = _settings()
     hotload = _hotload(settings)
     hotload.set_enabled(True)
+    set_result(dict(enabled=True))
     print("HotLoad kill switch: ON (safety rules now apply).")
     return 0
 
@@ -144,6 +156,7 @@ def _run_disable(args):
     settings = _settings()
     hotload = _hotload(settings)
     hotload.set_enabled(False)
+    set_result(dict(enabled=False))
     print("HotLoad kill switch: OFF (all safety rules ignored).")
     return 0
 
