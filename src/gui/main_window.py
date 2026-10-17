@@ -1,3 +1,4 @@
+import sys
 from typing import TYPE_CHECKING
 
 from PySide6 import QtCore, QtGui, QtWidgets
@@ -369,6 +370,13 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
             if self.prompt_first_launch_backup():
                 self.settings.setValue("backup_prompt_done", True)
                 self._sync_settings()
+
+        # Linux: usbmuxd / libimobiledevice are required to see an iPhone.
+        # Offer to install them (the system asks for the password).
+        if "--test-mode" not in sys.argv:
+            from src.gui.dialogs.linux_deps_dialog import prompt_and_install, should_prompt_on_startup
+            if should_prompt_on_startup(self):
+                prompt_and_install(self, from_startup=True)
 
     # ---- Color theme reactivity ------------------------------------------
 

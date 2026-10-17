@@ -95,6 +95,15 @@ class ConnectDevicePlaceholder(QWidget):
         self._scan_status.hide()
         layout.addWidget(self._scan_status, 0, Qt.AlignHCenter)
 
+        # Linux only: install usbmuxd / libimobiledevice (or start the daemon)
+        # with the system's own password prompt.
+        self._install_btn = QPushButton(
+            QCoreApplication.translate("Nugget", "Install USB dependencies…"), self)
+        self._install_btn.setCursor(Qt.PointingHandCursor)
+        self._install_btn.clicked.connect(self._install_dependencies)
+        self._install_btn.hide()
+        layout.addWidget(self._install_btn, 0, Qt.AlignHCenter)
+
         self._continue_btn = QPushButton(
             QCoreApplication.translate("Nugget", "Continue without a device"), self)
         self._continue_btn.setCursor(Qt.PointingHandCursor)
@@ -102,6 +111,20 @@ class ConnectDevicePlaceholder(QWidget):
         layout.addWidget(self._continue_btn, 0, Qt.AlignHCenter)
 
         self._retheme()
+        self.refresh_dependency_hint()
+
+    def refresh_dependency_hint(self, scan_failed: bool = False):
+        """Show the install button when packages are missing, or when a scan
+        failed while the usbmuxd service is down."""
+        from src.devicemanagement import linux_deps
+        status = linux_deps.check()
+        self._install_btn.setVisible(
+            status.can_fix and (bool(status.missing_packages) or (scan_failed and not status.daemon_running)))
+
+    def _install_dependencies(self):
+        from src.gui.dialogs.linux_deps_dialog import prompt_and_install
+        prompt_and_install(self.window)
+        self.refresh_dependency_hint()
 
     def _refresh(self):
         try:
@@ -114,6 +137,7 @@ class ConnectDevicePlaceholder(QWidget):
         self._fit_help_labels()
         self._scan_status.setVisible(bool(text))
         self._refresh_btn.setEnabled(not busy)
+        self.refresh_dependency_hint(scan_failed=bool(text))
 
     def _fit_help_labels(self):
         # QLabel's default minimum hint may allow wrapped text to be clipped

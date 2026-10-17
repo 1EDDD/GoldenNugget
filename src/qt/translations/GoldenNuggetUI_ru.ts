@@ -2771,6 +2771,10 @@ They will NOT be loaded, so applying may not match the preset's intended state.<
             <source>Status bar preview</source>
             <translation>Предпросмотр строки состояния</translation>
         </message>
+        <message>
+            <source>Install USB dependencies…</source>
+            <translation>Установить USB-зависимости…</translation>
+        </message>
     </context>
     <context>
         <name>ApplyPreview</name>
@@ -3413,6 +3417,69 @@ Use at your own risk!</source>
         <message>
             <source>Wallpapers</source>
             <translation>Обои</translation>
+        </message>
+    </context>
+    <context>
+        <name>LinuxDeps</name>
+        <message>
+            <source>Installing dependencies</source>
+            <translation>Установка зависимостей</translation>
+        </message>
+        <message>
+            <source>Installing {0}…</source>
+            <translation>Установка: {0}…</translation>
+        </message>
+        <message>
+            <source>Administrator password</source>
+            <translation>Пароль администратора</translation>
+        </message>
+        <message>
+            <source>polkit is not available, so GoldenNugget has to ask for your password. It is passed to sudo once and not stored or logged.
+
+Password:</source>
+            <translation>polkit недоступен, поэтому GoldenNugget должен сам запросить пароль. Он один раз передаётся в sudo и не сохраняется и не записывается в журнал.
+
+Пароль:</translation>
+        </message>
+        <message>
+            <source>Install USB dependencies</source>
+            <translation>Установка USB-зависимостей</translation>
+        </message>
+        <message>
+            <source>GoldenNugget could not recognise this Linux distribution. Install usbmuxd and libimobiledevice with your package manager, make sure usbmuxd is running, then check the connection again.</source>
+            <translation>GoldenNugget не распознал этот дистрибутив Linux. Установите usbmuxd и libimobiledevice через менеджер пакетов, убедитесь, что usbmuxd запущен, и снова проверьте подключение.</translation>
+        </message>
+        <message>
+            <source>GoldenNugget needs {0} to talk to an iPhone over USB, and they are not installed. Install them now? The system will ask for your administrator password.</source>
+            <translation>Чтобы работать с iPhone по USB, GoldenNugget нужны {0}, но они не установлены. Установить сейчас? Система запросит пароль администратора.</translation>
+        </message>
+        <message>
+            <source>The usbmuxd service is not running, so no iPhone can be detected. Start it now? The system will ask for your administrator password.</source>
+            <translation>Служба usbmuxd не запущена, поэтому iPhone не обнаруживается. Запустить её сейчас? Система запросит пароль администратора.</translation>
+        </message>
+        <message>
+            <source>Install</source>
+            <translation>Установить</translation>
+        </message>
+        <message>
+            <source>Not now</source>
+            <translation>Не сейчас</translation>
+        </message>
+        <message>
+            <source>Don't ask again</source>
+            <translation>Больше не спрашивать</translation>
+        </message>
+        <message>
+            <source>Done. GoldenNugget will look for your device again. If it does not appear, reconnect the cable.</source>
+            <translation>Готово. GoldenNugget заново поищет устройство. Если оно не появится, переподключите кабель.</translation>
+        </message>
+        <message>
+            <source>Wrong password. Try again.</source>
+            <translation>Неверный пароль. Попробуйте ещё раз.</translation>
+        </message>
+        <message>
+            <source>The installation failed. Install usbmuxd and libimobiledevice manually, or open the details to see what the package manager said.</source>
+            <translation>Установка не удалась. Установите usbmuxd и libimobiledevice вручную или откройте подробности, чтобы увидеть ответ менеджера пакетов.</translation>
         </message>
     </context>
 </TS>
