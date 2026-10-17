@@ -60,6 +60,7 @@ def main():
             'Drag Nugget.app into Applications.\n'
             'Ad-hoc signed; not notarized.\n')
         run('hdiutil', 'create', '-ov', '-volname', 'GoldenNugget Universal2',
+            '-icon', 'src/qt/dmg_icon.icns',
             '-srcfolder', staging, '-fs', 'HFS+', '-format', 'UDZO', dmg)
         run('hdiutil', 'verify', dmg)
         mounted = Path(directory) / 'mounted'
