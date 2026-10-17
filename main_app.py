@@ -274,7 +274,10 @@ def main() -> int:
 
     widget = MainWindow(device_manager=dm, translator=translator)
     translator.fix_ui_for_rtl(widget.ui)
-    widget.resize(1000, 600)
+    # Open a little roomier than the 1000x600 minimum when the screen allows.
+    avail = widget.screen().availableGeometry()
+    widget.resize(max(1000, min(1100, avail.width() - 80)),
+                  max(600, min(760, avail.height() - 80)))
     widget.show()
 
     # First-launch dialogs (interface picker + backup reminder) are deferred

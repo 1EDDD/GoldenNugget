@@ -99,6 +99,8 @@ _CLASSIC_BORDERED_BTNS = [
 
 class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
                  NavigationMixin, ApplyMixin):
+    IOS_CONTENT_MAX_WIDTH = 1200
+
     def __init__(self, device_manager: "DeviceManager", translator: Translator):
         super(MainWindow, self).__init__()
         self.device_manager = device_manager
@@ -106,6 +108,11 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.settings = self.translator.settings
         self.ui = Ui_Nugget()
         self.ui.setupUi(self)
+        # Designer pins the window to exactly 1000x600 (min == max). Keep that
+        # as the minimum, but let the user grow it: at 600px most pages scroll.
+        self.setMaximumSize(16777215, 16777215)  # QWIDGETSIZE_MAX
+        self.setSizePolicy(QtWidgets.QSizePolicy.Preferred,
+                           QtWidgets.QSizePolicy.Preferred)
         self.noneText = self.tr("None")
         self.apply_in_progress = False
         self.refresh_in_progress = False
@@ -218,13 +225,24 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.ios_pages.currentChanged.connect(self._update_shared_nav)
 
         ios_root = QtWidgets.QWidget(self)
-        ios_root_layout = QtWidgets.QVBoxLayout(ios_root)
+        # The pages live in a centred column capped at IOS_CONTENT_MAX_WIDTH:
+        # on a wide window full-bleed rows put a switch a screen away from
+        # its label.
+        ios_root_hbox = QtWidgets.QHBoxLayout(ios_root)
+        ios_root_hbox.setContentsMargins(0, 0, 0, 0)
+        ios_root_hbox.setSpacing(0)
+        ios_column = QtWidgets.QWidget(ios_root)
+        ios_column.setMaximumWidth(self.IOS_CONTENT_MAX_WIDTH)
+        ios_root_hbox.addStretch(0)
+        ios_root_hbox.addWidget(ios_column, 1)
+        ios_root_hbox.addStretch(0)
+        ios_root_layout = QtWidgets.QVBoxLayout(ios_column)
         ios_root_layout.setContentsMargins(0, 0, 0, 0)
         ios_root_layout.setSpacing(0)
         # Keep the shared navigation bar visually distinct from the page:
         # the inset wrapper gives its rounded corners room to show against
         # the surrounding dark surface.
-        nav_wrap = QtWidgets.QWidget(ios_root)
+        nav_wrap = QtWidgets.QWidget(ios_column)
         nav_wrap.setObjectName("iosNavWrap")
         nav_wrap_layout = QtWidgets.QVBoxLayout(nav_wrap)
         nav_wrap_layout.setContentsMargins(8, 8, 8, 0)
