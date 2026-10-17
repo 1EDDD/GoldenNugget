@@ -1,4 +1,9 @@
 """Offline wallpaper/template inspection; never extracts or executes a package."""
+# PEP 810: defer operation-only dependencies on Python 3.15+; eager on older Python.
+__lazy_modules__ = (
+    "xml.etree.ElementTree",
+)
+
 import json
 from pathlib import Path
 import plistlib

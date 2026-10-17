@@ -58,6 +58,17 @@ metadata only; macOS adds `--osx-bundle-identifier`/codesign. i18n is not
 compiled by `compile.py` — `.qm`/`resources_rc.py` are produced by the
 pyside6-lrelease/lupdate/rcc pipeline (README / CI).
 
+Selected operation-only imports use Python 3.15's PEP 810
+`__lazy_modules__` allowlist (backup/restore services, setup certificates,
+wallpaper conversion and status-bar preset serialization). Dependencies load
+on first use; Python 3.14 and earlier keep ordinary eager imports without a
+syntax change. Entries name the fully qualified module after `from`, including
+the package for `from . import ...`. Keep Qt resources, tweak registry/singleton
+initialization, the SSL timeout patch and protective device-link shims eager;
+imports inside functions or `try` blocks also stay eager, preserving optional
+video dependency error handling. `tools/test_lazy_imports.py` checks deferral
+and resolution in fresh processes, plus the older-Python fallback.
+
 Windows-only packaging detail — **the abi3t compat DLL**: the Windows branch of
 `compile.py` collects `python3t.dll` into the bundle root. cryptography ≥ 50
 ships an abi3/abi3t wheel whose `hazmat/bindings/_rust.pyd` links

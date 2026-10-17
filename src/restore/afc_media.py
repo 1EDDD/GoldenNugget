@@ -31,6 +31,11 @@ Design rules:
   the Media tree and would duplicate content.
 """
 
+# PEP 810: defer operation-only dependencies on Python 3.15+; eager on older Python.
+__lazy_modules__ = (
+    "pymobiledevice3.services.afc",
+)
+
 from src.devicemanagement.progress_status import OperationStatus
 
 import asyncio

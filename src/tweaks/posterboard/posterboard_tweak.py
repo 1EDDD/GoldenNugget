@@ -1,3 +1,10 @@
+# PEP 810: defer operation-only dependencies on Python 3.15+; eager on older Python.
+__lazy_modules__ = (
+    "src.controllers",
+    "src.controllers.aar.aar",
+    "src.tweaks.posterboard",
+)
+
 import os
 import uuid
 import traceback

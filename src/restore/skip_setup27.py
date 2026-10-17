@@ -1,5 +1,15 @@
 from __future__ import annotations
 
+# PEP 810: defer operation-only dependencies on Python 3.15+; eager on older Python.
+__lazy_modules__ = (
+    "cryptography",
+    "cryptography.hazmat.primitives.serialization",
+    "pymobiledevice3.ca",
+    "pymobiledevice3.lockdown",
+    "src.devicemanagement.session",
+    "pymobiledevice3.services.mobile_config",
+)
+
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from uuid import uuid4

@@ -1,3 +1,8 @@
+# PEP 810: defer operation-only dependencies on Python 3.15+; eager on older Python.
+__lazy_modules__ = (
+    "src.tweaks.status_bar.status_bar_c.status_setter",
+)
+
 import base64
 import json
 import os

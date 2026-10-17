@@ -1,3 +1,12 @@
+# PEP 810: defer operation-only dependencies on Python 3.15+; eager on older Python.
+__lazy_modules__ = (
+    "pymobiledevice3.services.mobile_config",
+    "pymobiledevice3.services.mobilebackup2",
+    "src.restore.skip_setup27",
+    "src.restore.restore",
+    "src.tweaks.status_bar.statusbar_archive",
+)
+
 import asyncio
 import os.path
 import plistlib

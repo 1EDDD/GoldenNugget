@@ -10,6 +10,12 @@ This module is a leaf: it depends only on stdlib + pymobiledevice3 and knows
 nothing about the backup/restore flow in ``protective.py``.
 """
 
+# PEP 810: defer operation-only dependencies on Python 3.15+; eager on older Python.
+__lazy_modules__ = (
+    "pymobiledevice3.services.mobilebackup2",
+    "sqlite3",
+)
+
 import hashlib
 import logging
 import os
