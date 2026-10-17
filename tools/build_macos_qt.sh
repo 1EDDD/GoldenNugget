@@ -8,6 +8,13 @@ qt_prefix="$build_root/Qt"
 wheels="$PWD/.macos-qt-wheels"
 mkdir -p "$build_root" "$wheels"
 export MACOSX_DEPLOYMENT_TARGET=14.4
+build_jobs="${GOLDENNUGGET_BUILD_JOBS:-$(sysctl -n hw.ncpu)}"
+if ! [[ "$build_jobs" =~ ^[1-9][0-9]*$ ]]; then
+  echo "::error::GOLDENNUGGET_BUILD_JOBS must be a positive integer"
+  exit 1
+fi
+export CMAKE_BUILD_PARALLEL_LEVEL="$build_jobs"
+echo "Building with $build_jobs compiler jobs"
 brew install cmake ninja llvm
 export LLVM_INSTALL_DIR="$(brew --prefix llvm)"
 python -m pip install --upgrade pip setuptools wheel packaging build numpy
@@ -31,16 +38,8 @@ cmake -S "$build_root/qtbase" -B "$build_root/qtbase-build" -G Ninja \
   -DFEATURE_system_pcre2=OFF -DFEATURE_system_libpng=OFF \
   -DFEATURE_system_libjpeg=OFF -DFEATURE_system_freetype=OFF \
   -DFEATURE_system_harfbuzz=OFF
-cmake --build "$build_root/qtbase-build" --parallel "$(sysctl -n hw.ncpu)"
+cmake --build "$build_root/qtbase-build" --parallel "$build_jobs"
 cmake --install "$build_root/qtbase-build"
-cmake -S "$build_root/qtsvg" -B "$build_root/qtsvg-build" -G Ninja \
-  -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
-  -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$qt_prefix" \
-  -DCMAKE_INSTALL_PREFIX="$qt_prefix" \
-  -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET" \
-  -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF
-cmake --build "$build_root/qtsvg-build" --parallel "$(sysctl -n hw.ncpu)"
-cmake --install "$build_root/qtsvg-build"
 git clone --depth 1 --branch "v${qt_version}" \
   https://github.com/pyside/pyside-setup.git "$build_root/pyside-setup"
 cd "$build_root/pyside-setup"
@@ -52,19 +51,54 @@ pyside_args=(
   --standalone --ignore-git --skip-docs --no-qt-tools
   --module-subset=Core,Gui,Widgets,Network,Svg
   --macos-deployment-target="$MACOSX_DEPLOYMENT_TARGET"
-  --parallel="$(sysctl -n hw.ncpu)"
 )
-# The generator runs on the build host and links Homebrew's native libclang.
-# Compile it separately so LLVM does not need an Intel slice.
-python setup.py build "${pyside_args[@]}" \
-  --build-type=shiboken6-generator --macos-arch=arm64 \
-  --internal-cmake-install-dir-query-file-path="$build_root/shiboken-host.txt"
+build_qtsvg() (
+  jobs="$1"
+  cmake -S "$build_root/qtsvg" -B "$build_root/qtsvg-build" -G Ninja \
+    -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64" \
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="$qt_prefix" \
+    -DCMAKE_INSTALL_PREFIX="$qt_prefix" \
+    -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET" \
+    -DQT_BUILD_TESTS=OFF -DQT_BUILD_EXAMPLES=OFF
+  cmake --build "$build_root/qtsvg-build" --parallel "$jobs"
+  cmake --install "$build_root/qtsvg-build"
+)
+build_shiboken_generator() (
+  # No wheel packaging: this host tool only needs its CMake installation.
+  # This also avoids scanning Qt's prefix while QtSvg is being installed.
+  python setup.py build "${pyside_args[@]}" --parallel="$1" --skip-packaging \
+    --build-type=shiboken6-generator --macos-arch=arm64 \
+    --internal-cmake-install-dir-query-file-path="$build_root/shiboken-host.txt"
+)
+# QtSvg and the native generator depend only on QtBase, not on each other.
+# Share one CPU budget rather than oversubscribing both Ninja processes.
+if [ "$build_jobs" -gt 1 ]; then
+  svg_jobs=$((build_jobs / 2))
+  host_jobs=$((build_jobs - svg_jobs))
+  build_qtsvg "$svg_jobs" &
+  svg_pid=$!
+  build_shiboken_generator "$host_jobs" &
+  host_pid=$!
+  result=0
+  wait "$svg_pid" || result=$?
+  wait "$host_pid" || result=$?
+  if [ "$result" -ne 0 ]; then
+    echo "::error::Parallel QtSvg / Shiboken generator build failed"
+    exit "$result"
+  fi
+else
+  build_qtsvg 1
+  build_shiboken_generator 1
+fi
 shiboken_host="$(cat "$build_root/shiboken-host.txt")"
+# Both Python slices share sysconfig and headers. Find the native generator
+# through CMake's normal search path: --shiboken-host-path would incorrectly
+# enable cross-build mode and require a target Python_SOABI.
+export CMAKE_PREFIX_PATH="$shiboken_host${CMAKE_PREFIX_PATH:+:$CMAKE_PREFIX_PATH}"
 # Only runtime libraries get both slices; all build tools execute natively.
 for module in shiboken6 pyside6; do
   python setup.py bdist_wheel "${pyside_args[@]}" \
-    --build-type="$module" --macos-arch="arm64;x86_64" \
-    --shiboken-host-path="$shiboken_host"
+    --build-type="$module" --macos-arch="arm64;x86_64" --parallel="$build_jobs"
 done
 # The generator is a build tool linked to host LLVM; never ship it.
 for wheel in dist/*.whl; do
