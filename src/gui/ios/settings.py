@@ -372,6 +372,11 @@ class IOSSettingsPage(QWidget):
             self._retheme_preset_list()
         if hasattr(self, 'history_count_lbl'):
             self.history_count_lbl.setStyleSheet(t("value_label"))
+        # Edit-value buttons style themselves once in _make_text_row, so they
+        # need to be redone here or they keep the old palette's hover colour.
+        for button in self.findChildren(QPushButton, "settingsEditValue"):
+            button.setStyleSheet(t("tweak_info_button"))
+            button.setIcon(theme_icon(":/icon/edit-value.svg", c.text_secondary))
 
     def _retheme_home_widget_dropdown(self):
         c = self._tm.colors
@@ -742,6 +747,7 @@ class IOSSettingsPage(QWidget):
         row.addWidget(self.org_value_lbl)
 
         edit_btn = QPushButton(self)
+        edit_btn.setObjectName("settingsEditValue")
         edit_btn.setFixedSize(44, 36)
         edit_btn.setIcon(theme_icon(":/icon/edit-value.svg", c.text_secondary))
         edit_btn.setIconSize(QSize(19, 19))

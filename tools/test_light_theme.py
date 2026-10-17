@@ -137,6 +137,66 @@ class Themes(unittest.TestCase):
                 widget.deleteLater()
             QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
 
+    def test_every_page_drops_the_old_palette_after_a_live_toggle(self):
+        """Pages re-theme lazily (set_ios_page checks a revision), so a page that
+        was NOT on screen when the mode flipped must still come up in the new
+        palette. Guards the lazy path: dark-only colours must not survive on any
+        page reached after switching to light, and vice versa."""
+        from src.controllers.translator import Translator
+        from src.devicemanagement.device_manager import DeviceManager
+        from src.gui.main_window import MainWindow
+        from PySide6.QtWidgets import QWidget
+        dm = DeviceManager()
+        dm.pref_manager.settings = self.settings
+        with patch.object(MainWindow, 'refresh_devices'), patch.object(MainWindow, '_load_last_preset'), \
+             patch.object(MainWindow, '_register_tweak_autosave'), \
+             patch('src.gui.main_window.DeviceMonitorThread.start'), \
+             patch('src.gui.ios.theme_manager.QSettings', return_value=self.settings), \
+             patch('PySide6.QtCore.QStandardPaths.writableLocation', return_value=self.tmp.name):
+            window = MainWindow(dm, Translator(APP, self.settings))
+        slots = ('bg_primary', 'bg_secondary', 'bg_tertiary', 'bg_input', 'text_primary', 'text_secondary')
+
+        def only_in(a, b):
+            return {getattr(a, slot).lower() for slot in slots} - {getattr(b, slot).lower() for slot in slots}
+
+        try:
+            window.show()
+            window.content_stack.setCurrentIndex(1)
+            window.set_ios_page(0, animate=False)
+            for mode, old in (('light', DARK), ('dark', LIGHT)):
+                self.manager.set_mode(mode)
+                window._on_color_theme_changed()
+                stale = only_in(old, self.manager.colors)
+                for index in range(window.ios_pages.count()):
+                    window.set_ios_page(index, animate=False)
+                    APP.processEvents()
+                    page = window.ios_pages.widget(index)
+                    # Hidden widgets are re-themed when they are next shown
+                    # (connect_visible_theme), so only what is on screen counts.
+                    shown = [w for w in [page, *page.findChildren(QWidget)] if w.isVisibleTo(page)]
+                    leftovers = sorted(
+                        f'{type(w).__name__}#{w.objectName()}:{color}' for w in shown
+                        for color in stale if color in w.styleSheet().lower())
+                    self.assertEqual(
+                        leftovers, [], f'{type(page).__name__} (index {index}) still carries {old is DARK and "dark" or "light"} colours after switching to {mode}')
+                # The result card is hidden until an operation finishes; it must come
+                # up in the current palette the moment it appears.
+                window.set_ios_page(0, animate=False)
+                home = window.ios_home
+                for name in ('result_card',):
+                    card = getattr(home, name)
+                    was_hidden = card.isHidden()
+                    card.show()
+                    APP.processEvents()
+                    sheets = ' '.join(w.styleSheet().lower() for w in [card, *card.findChildren(QWidget)])
+                    self.assertEqual(sorted(color for color in stale if color in sheets), [],
+                                     f'home.{name} appeared with stale colours after switching to {mode}')
+                    card.setVisible(not was_hidden)
+        finally:
+            window.close()
+            window.deleteLater()
+            QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
+
     def test_settings_has_no_mode_switch_and_rethemes_without_editing_tweaks(self):
         from src.controllers.translator import Translator
         from src.devicemanagement.device_manager import DeviceManager
