@@ -242,7 +242,8 @@ broken on iOS 26+).
   `STStatusBarDataCellularEntry`), built by `statusbar_archive.py` with plain
   `plistlib`. Same HomeDomain as the classic path, so it is an ordinary
   restore file — no exploit and no out-of-band channel.
-  **Scope on iOS 27 is the carrier name only** (primary + secondary); the
+  **Scope on iOS 27 is the cellular entry only**: carrier name, service
+  badge and signal bars (primary + secondary); the
   archive has no representation for the time/battery/icon overrides, so
   `src/gui/ios/statusbar.py` hides those rows on 27 instead of offering
   switches that do nothing. Everything else in the cellular entry is written

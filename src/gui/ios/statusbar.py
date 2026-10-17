@@ -1,4 +1,5 @@
 from PySide6.QtCore import Qt, QCoreApplication, QTimer, QSize
+from PySide6.QtGui import QFont, QFontMetrics
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QScrollArea, QHBoxLayout, QLabel,
     QDialog, QPushButton
@@ -370,6 +371,7 @@ class IOSStatusBarPage(QWidget):
         value_lbl.setStyleSheet(f"color: {c.text_secondary}; font-size: 14px; background-color: transparent;")
         value_lbl.setMaximumWidth(180)
         value_lbl.setWordWrap(True)
+        self._fit_default_value(value_lbl)
         row.addWidget(value_lbl)
 
         switch = IOSSwitch(overridden)
@@ -383,6 +385,17 @@ class IOSStatusBarPage(QWidget):
         self.content_layout.addWidget(card)
         self._rows.append((card, survives_ios27))
         return switch
+    @staticmethod
+    def _fit_default_value(value_lbl: QLabel):
+        """Keep "Default" on one line: a word-wrapped label next to a
+        stretching title is squeezed to its narrowest word, so a two-word
+        translation ("По умолчанию") broke onto two lines."""
+        font = QFont(value_lbl.font())
+        font.setPixelSize(14)  # matches the label's stylesheet font-size
+        width = QFontMetrics(font).horizontalAdvance(
+            QCoreApplication.translate("Nugget", "Default"))
+        value_lbl.setMinimumWidth(min(180, width + 2))
+
     def _on_text_row_toggled(self, checked: bool, setter, unsetter, label, value_lbl, current: str):
         if checked:
             setter(current)
@@ -421,6 +434,7 @@ class IOSStatusBarPage(QWidget):
         value_lbl.setStyleSheet(f"color: {c.text_secondary}; font-size: 14px; background-color: transparent;")
         value_lbl.setMaximumWidth(180)
         value_lbl.setWordWrap(True)
+        self._fit_default_value(value_lbl)
         row.addWidget(value_lbl)
 
         switch = IOSSwitch(overridden)
