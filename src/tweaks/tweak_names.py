@@ -162,3 +162,6 @@ class TweakID(Enum):
     # daemons
     Daemons = auto()
     ClearScreenTimeAgentPlist = auto()
+
+    # Experimental status-bar defaults (appended to preserve existing IDs).
+    SBShowRSSI = auto()
