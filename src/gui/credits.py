@@ -3,6 +3,7 @@
 CREDITS = [
     ("Owner / Main Developer", "awesomenull", "https://github.com/awesomenull-dev"),
     ("Co-Developer", "Windows11Aero", "https://github.com/Wind0ws11Aero"),
+    ("Co-Developer", "kik4311", "https://github.com/kik4311"),
     ("Nugget Creator", "leminlimez", "https://github.com/leminlimez"),
     ("PosterRestore Team", "PosterRestore Discord", "https://discord.gg/gWtzTVhMvh"),
     ("PosterBoard Help", "dootskyre, Middo, dulark, forcequitOS, pingubow", "https://twitter.com/dootskyre"),
