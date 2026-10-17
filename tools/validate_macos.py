@@ -27,7 +27,7 @@ for p in files:
     a = archs(p)
     if not {'x86_64', 'arm64'} <= a:
         conditional.append((str(p.relative_to(app)), sorted(a)))
-        if p.suffix != '.dylib':
+        if not ('cv2' in p.parts and p.suffix == '.dylib'):
             errors.append(('unexpected thin binary', str(p)))
     m = MachO(str(p))
     for header in m.headers:
