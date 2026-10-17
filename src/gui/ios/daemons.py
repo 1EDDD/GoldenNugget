@@ -6,11 +6,11 @@ from PySide6.QtWidgets import (
     QGraphicsOpacityEffect, QSizePolicy,
 )
 
-from src.gui.ios.components import IOSCard, IOSSectionHeader, IOSSwitch, IOSSearchField, IOSSearchEmpty
+from src.gui.ios.components import IOSCard, IOSSectionHeader, IOSSwitch, IOSSearchField, IOSSearchEmpty, IOSSettingsAction
 from src.gui.theme import ColorThemeManager
 from src.tweaks.tweaks import tweaks, TweakID
 from src.tweaks.tweak_loader import load_daemons
-from src.tweaks.daemons_tweak import Daemon, RECOMMENDED_ANALYTICS
+from src.tweaks.daemons_tweak import Daemon, RECOMMENDED_ANALYTICS, NOTIFICATION_RECOVERY_DAEMONS
 from src.controllers.hotload import HotLoad, confirm_flagged
 
 # QWIDGETSIZE_MAX — PySide6 does not export the C macro, this is its value.
@@ -177,6 +177,14 @@ class IOSDaemonsContent(QWidget):
         master_row.addWidget(self.master_switch)
         layout.addWidget(master_card)
 
+        self.recover_notifications_button = IOSSettingsAction(
+            QCoreApplication.translate("Nugget", "Restore Call Notification Services"))
+        self.recover_notifications_button.setToolTip(QCoreApplication.translate(
+            "Nugget", "Re-enable Spotlight and services disabled by the previous Recommended set. "
+            "Apply changes and reboot your device afterwards. Safety rules still apply."))
+        self.recover_notifications_button.clicked.connect(self._restore_notification_services)
+        layout.addWidget(self.recover_notifications_button)
+
         # Everything that acts on daemons lives in one block that the master
         # switch unrolls / folds away, so those rows only exist on screen while
         # daemon modifications are actually on. The Recommended shortcut is the
@@ -188,9 +196,7 @@ class IOSDaemonsContent(QWidget):
         self._rows = _DaemonRows(self)
         layout.addWidget(self._rows)
 
-        # Recommended: one tap to disable every safe analytics/telemetry daemon.
-        # Pure analytics/tracking/logging — nothing boot-critical, so this set
-        # is confirmed safe to disable (mirrors MiniVoidyy/GoldenNugget-).
+        # Recommended only includes the curated analytics/diagnostics set.
         self.recommended_card = IOSCard()
         recommended_row = QHBoxLayout(self.recommended_card)
         recommended_row.setContentsMargins(16, 12, 16, 12)
@@ -422,6 +428,25 @@ class IOSDaemonsContent(QWidget):
         if not value:
             return False
         return all(value.get(d.value[0], False) for d in RECOMMENDED_ANALYTICS)
+
+    def _restore_notification_services(self):
+        if not self.daemons_tweak.enabled:
+            self.master_switch.setChecked(True)
+            if not self.daemons_tweak.enabled:
+                return
+        for daemon in NOTIFICATION_RECOVERY_DAEMONS:
+            if daemon.name in self._forced_daemons:
+                continue
+            # Write explicit False values: dropping keys does not reliably undo
+            # a previously applied launchd disabled override on the device.
+            self.daemons_tweak.set_multiple_values(daemon.value, value=False)
+            self._set_switch(daemon, False)
+        self.refresh_from_tweaks()
+        QMessageBox.information(
+            self, QCoreApplication.translate("Nugget", "Call Notification Services"),
+            QCoreApplication.translate(
+                "Nugget", "Service settings are ready. Apply changes and reboot your device "
+                "to re-enable them. Services locked by safety rules remain disabled."))
 
     def _on_recommended_toggled(self, checked: bool):
         """Toggle every safe analytics/telemetry daemon at once."""
