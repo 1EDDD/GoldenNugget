@@ -263,6 +263,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contributions and [FORKING.md](FORKIN
 ## Credits
 - [awesomenull] Lead developer
 - [Wind0ws11Aero] for helping with development a lot.
+- [kik4311] Co-developer
 - Translations crowdsourced using [gNugget-i18n repository][i18n]
 - [LeminLimez] for creating Nugget.
 - [0xjonhnnydev] for [AirLift]
@@ -314,5 +315,6 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contributions and [FORKING.md](FORKIN
 [server]: https://discord.gg/Rm6r4zeE3y
 [0xjonhnnydev]: https://github.com/0xjohnnydev
 [awesomenull]: https://github.com/awesomenull-dev
+[kik4311]: https://github.com/kik4311
 [AirLift]: https://github.com/0xjohnnydev/airlift
 [mobile]: https://github.com/GoldenNugget-Team/GoldenNugget-mobile
