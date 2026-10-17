@@ -37,28 +37,45 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - arch: x86_64
-            runner: macos-15-intel
-          - arch: arm64
-            runner: macos-15
-    runs-on: ${{ matrix.runner }}
+        arch: [x86_64, arm64]
+    runs-on: macos-15
     timeout-minutes: 180
     env:
       MACOSX_DEPLOYMENT_TARGET: '14.4'
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-python@v6
-        with:
-          python-version: '3.15.0'
+      # python.org ships both slices; setup-python's interpreter is host-specific.
+      - name: Install universal Python 3.15
+        run: |
+          curl --fail --location --retry 3 --output "$RUNNER_TEMP/python.pkg" \
+            https://www.python.org/ftp/python/3.15.0/python-3.15.0-macos11.pkg
+          pkgutil --check-signature "$RUNNER_TEMP/python.pkg"
+          sudo installer -pkg "$RUNNER_TEMP/python.pkg" -target /
+          /Library/Frameworks/Python.framework/Versions/3.15/bin/python3.15 -m venv .qt-env
+          echo "$GITHUB_WORKSPACE/.qt-env/bin" >> "$GITHUB_PATH"
       - uses: actions/cache@v4
         id: qt-cache
         with:
           path: .macos-qt-wheels
-          key: qt-6.12.0-python-3.15.0-macos14.4-${{ matrix.arch }}-${{ hashFiles('tools/build_macos_qt.sh') }}
+          key: qt-rosetta-v1-6.12.0-python-3.15.0-macos14.4-${{ matrix.arch }}-${{ hashFiles('tools/build_macos_qt.sh') }}
+      - name: Set up Intel build tools under Rosetta
+        if: steps.qt-cache.outputs.cache-hit != 'true' && matrix.arch == 'x86_64'
+        run: |
+          sudo softwareupdate --install-rosetta --agree-to-license
+          if [ ! -x /usr/local/bin/brew ]; then
+            curl --fail --location --retry 3 --output "$RUNNER_TEMP/install-homebrew.sh" \
+              https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh
+            NONINTERACTIVE=1 arch -x86_64 /bin/bash "$RUNNER_TEMP/install-homebrew.sh"
+          fi
       - name: Build Qt and Python bindings for Sonoma
         if: steps.qt-cache.outputs.cache-hit != 'true'
-        run: bash tools/build_macos_qt.sh
+        env:
+          BUILD_ARCH: ${{ matrix.arch }}
+        run: |
+          if [ "$BUILD_ARCH" = x86_64 ]; then
+            export PATH="$GITHUB_WORKSPACE/.qt-env/bin:/usr/local/bin:/usr/local/sbin:$PATH"
+          fi
+          arch "-$BUILD_ARCH" /bin/bash tools/build_macos_qt.sh
       - uses: actions/upload-artifact@v6
         with:
           name: macOS-Qt-${{ matrix.arch }}
@@ -69,7 +86,7 @@ jobs:
   build-macos:
     needs: build-macos-qt
     name: macOS Universal2 / Python 3.15 / Qt 6.12
-    runs-on: macos-15-intel
+    runs-on: macos-15
     timeout-minutes: 60
     env:
       MACOSX_DEPLOYMENT_TARGET: '14.4'
@@ -90,9 +107,9 @@ jobs:
       - name: Install compatible dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          python -m pip install --no-deps .macos-qt-wheels/macOS-Qt-x86_64/*.whl
+          python -m pip install --no-deps .macos-qt-wheels/macOS-Qt-arm64/*.whl
           python -m pip install -r requirements.txt -c requirements-macos.txt
-          python tools/prepare_macos_universal.py .macos-qt-wheels/macOS-Qt-arm64
+          python tools/prepare_macos_universal.py .macos-qt-wheels/macOS-Qt-x86_64
           python -m pip check
           python -m pip freeze > macOS-dependencies.txt
       - name: Build Universal2, validate and package DMG
@@ -116,25 +133,29 @@ jobs:
 
   test-macos:
     needs: build-macos
-    name: Smoke test macOS (${{ matrix.runner }})
+    name: Smoke test macOS (${{ matrix.arch }})
     strategy:
       fail-fast: false
       matrix:
-        runner: [macos-15-intel, macos-15]
-    runs-on: ${{ matrix.runner }}
+        arch: [arm64, x86_64]
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v5
       - uses: actions/download-artifact@v7
         with:
           name: Nugget_macOS_Universal2
           path: artifacts
+      - name: Install Rosetta for Intel smoke test
+        if: matrix.arch == 'x86_64'
+        run: sudo softwareupdate --install-rosetta --agree-to-license
       - name: Test frozen application
         env:
           QT_QPA_PLATFORM: offscreen
+          TEST_ARCH: ${{ matrix.arch }}
         run: |
           ditto -x -k artifacts/Nugget-macOS-Universal.zip extracted
           codesign --verify --deep --strict extracted/Nugget.app
-          extracted/Nugget.app/Contents/MacOS/Nugget tools/smoke_macos.py > smoke.log 2>&1
+          arch "-$TEST_ARCH" extracted/Nugget.app/Contents/MacOS/Nugget tools/smoke_macos.py > smoke.log 2>&1
           cat smoke.log
           grep -q 'MACOS_SMOKE_OK' smoke.log
           hdiutil verify artifacts/Nugget-macOS-Universal2.dmg
