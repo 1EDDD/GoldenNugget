@@ -1514,7 +1514,10 @@ class ApplyMixin:
             "are risky — a bad tweak can bootloop the device or force a full "
             "restore, which erases everything. Create a backup in iTunes or "
             "Finder before using GoldenNugget."))
-        box.setDetailedText(QCoreApplication.translate(
+        # Informative text, not detailed text: the "Show Details..." button
+        # would make a third button, and QMessageBox caps its width at 500px
+        # (half the screen below 1000px), which truncated the button labels.
+        box.setInformativeText(QCoreApplication.translate(
             "Nugget",
             "Back up your iPhone before tweaking:\n"
             "• Windows: iTunes → your device → Back Up Now\n"

@@ -3,7 +3,7 @@
 from PySide6.QtCore import Qt, QCoreApplication
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QListWidget,
-    QListWidgetItem, QMessageBox, QScrollArea,
+    QListWidgetItem, QMessageBox, QScrollArea, QPushButton,
 )
 
 from src.controllers.preset_manager import PresetManager
@@ -13,7 +13,7 @@ from src.gui.ios.preset_menu import (
     export_preset_flow, partial_export_preset_flow, import_preset_flow,
     rollback_preset_flow, preset_subtitle,
 )
-from src.gui.theme import ColorThemeManager
+from src.gui.theme import ColorThemeManager, t
 
 
 class IOSPresetsPage(QWidget):
@@ -76,27 +76,35 @@ class IOSPresetsPage(QWidget):
 
         self._layout.addWidget(IOSSectionHeader(
             QCoreApplication.translate("Nugget", "Saved presets")))
-        self.preset_list = QListWidget()
-        self.preset_list.setMinimumHeight(180)
-        self.preset_list.itemDoubleClicked.connect(lambda _item: self._load())
-        self._layout.addWidget(self.preset_list)
-
+        # Compact toolbars sit ABOVE the list: the window is only 600px tall,
+        # so full-height buttons under the list ended up below the fold.
+        self._mini_buttons = []
+        self._danger_buttons = []
         actions = QHBoxLayout()
+        actions.setSpacing(6)
         for title, handler in [
             ("Load", self._load), ("Delete", self._delete),
             ("Refresh", self.refresh), ("Rollback Last Apply", self._rollback),
         ]:
-            actions.addWidget(self._button(title, handler))
-        self._layout.addLayout(actions)
-
-        transfer = QHBoxLayout()
+            actions.addWidget(self._mini_button(title, handler, danger=title == "Delete"))
+        actions.addStretch()
         for title, handler in [
             ("Export", self._export),
             ("Partial Export", self._partial_export),
             ("Import", self._import),
         ]:
-            transfer.addWidget(self._button(title, handler))
-        self._layout.addLayout(transfer)
+            actions.addWidget(self._mini_button(title, handler))
+        self._layout.addLayout(actions)
+
+        self.preset_list = QListWidget()
+        self.preset_list.setMinimumHeight(120)
+        self.preset_list.itemDoubleClicked.connect(lambda _item: self._load())
+        self._layout.addWidget(self.preset_list)
+        self._empty_lbl = QLabel(QCoreApplication.translate(
+            "Nugget", "No saved presets yet. Save the current tweaks above or import a preset."))
+        self._empty_lbl.setWordWrap(True)
+        self._empty_lbl.setAlignment(Qt.AlignCenter)
+        self._layout.addWidget(self._empty_lbl)
         self._layout.addStretch()
 
         self._retheme()
@@ -107,6 +115,14 @@ class IOSPresetsPage(QWidget):
         button.clicked.connect(handler)
         return button
 
+    def _mini_button(self, text, handler, danger=False):
+        button = QPushButton(QCoreApplication.translate("Nugget", text))
+        button.setCursor(Qt.PointingHandCursor)
+        button.setFixedHeight(32)
+        button.clicked.connect(handler)
+        (self._danger_buttons if danger else self._mini_buttons).append(button)
+        return button
+
     def _retheme(self):
         c = self._tm.colors
         self._scroll.setStyleSheet(f"background-color: {c.bg_primary}; border: none;")
@@ -114,10 +130,16 @@ class IOSPresetsPage(QWidget):
         self._autosave_label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px; background-color: transparent;")
         for edit in (self.name_edit, self.description_edit):
             edit.setStyleSheet(f"""
-                QLineEdit {{ background-color: {c.bg_input}; border: none;
-                    border-radius: 10px; color: {c.text_primary};
+                QLineEdit {{ background-color: {c.bg_input};
+                    border: 1px solid {c.border}; border-radius: 10px; color: {c.text_primary};
                     font-size: 14px; padding: 10px 14px; }}
+                QLineEdit:focus {{ border-color: {c.accent}; }}
             """)
+        for button in self._mini_buttons:
+            button.setStyleSheet(t("mini_button"))
+        for button in self._danger_buttons:
+            button.setStyleSheet(t("mini_button_danger"))
+        self._empty_lbl.setStyleSheet(t("list_search_empty"))
         self.preset_list.setStyleSheet(f"""
             QListWidget {{ background-color: {c.bg_input}; border: none;
                 border-radius: 8px; color: {c.text_primary};
@@ -151,6 +173,9 @@ class IOSPresetsPage(QWidget):
             item = QListWidgetItem(text)
             item.setData(Qt.ItemDataRole.UserRole, name)
             self.preset_list.addItem(item)
+        has_presets = self.preset_list.count() > 0
+        self.preset_list.setVisible(has_presets)
+        self._empty_lbl.setVisible(not has_presets)
 
     def _on_autosave_toggled(self, checked):
         pref = self.window.device_manager.pref_manager
