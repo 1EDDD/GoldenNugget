@@ -562,6 +562,18 @@ STYLES = {
         QPushButton:hover {{ background-color: {surface_hover}; }}
     """,
 
+    "mini_button_danger": """
+        QPushButton {{
+            background-color: {bg_tertiary};
+            border-radius: 8px;
+            color: {error};
+            border: none;
+            padding: 6px 12px;
+            font-size: 13px;
+        }}
+        QPushButton:hover {{ background-color: {surface_hover}; }}
+    """,
+
     "combo_dropdown": """
         QComboBox {{
             background-color: {bg_secondary};

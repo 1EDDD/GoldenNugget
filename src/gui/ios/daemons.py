@@ -177,6 +177,18 @@ class IOSDaemonsContent(QWidget):
         master_row.addWidget(self.master_switch)
         layout.addWidget(master_card)
 
+        # Shown while the master switch is off: without it the page is just a
+        # lone switch over empty space, with no hint of what turning it on does.
+        self._disabled_hint = QLabel(QCoreApplication.translate(
+            "Nugget", "Turn this on to choose which system services (daemons) to "
+            "disable: analytics, diagnostics and other background services. "
+            "Nothing changes on your device until you apply tweaks."))
+        self._disabled_hint.setWordWrap(True)
+        self._disabled_hint.setContentsMargins(8, 0, 8, 0)
+        self._disabled_hint.setStyleSheet(
+            f"color: {c.text_secondary}; font-size: 13px; background-color: transparent;")
+        layout.addWidget(self._disabled_hint)
+
         self.recover_notifications_button = IOSSettingsAction(
             QCoreApplication.translate("Nugget", "Restore Call Notification Services"))
         self.recover_notifications_button.setToolTip(QCoreApplication.translate(
@@ -608,6 +620,7 @@ class IOSDaemonsContent(QWidget):
         # the only caller that animates is the master switch itself; a build, a
         # device change or a theme change must never re-run the cascade
         self._rows.set_shown(enabled, animate=animate)
+        self._disabled_hint.setVisible(not enabled)
         self._apply_search()
 
     def refresh_from_tweaks(self):
@@ -643,6 +656,8 @@ class IOSDaemonsContent(QWidget):
     def _retheme(self):
         c = ColorThemeManager.instance().colors
         self._master_label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px; background-color: transparent;")
+        self._disabled_hint.setStyleSheet(
+            f"color: {c.text_secondary}; font-size: 13px; background-color: transparent;")
         for lbl in self._daemon_labels:
             lbl.setStyleSheet(f"color: {c.text_primary}; font-size: 15px; background-color: transparent;")
         for note in self._forced_notes:

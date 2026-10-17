@@ -1281,7 +1281,7 @@ class ApplyMixin:
         if alert is None:
             # do sudo dialog input
             get_sudo_pwd() # clear if it is already there
-            pwd, ok = QtWidgets.QInputDialog.getText(None, "Enter Sudo Password", "Enter Your Computer's Password:", QtWidgets.QLineEdit.Password, "")
+            pwd, ok = QtWidgets.QInputDialog.getText(None, QCoreApplication.translate("Nugget", "Enter Sudo Password"), QCoreApplication.translate("Nugget", "Enter Your Computer's Password:"), QtWidgets.QLineEdit.Password, "")
             if ok and pwd:
                 set_sudo_pwd(pwd)
             return
@@ -1490,7 +1490,10 @@ class ApplyMixin:
             "are risky — a bad tweak can bootloop the device or force a full "
             "restore, which erases everything. Create a backup in iTunes or "
             "Finder before using GoldenNugget."))
-        box.setDetailedText(QCoreApplication.translate(
+        # Informative text, not detailed text: the "Show Details..." button
+        # would make a third button, and QMessageBox caps its width at 500px
+        # (half the screen below 1000px), which truncated the button labels.
+        box.setInformativeText(QCoreApplication.translate(
             "Nugget",
             "Back up your iPhone before tweaking:\n"
             "• Windows: iTunes → your device → Back Up Now\n"

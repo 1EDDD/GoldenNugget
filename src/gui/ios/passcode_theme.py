@@ -298,7 +298,8 @@ class IOSPasscodeThemePage(QWidget):
     @staticmethod
     def _lang_label(code: str) -> str:
         names = {
-            "en": "English", "other": "Others", "ru": "Русский", "uk": "Українська",
+            "en": "English", "other": QCoreApplication.translate("Nugget", "Others"),
+            "ru": "Русский", "uk": "Українська",
             "es": "Español", "fr": "Français", "de": "Deutsch", "it": "Italiano",
             "pt": "Português", "tr": "Türkçe", "pl": "Polski", "nl": "Nederlands",
             "ja": "日本語", "ko": "한국어", "zh": "中文", "ar": "العربية", "he": "עברית",

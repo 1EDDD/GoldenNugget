@@ -212,11 +212,12 @@ class IOSHomePage(QWidget):
         self.subtitle.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Fixed)
         self.subtitle.setTextFormat(Qt.PlainText)
         title_layout.addWidget(self.subtitle)
-        header.addLayout(title_layout, 1)
+        header.addLayout(title_layout)
 
         self.control_tabs = QTabWidget(self)
         self.control_tabs.setDocumentMode(True)
-        self.control_tabs.setFixedSize(560, 116)
+        self.control_tabs.setFixedHeight(116)
+        self.control_tabs.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
 
         self._developer_page = None
         if not getattr(sys, 'frozen', False):
@@ -335,8 +336,7 @@ class IOSHomePage(QWidget):
         self.control_tabs.setCornerWidget(utility_corner, Qt.TopRightCorner)
         self._style_control_tabs()
 
-        header.addStretch(1)
-        header.addWidget(self.control_tabs)
+        header.addWidget(self.control_tabs, 1)
         layout.addLayout(header)
 
         self._style_device_combo()
@@ -777,8 +777,11 @@ class IOSHomePage(QWidget):
             self.control_tabs.addTab(self._storage_page, QCoreApplication.translate("Nugget", "Device Storage"))
         if current is not None and self.control_tabs.indexOf(current) >= 0:
             self.control_tabs.setCurrentWidget(current)
+        # A preferred width, not a fixed one: the window is only 1000px wide,
+        # so the panel must give way to the logo + title instead of pushing
+        # the whole page into a horizontal scroll.
         width = 640 if mode == "both" else 560
-        self.control_tabs.setFixedWidth(width + (100 if self._developer_page is not None else 0))
+        self.control_tabs.setMaximumWidth(width + (100 if self._developer_page is not None else 0))
         self.control_tabs.blockSignals(False)
 
     def _on_control_tab_changed(self, index):

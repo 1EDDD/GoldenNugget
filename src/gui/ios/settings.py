@@ -363,6 +363,11 @@ class IOSSettingsPage(QWidget):
             self._retheme_saved_ids_list()
         if hasattr(self, 'history_count_lbl'):
             self.history_count_lbl.setStyleSheet(t("value_label"))
+        # Edit-value buttons style themselves once in _make_text_row, so they
+        # need to be redone here or they keep the old palette's hover colour.
+        for button in self.findChildren(QPushButton, "settingsEditValue"):
+            button.setStyleSheet(t("tweak_info_button"))
+            button.setIcon(theme_icon(":/icon/edit-value.svg", c.text_secondary))
 
     def _retheme_home_widget_dropdown(self):
         c = self._tm.colors
@@ -580,11 +585,13 @@ class IOSSettingsPage(QWidget):
         if checked and pref.use_backup_cache:
             QMessageBox.warning(
                 self.window,
-                "Fast Backup Cache is on",
-                "The Fast Backup Cache also uses the AFC (parallel) media "
-                "channel for photos, so this switch has no effect while the "
-                "cache is on. Turn the cache off to use it on the standard "
-                "backup path.",
+                QCoreApplication.translate("Nugget", "Fast Backup Cache is on"),
+                QCoreApplication.translate(
+                    "Nugget",
+                    "The Fast Backup Cache also uses the AFC (parallel) media "
+                    "channel for photos, so this switch has no effect while the "
+                    "cache is on. Turn the cache off to use it on the standard "
+                    "backup path."),
             )
         pref.use_afc_media = checked
         self.window.settings.setValue("use_afc_media", checked)
@@ -685,6 +692,7 @@ class IOSSettingsPage(QWidget):
         row.addWidget(self.org_value_lbl)
 
         edit_btn = QPushButton(self)
+        edit_btn.setObjectName("settingsEditValue")
         edit_btn.setFixedSize(44, 36)
         edit_btn.setIcon(theme_icon(":/icon/edit-value.svg", c.text_secondary))
         edit_btn.setIconSize(QSize(19, 19))
@@ -963,7 +971,7 @@ class IOSSettingsPage(QWidget):
             "", "*.sqlite3", options=FD.ReadOnly)
         if selected_file in (None, ""):
             tweaks[TweakID.PosterBoard].config_manager.database = None
-            self.pb_db_lbl.setText("sqlite: None")
+            self.pb_db_lbl.setText(QCoreApplication.translate("Nugget", "sqlite: None"))
         else:
             # update_database_file RAISES on a rejected database; without this the
             # exception escapes the slot and lands in the crash handler, which is
@@ -980,7 +988,7 @@ class IOSSettingsPage(QWidget):
                     self, QCoreApplication.translate("Nugget", "Error!"),
                     str(e), e.detailed_text or "")
                 return
-            self.pb_db_lbl.setText("sqlite: Selected")
+            self.pb_db_lbl.setText(QCoreApplication.translate("Nugget", "sqlite: Selected"))
 
     def _on_pb_rebuild(self):
         from src.gui.thread_workers.pb_worker import PBRebuildThread
