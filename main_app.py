@@ -274,7 +274,7 @@ def main() -> int:
 
     widget = MainWindow(device_manager=dm, translator=translator)
     translator.fix_ui_for_rtl(widget.ui)
-    widget.resize(800, 600)
+    widget.resize(1000, 600)
     widget.show()
 
     # First-launch dialogs (interface picker + backup reminder) are deferred
