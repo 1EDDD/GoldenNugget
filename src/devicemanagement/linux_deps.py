@@ -24,18 +24,29 @@ USBMUXD_SOCKET = "/var/run/usbmuxd"
 _BINARY_DIRS = ("/usr/bin", "/usr/sbin", "/usr/local/bin", "/usr/local/sbin", "/bin", "/sbin")
 _TOOLS = ("idevice_id", "ideviceinfo")
 
-# distro family -> (package manager install argv, usbmuxd package, tools package)
+_SYSTEMD_START = "systemctl start usbmuxd.service 2>/dev/null || true"
+
+# distro family -> (package manager install argv, usbmuxd package, tools package,
+#                   shell command that starts usbmuxd; failure is harmless)
 _FAMILIES = {
-    "arch": (["pacman", "-S", "--needed", "--noconfirm"], "usbmuxd", "libimobiledevice"),
-    "debian": (["apt-get", "install", "-y"], "usbmuxd", "libimobiledevice-utils"),
-    "fedora": (["dnf", "install", "-y"], "usbmuxd", "libimobiledevice-utils"),
-    "suse": (["zypper", "--non-interactive", "install"], "usbmuxd", "libimobiledevice-tools"),
+    "arch": (["pacman", "-S", "--needed", "--noconfirm"], "usbmuxd", "libimobiledevice", _SYSTEMD_START),
+    "debian": (["apt-get", "install", "-y"], "usbmuxd", "libimobiledevice-utils", _SYSTEMD_START),
+    "fedora": (["dnf", "install", "-y"], "usbmuxd", "libimobiledevice-utils", _SYSTEMD_START),
+    "suse": (["zypper", "--non-interactive", "install"], "usbmuxd", "libimobiledevice-tools", _SYSTEMD_START),
+    # Alpine uses OpenRC; the tools live in libimobiledevice-progs.
+    "alpine": (["apk", "add"], "usbmuxd", "libimobiledevice-progs",
+               "rc-service usbmuxd start 2>/dev/null || true"),
+    # Void uses runit: a service is enabled by linking it into /var/service.
+    "void": (["xbps-install", "-Sy"], "usbmuxd", "libimobiledevice",
+             "{ [ -e /var/service/usbmuxd ] || ln -s /etc/sv/usbmuxd /var/service/usbmuxd; } 2>/dev/null || true"),
 }
 _FAMILY_BY_ID = {
     "arch": "arch", "manjaro": "arch", "endeavouros": "arch", "cachyos": "arch", "garuda": "arch",
     "debian": "debian", "ubuntu": "debian", "linuxmint": "debian", "pop": "debian",
     "fedora": "fedora", "rhel": "fedora", "centos": "fedora", "rocky": "fedora", "almalinux": "fedora",
     "opensuse": "suse", "suse": "suse", "sles": "suse",
+    "alpine": "alpine", "postmarketos": "alpine",
+    "void": "void",
 }
 
 
@@ -64,7 +75,7 @@ def parse_os_release(text: str) -> dict:
 
 
 def detect_family(os_release_text: Optional[str] = None) -> Optional[str]:
-    """Return 'arch', 'debian', 'fedora' or 'suse', or None for anything else."""
+    """Return 'arch', 'debian', 'fedora', 'suse', 'alpine' or 'void', or None."""
     if os_release_text is None:
         try:
             with open("/etc/os-release", encoding="utf-8") as handle:
@@ -100,7 +111,7 @@ def check(family: Optional[str] = None) -> DependencyStatus:
     if not is_linux():
         return DependencyStatus(family=None)
     family = family if family is not None else detect_family()
-    _, usbmuxd_pkg, tools_pkg = _FAMILIES.get(family, (None, "usbmuxd", "libimobiledevice"))
+    _, usbmuxd_pkg, tools_pkg, _start = _FAMILIES.get(family, (None, "usbmuxd", "libimobiledevice", None))
     missing = []
     if not _find_binary("usbmuxd"):
         missing.append(usbmuxd_pkg)
@@ -121,14 +132,14 @@ def install_script(status: DependencyStatus) -> str:
     """
     if status.family not in _FAMILIES:
         raise ValueError("unsupported distribution")
-    install_argv = _FAMILIES[status.family][0]
+    install_argv, _usbmuxd, _tools, start_command = _FAMILIES[status.family]
     steps = ["set -e"]
     if status.missing_packages:
         steps.append(" ".join(install_argv + list(status.missing_packages)))
     # usbmuxd is socket/udev-activated on most distributions; starting it by
     # hand makes the first scan work without replugging. Failure is harmless,
     # unlike a failed package install, which `set -e` turns into a failure.
-    steps.append("systemctl start usbmuxd.service 2>/dev/null || true")
+    steps.append(start_command)
     return "; ".join(steps)
 
 

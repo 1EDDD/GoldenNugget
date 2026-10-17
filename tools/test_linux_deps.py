@@ -15,6 +15,8 @@ UBUNTU = 'NAME="Ubuntu"\nID=ubuntu\nID_LIKE=debian\n'
 FEDORA = 'ID=fedora\n'
 SUSE = 'ID="opensuse-tumbleweed"\nID_LIKE="opensuse suse"\n'
 ALPINE = 'ID=alpine\n'
+VOID = 'ID=void\n'
+GENTOO = 'ID=gentoo\n'
 
 
 class FakeProcess:
@@ -30,7 +32,8 @@ class FakeProcess:
 class Detection(unittest.TestCase):
     def test_families(self):
         for text, family in ((ARCH, 'arch'), (UBUNTU, 'debian'), (FEDORA, 'fedora'),
-                             (SUSE, 'suse'), (ALPINE, None), ('', None)):
+                             (SUSE, 'suse'), (ALPINE, 'alpine'), (VOID, 'void'),
+                             (GENTOO, None), ('', None)):
             self.assertEqual(deps.detect_family(text), family, text)
 
     def test_missing_packages_use_the_family_names(self):
@@ -73,6 +76,22 @@ class Script(unittest.TestCase):
         script = deps.install_script(deps.DependencyStatus('debian', [], False))
         self.assertNotIn('apt-get', script)
         self.assertIn('systemctl start usbmuxd.service', script)
+
+    def test_every_family_has_its_own_install_and_start_commands(self):
+        expected = {
+            'alpine': ('apk add usbmuxd libimobiledevice-progs', 'rc-service usbmuxd start'),
+            'void': ('xbps-install -Sy usbmuxd libimobiledevice', '/etc/sv/usbmuxd'),
+            'suse': ('zypper --non-interactive install usbmuxd libimobiledevice-tools', 'systemctl start'),
+            'fedora': ('dnf install -y usbmuxd libimobiledevice-utils', 'systemctl start'),
+        }
+        for family, (install, start) in expected.items():
+            with patch.object(deps, 'is_linux', return_value=True), \
+                 patch.object(deps, '_find_binary', return_value=None), patch('os.path.exists', return_value=False):
+                status = deps.check(family)
+            script = deps.install_script(status)
+            self.assertIn(install, script, family)
+            self.assertIn(start, script, family)
+            self.assertTrue(script.startswith('set -e; '), family)
 
     def test_privilege_prefers_pkexec_then_falls_back_to_sudo(self):
         both = {'pkexec': '/usr/bin/pkexec', 'sudo': '/usr/bin/sudo'}

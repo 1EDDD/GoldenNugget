@@ -213,7 +213,7 @@ Want to see your name here? Open a [Pull Request](https://github.com/GoldenNugge
   - [usbmuxd][usbmuxdGitHub]
   - [libimobiledevice][libimobiledeviceGitHub]
 
-  If they are missing, GoldenNugget offers to install them (Arch, Debian/Ubuntu, Fedora and openSUSE families); the system asks for your administrator password through polkit, so the app never sees it.
+  If they are missing, GoldenNugget offers to install them (Arch, Debian/Ubuntu, Fedora, openSUSE, Alpine and Void families); the system asks for your administrator password through polkit, so the app never sees it.
 </details>
 
 <details>
