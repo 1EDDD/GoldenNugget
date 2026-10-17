@@ -170,16 +170,28 @@ class Daemon(Enum):
 DANGEROUS_DAEMONS: set["Daemon"] = set()
 DANGEROUS_KEYS = frozenset(k for d in DANGEROUS_DAEMONS for k in d.value)
 
-# Safe one-tap analytics/telemetry disable set — the "Recommended" switch in
-# the daemons UI. Analytics/tracking/logging only; verified safe to disable.
-RECOMMENDED_ANALYTICS = [
-    Daemon.CrashReports, Daemon.Diagnostics, Daemon.UsageTrackingAgent,
+# Preserve the old shortcut's scope for recovery of already-applied presets.
+# Issue #58 reports missed-call notifications failing with this set + Spotlight.
+# This is a recovery scope, not proof that any one member caused the failure.
+NOTIFICATION_RECOVERY_DAEMONS = (
+    Daemon.Spotlight, Daemon.CrashReports,
+    Daemon.Diagnostics, Daemon.UsageTrackingAgent,
     Daemon.AppleAds, Daemon.FollowUp, Daemon.Feedback, Daemon.Shazam,
     Daemon.SettingsStats, Daemon.WifiAnalytics, Daemon.AnalyticsHelper,
     Daemon.CallAnalytics, Daemon.CoreDuet, Daemon.Insight, Daemon.Metrics,
     Daemon.MediaExperience, Daemon.Symptomsd, Daemon.StatisticalDiagnostic,
     Daemon.WirelessDiagnostics, Daemon.DuetHeuristic, Daemon.DuetExpert,
     Daemon.Decisiond, Daemon.Triald, Daemon.Sociald,
+)
+
+# Keep shared system services out of the one-tap analytics shortcut. Their
+# individual controls remain available, but disabling them is not telemetry-only.
+RECOMMENDED_ANALYTICS = [
+    Daemon.Diagnostics, Daemon.UsageTrackingAgent,
+    Daemon.AppleAds, Daemon.Feedback,
+    Daemon.SettingsStats, Daemon.WifiAnalytics, Daemon.AnalyticsHelper,
+    Daemon.Insight, Daemon.Metrics, Daemon.StatisticalDiagnostic,
+    Daemon.WirelessDiagnostics,
 ]
 
 # Interface-visible daemons: the switches on the Daemons page plus the
@@ -201,7 +213,7 @@ INTERFACE_DAEMONS: frozenset["Daemon"] = frozenset({
     Daemon.Symptomsd, Daemon.StatisticalDiagnostic, Daemon.WirelessDiagnostics,
     Daemon.DuetHeuristic, Daemon.DuetExpert, Daemon.Decisiond, Daemon.Triald,
     Daemon.Sociald,
-} | set(RECOMMENDED_ANALYTICS))
+} | set(RECOMMENDED_ANALYTICS) | set(NOTIFICATION_RECOVERY_DAEMONS))
 
 # Interface-visible daemon keys: everything a user can toggle in the UI.
 # Any key outside this set is stripped from presets / the apply pass.

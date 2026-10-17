@@ -896,12 +896,12 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
         (``targeted_posterboard_database_backup`` in ``src/restore/posterboard_backup.py``):
         only the PosterBoard container is pulled off the device and everything
         else the device uploads is drained mid-stream, so no full backup is
-        ever written. Failure is non-fatal: the apply continues and config mode
-        surfaces its own clear error later.
+        ever written. Any fetch failure aborts before restore, preserving the
+        original error instead of using a stale or missing database.
         """
         udid = self.get_current_device_udid()
         if not udid:
-            return
+            raise NuggetException("Connect and select a device before fetching the PosterBoard database.")
         # already backed up for this device and no fresh copy required -> reuse it
         if not force and PreferenceManager.has_pbconfig_data(udid):
             return
@@ -930,9 +930,10 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             print(f"Failed to back up PosterBoard database: {e}")
             print(traceback.format_exc())
             if _is_device_locked_error(e):
-                update_label(QCoreApplication.tr("Warning: could not back up PosterBoard database — device is locked. Please unlock your device and try again."))
-            else:
-                update_label(QCoreApplication.tr("Warning: could not back up the PosterBoard database automatically."))
+                raise NuggetException(QCoreApplication.tr(
+                    "Could not fetch the PosterBoard database because the device is locked. "
+                    "Unlock it, keep it awake, and try again."), detailed_text=str(e)) from e
+            raise
 
     async def _apply_tweak_pass(self, update_label=lambda x: None, templates: list = None, prepared_backup_root=None, prompt_password=None, prompt_choice=None, skip_protective_backup: bool = False):
         """Generate all tweak files and restore them to the device in one pass.
