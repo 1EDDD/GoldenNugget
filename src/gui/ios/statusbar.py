@@ -11,6 +11,7 @@ from src.gui.ios.components import (
     TextInputDialog, NumberInputDialog
 )
 from src.gui.theme import ColorThemeManager, theme_icon, t
+from src.gui.ios.statusbar_preview import StatusBarPreview, preview_state
 from src.tweaks.tweaks import tweaks, TweakID
 from src.tweaks.status_bar.status_setter import StatusBarItem
 
@@ -49,6 +50,10 @@ class IOSStatusBarPage(QWidget):
         # (widget, survives iOS 27) for every card and section header, so the
         # whole page can be re-gated whenever the connected device changes.
         self._rows: list[tuple[QWidget, bool]] = []
+
+        # Live preview of what the device will show; refreshed after every edit.
+        self.preview = StatusBarPreview()
+        self.content_layout.addWidget(self.preview)
 
         # Master enable switch
         self._header(QCoreApplication.translate("Nugget", "Configuration"), survives_ios27=True)
@@ -223,12 +228,24 @@ class IOSStatusBarPage(QWidget):
 
         self._retheme()
         self._sync_controls_enabled()
+        # Every control on this page is an IOSSwitch or an edit dialog; the
+        # switches' own handlers update the tweak first, the preview follows.
+        for switch in self.findChildren(IOSSwitch):
+            switch.toggled.connect(self._schedule_preview_refresh)
+        self._refresh_preview()
 
     def showEvent(self, event):
         super().showEvent(event)
         # The page outlives device changes, so re-gate every time it is shown.
         self._apply_ios27_gating()
         self._sync_controls_enabled()
+        self._refresh_preview()
+
+    def _schedule_preview_refresh(self, *_):
+        QTimer.singleShot(0, self._refresh_preview)
+
+    def _refresh_preview(self):
+        self.preview.set_state(preview_state(self.status_manager, self._is_ios27()))
 
     def _current_version(self) -> str:
         try:
@@ -236,14 +253,17 @@ class IOSStatusBarPage(QWidget):
         except Exception:
             return ""
 
-    def _apply_ios27_gating(self):
-        is_ios27 = False
+    def _is_ios27(self) -> bool:
         version = self._current_version()
-        if version:
-            try:
-                is_ios27 = Version(version) >= Version(FIRST_ARCHIVE_VERSION)
-            except InvalidVersion:
-                is_ios27 = False
+        if not version:
+            return False
+        try:
+            return Version(version) >= Version(FIRST_ARCHIVE_VERSION)
+        except InvalidVersion:
+            return False
+
+    def _apply_ios27_gating(self):
+        is_ios27 = self._is_ios27()
         for widget, survives in self._rows:
             widget.setVisible(not is_ios27 or survives)
         self._ios27_note.setVisible(is_ios27)
@@ -271,6 +291,8 @@ class IOSStatusBarPage(QWidget):
     def _retheme(self):
         c = ColorThemeManager.instance().colors
         self._scroll.setStyleSheet(f"background-color: {c.bg_primary}; border: none;")
+        if hasattr(self, "preview"):
+            self.preview.update()  # its captions use the theme's muted text colour
         # Transparent background so it does not read as a dark box, muted text
         # because it is a note rather than a value.
         self._ios27_note.setStyleSheet(
@@ -416,6 +438,7 @@ class IOSStatusBarPage(QWidget):
             switch.blockSignals(False)
             value_lbl.setText(value if value else QCoreApplication.translate("Nugget", "Default"))
             label.setText(title)
+            self._refresh_preview()
 
     def _make_number_row(self, title: str, overridden: bool, current: int, setter, unsetter, min_val: int, max_val: int, survives_ios27: bool = False):
         c = ColorThemeManager.instance().colors
@@ -467,6 +490,7 @@ class IOSStatusBarPage(QWidget):
             switch.setChecked(True)
             switch.blockSignals(False)
             value_lbl.setText(str(value))
+            self._refresh_preview()
 
     def _on_enabled_toggled(self, checked: bool):
         self.status_manager.set_enabled(checked)

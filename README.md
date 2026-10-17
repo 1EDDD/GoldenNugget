@@ -71,6 +71,7 @@ Need support? Join our [Discord Server][server].
 - Templates: Custom Operations and file editing
   - See documentation on the structure of batter files in [documentation.md](documentation.md)
 - Status Bar
+  - Live preview of the Lock Screen and Home Screen status bar before applying
   - iOS 26 and below: full override set
     - Change carrier name
     - Change secondary carrier name

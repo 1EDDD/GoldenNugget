@@ -2755,6 +2755,22 @@ They will NOT be loaded, so applying may not match the preset's intended state.<
             <source>Wallpapers</source>
             <translation>Обои</translation>
         </message>
+        <message>
+            <source>Carrier</source>
+            <translation>Оператор</translation>
+        </message>
+        <message>
+            <source>Lock Screen</source>
+            <translation>Экран блокировки</translation>
+        </message>
+        <message>
+            <source>Home Screen</source>
+            <translation>Домашний экран</translation>
+        </message>
+        <message>
+            <source>Status bar preview</source>
+            <translation>Предпросмотр строки состояния</translation>
+        </message>
     </context>
     <context>
         <name>ApplyPreview</name>
