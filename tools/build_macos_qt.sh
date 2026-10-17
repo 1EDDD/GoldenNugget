@@ -36,8 +36,11 @@ cmake --install "$build_root/qtsvg-build"
 git clone --depth 1 --branch "v${qt_version}" \
   https://github.com/pyside/pyside-setup.git "$build_root/pyside-setup"
 cd "$build_root/pyside-setup"
+# This runtime-only Qt build has no Assistant/Designer/Linguist apps.
+# PySide otherwise tries to install those bundles from qttools and fails.
+# Resources and translations are already compiled and committed in src/qt.
 python setup.py bdist_wheel --qtpaths="$qt_prefix/bin/qtpaths6" \
-  --standalone --ignore-git --skip-docs \
+  --standalone --ignore-git --skip-docs --no-qt-tools \
   --module-subset=Core,Gui,Widgets,Network,Svg \
   --macos-deployment-target="$MACOSX_DEPLOYMENT_TARGET" \
   --parallel="$(sysctl -n hw.ncpu)"
