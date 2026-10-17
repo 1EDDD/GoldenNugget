@@ -1859,6 +1859,14 @@
             <source>Back</source>
             <translation>Назад</translation>
         </message>
+        <message>
+            <source>Tendies</source>
+            <translation>Tendies</translation>
+        </message>
+        <message>
+            <source>+ Add Tendies</source>
+            <translation>+ Добавить Tendies</translation>
+        </message>
     </context>
     <context>
         <name>ApplyPreview</name>

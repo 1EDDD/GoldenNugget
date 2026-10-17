@@ -214,11 +214,11 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
             8: QtCore.QCoreApplication.translate("Nugget", "Internal"),
             9: QtCore.QCoreApplication.translate("Nugget", "Liquid Glass"),
             10: QtCore.QCoreApplication.translate("Nugget", "Icon Themes"),
-            11: QCoreApplication.translate("Nugget", "Passcode Themes"),
+            11: QCoreApplication.translate("Nugget", "Passcode Theme"),
             12: QCoreApplication.translate("Nugget", "Presets"),
         }
         self._nav_right_actions = {
-            2: ("+ Add Tendies", self.ios_posterboard.show_add_tendies_dialog),
+            2: (QCoreApplication.translate("Nugget", "+ Add Tendies"), self.ios_posterboard.show_add_tendies_dialog),
             11: (QCoreApplication.translate("Nugget", "+ Theme"),
                  self.ios_passthemes.choose_theme_dialog),
         }
