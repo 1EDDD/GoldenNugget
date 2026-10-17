@@ -1867,6 +1867,894 @@
             <source>+ Add Tendies</source>
             <translation>+ Добавить Tendies</translation>
         </message>
+        <message>
+            <source>Setting</source>
+            <translation>Настройка</translation>
+        </message>
+        <message>
+            <source>Before</source>
+            <translation>Было</translation>
+        </message>
+        <message>
+            <source>After</source>
+            <translation>Будет</translation>
+        </message>
+        <message>
+            <source>Changes compared with the last successful apply</source>
+            <translation>Изменения относительно последнего успешного применения</translation>
+        </message>
+        <message>
+            <source>No comparable history for this device and iOS version. Current selections are shown.</source>
+            <translation>Для этого устройства и версии iOS нет истории сравнения. Показаны текущие выбранные настройки.</translation>
+        </message>
+        <message>
+            <source>Conflicting tweaks</source>
+            <translation>Конфликтующие твики</translation>
+        </message>
+        <message>
+            <source>Unknown</source>
+            <translation>Неизвестно</translation>
+        </message>
+        <message>
+            <source>Not selected</source>
+            <translation>Не было выбрано</translation>
+        </message>
+        <message>
+            <source>Configuration changed ({0})</source>
+            <translation>Конфигурация изменена ({0})</translation>
+        </message>
+        <message>
+            <source>Deselected — not reapplied; original values are not restored</source>
+            <translation>Снятые настройки — не применяются повторно; исходные значения не восстанавливаются</translation>
+        </message>
+        <message>
+            <source>Not reapplied (not a reset)</source>
+            <translation>Не применяется повторно (это не сброс)</translation>
+        </message>
+        <message>
+            <source>No selection changes since the last successful apply.</source>
+            <translation>Выбор не изменился с последнего успешного применения.</translation>
+        </message>
+        <message>
+            <source>No plist tweaks or status bar overrides selected.</source>
+            <translation>Твики plist и изменения строки состояния не выбраны.</translation>
+        </message>
+        <message>
+            <source>Current queue (processed again on each apply):</source>
+            <translation>Текущая очередь (обрабатывается при каждом применении):</translation>
+        </message>
+        <message>
+            <source>Skipped by HotLoad</source>
+            <translation>Пропускается по правилам HotLoad</translation>
+        </message>
+        <message>
+            <source>Will not be applied</source>
+            <translation>Не будет применено</translation>
+        </message>
+        <message>
+            <source>Services forced off by HotLoad</source>
+            <translation>Службы, принудительно отключённые HotLoad</translation>
+        </message>
+        <message>
+            <source>Disable service</source>
+            <translation>Отключить службу</translation>
+        </message>
+        <message>
+            <source>Developer beta warning: iOS 27 support is experimental and uses a beta backup and restore workflow. Newer tweaks may behave unpredictably and can cause boot loops or require recovery. Keep a separate backup and use newer tweaks cautiously.</source>
+            <translation>Предупреждение о бета-версии: поддержка iOS 27 экспериментальная и использует бета-процесс резервного копирования и восстановления. Новые твики могут вести себя непредсказуемо, вызывать циклическую перезагрузку или требовать восстановления. Сделайте отдельную резервную копию и осторожно используйте новые твики.</translation>
+        </message>
+        <message>
+            <source>Review and edit the report before saving. Known credentials and device identifiers are removed. The archive is saved locally.</source>
+            <translation>Проверьте и при необходимости отредактируйте отчёт перед сохранением. Известные учётные данные и идентификаторы устройства удалены. Архив сохраняется локально.</translation>
+        </message>
+        <message>
+            <source>Save Diagnostic Archive</source>
+            <translation>Сохранить архив диагностики</translation>
+        </message>
+        <message>
+            <source>Check Wallpaper Package</source>
+            <translation>Проверка пакета обоев</translation>
+        </message>
+        <message>
+            <source>Checking archive integrity and package documents…</source>
+            <translation>Проверка целостности архива и документов пакета…</translation>
+        </message>
+        <message>
+            <source>Save Report</source>
+            <translation>Сохранить отчёт</translation>
+        </message>
+        <message>
+            <source>Text</source>
+            <translation>Текст</translation>
+        </message>
+        <message>
+            <source>Options</source>
+            <translation>Параметры</translation>
+        </message>
+        <message>
+            <source>Connect an iPhone to check version support.</source>
+            <translation>Подключите iPhone, чтобы проверить поддержку версии.</translation>
+        </message>
+        <message>
+            <source>Passcode themes require an iPhone.</source>
+            <translation>Темы экранного ввода работают только на iPhone.</translation>
+        </message>
+        <message>
+            <source>Your iOS version could not be verified.</source>
+            <translation>Не удалось проверить версию iOS.</translation>
+        </message>
+        <message>
+            <source>Your iOS 27.2 beta build could not be verified.</source>
+            <translation>Не удалось проверить сборку бета-версии iOS 27.2.</translation>
+        </message>
+        <message>
+            <source>Your version is not supported. Requires iOS 27.0 through 27.2 beta 3 (24B5099f).</source>
+            <translation>Ваша версия не поддерживается. Нужна iOS 27.0–27.2 beta 3 (24B5099f).</translation>
+        </message>
+        <message>
+            <source>Enable service</source>
+            <translation>Включить службу</translation>
+        </message>
+        <message>
+            <source>Default</source>
+            <translation>По умолчанию</translation>
+        </message>
+        <message>
+            <source>Off</source>
+            <translation>Выкл.</translation>
+        </message>
+        <message>
+            <source>No iPhone connected</source>
+            <translation>iPhone не подключён</translation>
+        </message>
+        <message>
+            <source>Connect and unlock an iPhone before applying tweaks.</source>
+            <translation>Подключите и разблокируйте iPhone перед применением твиков.</translation>
+        </message>
+        <message>
+            <source>Your device reboots when it's done. If you turn Find My off for this apply, turn it back on afterwards. A protective backup runs first.</source>
+            <translation>По завершении устройство перезагрузится. Если вы выключили «Локатор» для этого применения, включите его снова. Сначала выполняется защитное резервное копирование.</translation>
+        </message>
+        <message>
+            <source>⚠ Low iPhone storage: {0} GB free. Restoring tweaks may require at least {1} GB free and could fail if the device runs out of space.</source>
+            <translation>⚠ Мало места на iPhone: свободно {0} ГБ. Для восстановления твиков может потребоваться минимум {1} ГБ, и оно может завершиться ошибкой, если место закончится.</translation>
+        </message>
+        <message>
+            <source>Estimated working space: keep at least {0} GB free for the backup and restore.</source>
+            <translation>Ориентировочное рабочее место: оставьте не менее {0} ГБ свободными для резервной копии и восстановления.</translation>
+        </message>
+        <message>
+            <source>Estimated time: about {0} minutes, depending on the iPhone and connection.</source>
+            <translation>Ориентировочное время: около {0} мин., в зависимости от iPhone и подключения.</translation>
+        </message>
+        <message>
+            <source>⚠ Low iPhone battery: {0}%. Connect the charger before restoring.</source>
+            <translation>⚠ Низкий заряд iPhone: {0}%. Подключите зарядное устройство перед восстановлением.</translation>
+        </message>
+        <message>
+            <source> and more</source>
+            <translation> и ещё</translation>
+        </message>
+        <message>
+            <source>⚠ Compatibility warning: {0} selected tweak(s) do not match {1} ({2}): {3}.</source>
+            <translation>⚠ Предупреждение о совместимости: выбранные твики ({0}) не подходят для {1} ({2}): {3}.</translation>
+        </message>
+        <message>
+            <source>Restore finished, but Setup Assistant configuration failed. Check the device connection and restore the retained backup if needed.</source>
+            <translation>Восстановление завершено, но настройка Ассистента настройки не удалась. Проверьте подключение устройства и при необходимости восстановите сохранённую резервную копию.</translation>
+        </message>
+        <message>
+            <source>The device disconnected during restore. The apply did not finish successfully.</source>
+            <translation>Устройство отключилось во время восстановления. Применение не завершилось успешно.</translation>
+        </message>
+        <message>
+            <source>Cancel</source>
+            <translation>Отмена</translation>
+        </message>
+        <message>
+            <source>Report must be a JSON object.</source>
+            <translation>Отчёт должен быть объектом JSON.</translation>
+        </message>
+        <message>
+            <source>{0}
+
+Author: {1}</source>
+            <translation>{0}
+
+Автор: {1}</translation>
+        </message>
+        <message>
+            <source>Add this pack to your icon theme collection.</source>
+            <translation>Добавить этот набор в вашу коллекцию тем иконок.</translation>
+        </message>
+        <message>
+            <source>Download</source>
+            <translation>Скачать</translation>
+        </message>
+        <message>
+            <source>Range: {0} – {1} · Step: {2}</source>
+            <translation>Диапазон: {0} – {1} · Шаг: {2}</translation>
+        </message>
+        <message>
+            <source>blocked (boot-loop protection)</source>
+            <translation>заблокировано (защита от циклической перезагрузки)</translation>
+        </message>
+        <message>
+            <source>Call Notification Services</source>
+            <translation>Службы уведомлений о звонках</translation>
+        </message>
+        <message>
+            <source>Service settings are ready. Apply changes and reboot your device to re-enable them. Services locked by safety rules remain disabled.</source>
+            <translation>Настройки служб готовы. Примените изменения и перезагрузите устройство, чтобы снова включить их. Службы, заблокированные правилами безопасности, остаются отключёнными.</translation>
+        </message>
+        <message>
+            <source>Used {0} GB · Free {1} GB</source>
+            <translation>Занято {0} ГБ · Свободно {1} ГБ</translation>
+        </message>
+        <message>
+            <source>Reset Themes</source>
+            <translation>Сбросить темы</translation>
+        </message>
+        <message>
+            <source>No application log is available for this session.</source>
+            <translation>Журнал приложения для этого сеанса недоступен.</translation>
+        </message>
+        <message>
+            <source>Convert this legacy wallpaper to the modern iOS 27 format when applied. Turn it off to install the original files untouched.</source>
+            <translation>Преобразовать эти устаревшие обои в современный формат iOS 27 при применении. Выключите, чтобы установить исходные файлы без изменений.</translation>
+        </message>
+        <message>
+            <source>Convert</source>
+            <translation>Преобразовать</translation>
+        </message>
+        <message>
+            <source>Check</source>
+            <translation>Проверить</translation>
+        </message>
+        <message>
+            <source>Modern format</source>
+            <translation>Современный формат</translation>
+        </message>
+        <message>
+            <source>Converts to the modern format</source>
+            <translation>Будет преобразовано в современный формат</translation>
+        </message>
+        <message>
+            <source>Installs as is</source>
+            <translation>Будет установлено как есть</translation>
+        </message>
+        <message>
+            <source>Select a preset first.</source>
+            <translation>Сначала выберите пресет.</translation>
+        </message>
+        <message>
+            <source>Could not open the browser. Open this link to report a bug:
+{0}</source>
+            <translation>Не удалось открыть браузер. Откройте эту ссылку, чтобы сообщить об ошибке:
+{0}</translation>
+        </message>
+        <message>
+            <source>Restore Data</source>
+            <translation>Восстановить данные</translation>
+        </message>
+        <message>
+            <source>Enable Cache</source>
+            <translation>Включить кэш</translation>
+        </message>
+        <message>
+            <source>Enable Encryption</source>
+            <translation>Включить шифрование</translation>
+        </message>
+        <message>
+            <source>Showing {0} of {1} operations</source>
+            <translation>Показано {0} из {1} операций</translation>
+        </message>
+        <message>
+            <source>{0} operations found</source>
+            <translation>Найдено операций: {0}</translation>
+        </message>
+        <message>
+            <source>No matching operations</source>
+            <translation>Подходящих операций нет</translation>
+        </message>
+        <message>
+            <source>Error!</source>
+            <translation>Ошибка!</translation>
+        </message>
+        <message>
+            <source>Rebuild Database</source>
+            <translation>Пересобрать базу данных</translation>
+        </message>
+        <message>
+            <source>Repack all Marble/Lavender wallpapers already on this device into the Clownfish format (enables the Depth effect) in place?
+
+Mercury spatial posters and every other family are left untouched.
+
+The device must be unlocked and have Find My turned off, and it will restart when the rebuild finishes.</source>
+            <translation>Перепаковать все обои Marble/Lavender, уже имеющиеся на этом устройстве, в формат Clownfish (включает эффект глубины) на месте?
+
+Пространственные постеры Mercury и все остальные семейства остаются без изменений.
+
+Устройство должно быть разблокировано, «Локатор» должен быть выключен, а по завершении пересборки устройство перезагрузится.</translation>
+        </message>
+        <message>
+            <source>Rebuilding wallpapers...</source>
+            <translation>Пересборка обоев...</translation>
+        </message>
+        <message>
+            <source>Done.</source>
+            <translation>Готово.</translation>
+        </message>
+        <message>
+            <source>Clear IDs</source>
+            <translation>Очистить ID</translation>
+        </message>
+        <message>
+            <source>The restore finished, but the device disconnected while configuring Setup Assistant.</source>
+            <translation>Восстановление завершено, но устройство отключилось во время настройки Ассистента настройки.</translation>
+        </message>
+        <message>
+            <source>The device disconnected during file transfer. This does not by itself mean the file list is corrupted.</source>
+            <translation>Устройство отключилось во время передачи файлов. Само по себе это не означает, что список файлов повреждён.</translation>
+        </message>
+        <message>
+            <source>This PosterBoard database is not a usable copy of the one on your device.</source>
+            <translation>Эта база данных PosterBoard не является пригодной копией базы на вашем устройстве.</translation>
+        </message>
+        <message>
+            <source>PosterBoard keeps its database open while writing and iOS leaves its write-ahead log out of the backup, so a copy taken at the wrong moment comes out inconsistent. Use "Get Database from Device" again — it re-pulls the file until it lands between two writes. Picking the same file again cannot help, and the backup location has no bearing on it.</source>
+            <translation>PosterBoard держит базу данных открытой во время записи, а iOS не включает её журнал упреждающей записи в резервную копию, поэтому копия, снятая в неудачный момент, оказывается несогласованной. Снова нажмите «Получить базу данных с устройства» — файл будет скачиваться заново, пока не попадёт между двумя записями. Повторный выбор того же файла не поможет, а расположение резервных копий здесь ни при чём.</translation>
+        </message>
+        <message>
+            <source>Legacy Wallpaper Format</source>
+            <translation>Устаревший формат обоев</translation>
+        </message>
+        <message>
+            <source>&lt;b&gt;{0}&lt;/b&gt; uses the legacy {1} format.</source>
+            <translation>&lt;b&gt;{0}&lt;/b&gt; использует устаревший формат {1}.</translation>
+        </message>
+        <message>
+            <source>iOS 27 only applies the depth effect to wallpapers in the modern format, so a legacy wallpaper is rewritten on import. Pick “Install as is” to push the original files untouched instead.</source>
+            <translation>iOS 27 применяет эффект глубины только к обоям в современном формате, поэтому устаревшие обои переписываются при импорте. Выберите «Установить как есть», чтобы отправить исходные файлы без изменений.</translation>
+        </message>
+        <message>
+            <source>Convert (may break the wallpaper)</source>
+            <translation>Преобразовать (обои могут сломаться)</translation>
+        </message>
+        <message>
+            <source>Install as is</source>
+            <translation>Установить как есть</translation>
+        </message>
+        <message>
+            <source>Template {0} does not support iOS {1}.</source>
+            <translation>Шаблон {0} не поддерживает iOS {1}.</translation>
+        </message>
+        <message>
+            <source>Primary carrier</source>
+            <translation>Основной оператор</translation>
+        </message>
+        <message>
+            <source>Secondary carrier</source>
+            <translation>Дополнительный оператор</translation>
+        </message>
+        <message>
+            <source>Primary service badge</source>
+            <translation>Основной значок службы</translation>
+        </message>
+        <message>
+            <source>Secondary service badge</source>
+            <translation>Дополнительный значок службы</translation>
+        </message>
+        <message>
+            <source>Primary signal bars</source>
+            <translation>Основные полоски сигнала</translation>
+        </message>
+        <message>
+            <source>Secondary signal bars</source>
+            <translation>Дополнительные полоски сигнала</translation>
+        </message>
+        <message>
+            <source>Available on that drive: {0} GiB.</source>
+            <translation>Доступно на этом диске: {0} ГиБ.</translation>
+        </message>
+        <message>
+            <source>The device refused the backup because the backup drive does not have enough free disk space.
+
+Backup location: {0}
+{1}
+
+Free space on that drive, or choose a drive with more room in Settings → Backup → Backup/Cache Location, then retry. A filtered backup can still require space for the device's full backup estimate.</source>
+            <translation>Устройство отклонило резервное копирование, потому что на диске с резервными копиями недостаточно свободного места.
+
+Расположение резервных копий: {0}
+{1}
+
+Освободите место на этом диске или выберите диск с большим объёмом в Настройки → Резервное копирование → Папка резервных копий и кэша, затем повторите. Отфильтрованная копия всё равно может требовать места под полную оценку резервной копии устройства.</translation>
+        </message>
+        <message>
+            <source>Keychain</source>
+            <translation>Связка ключей</translation>
+        </message>
+        <message>
+            <source>Messages</source>
+            <translation>Сообщения</translation>
+        </message>
+        <message>
+            <source>Photos and videos</source>
+            <translation>Фото и видео</translation>
+        </message>
+        <message>
+            <source>Apple account</source>
+            <translation>Учётная запись Apple</translation>
+        </message>
+        <message>
+            <source>Home screen</source>
+            <translation>Домашний экран</translation>
+        </message>
+        <message>
+            <source>Shortcuts</source>
+            <translation>Быстрые команды</translation>
+        </message>
+        <message>
+            <source>Wallpaper data</source>
+            <translation>Данные обоев</translation>
+        </message>
+        <message>
+            <source>Device data</source>
+            <translation>Данные устройства</translation>
+        </message>
+        <message>
+            <source>This version of iOS is currently not supported.</source>
+            <translation>Эта версия iOS сейчас не поддерживается.</translation>
+        </message>
+        <message>
+            <source>GoldenNugget Disabled</source>
+            <translation>GoldenNugget отключён</translation>
+        </message>
+        <message>
+            <source>GoldenNugget has been disabled by its safety rules.</source>
+            <translation>GoldenNugget отключён своими правилами безопасности.</translation>
+        </message>
+        <message>
+            <source>apply/reset</source>
+            <translation>«применение/сброс»</translation>
+        </message>
+        <message>
+            <source>data restore</source>
+            <translation>«восстановление данных»</translation>
+        </message>
+        <message>
+            <source>passcode theme write</source>
+            <translation>«запись темы экранного ввода»</translation>
+        </message>
+        <message>
+            <source>pairing reset</source>
+            <translation>«сброс сопряжения»</translation>
+        </message>
+        <message>
+            <source>Enter Sudo Password</source>
+            <translation>Введите пароль sudo</translation>
+        </message>
+        <message>
+            <source>Enter Your Computer's Password:</source>
+            <translation>Введите пароль вашего компьютера:</translation>
+        </message>
+        <message>
+            <source>Please enter your password on your device to continue</source>
+            <translation>Введите код-пароль на устройстве, чтобы продолжить</translation>
+        </message>
+        <message>
+            <source>Fetch Database File</source>
+            <translation>Получение файла базы данных</translation>
+        </message>
+        <message>
+            <source>Notice</source>
+            <translation>Внимание</translation>
+        </message>
+        <message>
+            <source>GoldenNugget needs to download the PosterBoard database from your device.</source>
+            <translation>GoldenNugget нужно скачать базу данных PosterBoard с вашего устройства.</translation>
+        </message>
+        <message>
+            <source>Your device is not erased or wiped — only the PosterBoard data is fetched.</source>
+            <translation>Устройство не стирается — скачиваются только данные PosterBoard.</translation>
+        </message>
+        <message>
+            <source>Backup Complete</source>
+            <translation>Копирование завершено</translation>
+        </message>
+        <message>
+            <source>Successfully got the file</source>
+            <translation>Файл успешно получен</translation>
+        </message>
+        <message>
+            <source>Backing Up Device...</source>
+            <translation>Резервное копирование устройства...</translation>
+        </message>
+        <message>
+            <source>Preparing device for backup...</source>
+            <translation>Подготовка устройства к копированию...</translation>
+        </message>
+        <message>
+            <source>Backing up...  {0:6.1f}%</source>
+            <translation>Копирование...  {0:6.1f}%</translation>
+        </message>
+        <message>
+            <source>Failed to load template:
+{0}
+
+{1}</source>
+            <translation>Не удалось загрузить шаблон:
+{0}
+
+{1}</translation>
+        </message>
+        <message>
+            <source>Fast Backup Cache is on</source>
+            <translation>Быстрый кэш резервных копий включён</translation>
+        </message>
+        <message>
+            <source>The Fast Backup Cache also uses the AFC (parallel) media channel for photos, so this switch has no effect while the cache is on. Turn the cache off to use it on the standard backup path.</source>
+            <translation>Быстрый кэш резервных копий тоже использует канал AFC (параллельно) для фото, поэтому этот переключатель не действует, пока кэш включён. Выключите кэш, чтобы использовать его при обычном резервном копировании.</translation>
+        </message>
+        <message>
+            <source>sqlite: Selected</source>
+            <translation>sqlite: выбран</translation>
+        </message>
+        <message>
+            <source>Serious</source>
+            <translation>Серьёзная</translation>
+        </message>
+        <message>
+            <source>Moderate</source>
+            <translation>Умеренная</translation>
+        </message>
+        <message>
+            <source>Minor</source>
+            <translation>Незначительная</translation>
+        </message>
+        <message>
+            <source>Fatal</source>
+            <translation>Критическая</translation>
+        </message>
+        <message>
+            <source>Your device</source>
+            <translation>Ваше устройство</translation>
+        </message>
+        <message>
+            <source>Your device is locked. Unlock it and keep it awake, then try again.</source>
+            <translation>Устройство заблокировано. Разблокируйте его, не давайте ему заснуть и повторите попытку.</translation>
+        </message>
+        <message>
+            <source>Your computer's storage</source>
+            <translation>Память вашего компьютера</translation>
+        </message>
+        <message>
+            <source>The backup drive does not have enough free disk space. Free space or choose another backup location in Settings.</source>
+            <translation>На диске резервных копий недостаточно свободного места. Освободите место или выберите другое расположение копий в настройках.</translation>
+        </message>
+        <message>
+            <source>Your files or setup</source>
+            <translation>Ваши файлы или настройка</translation>
+        </message>
+        <message>
+            <source>GoldenNugget couldn't find a file or folder it needed.</source>
+            <translation>GoldenNugget не нашёл нужный файл или папку.</translation>
+        </message>
+        <message>
+            <source>GoldenNugget didn't have permission to access a file or folder.</source>
+            <translation>У GoldenNugget нет прав доступа к файлу или папке.</translation>
+        </message>
+        <message>
+            <source>GoldenNugget tried to create something that already exists.</source>
+            <translation>GoldenNugget попытался создать то, что уже существует.</translation>
+        </message>
+        <message>
+            <source>A file path was used as a folder (or a folder as a file).</source>
+            <translation>Путь к файлу использован как папка (или папка как файл).</translation>
+        </message>
+        <message>
+            <source>Your device or connection</source>
+            <translation>Ваше устройство или соединение</translation>
+        </message>
+        <message>
+            <source>GoldenNugget couldn't communicate with your device.</source>
+            <translation>GoldenNugget не удалось связаться с вашим устройством.</translation>
+        </message>
+        <message>
+            <source>Your computer</source>
+            <translation>Ваш компьютер</translation>
+        </message>
+        <message>
+            <source>Your computer ran out of memory. Close some programs and try again.</source>
+            <translation>На компьютере закончилась память. Закройте несколько программ и повторите попытку.</translation>
+        </message>
+        <message>
+            <source>The app (GoldenNugget)</source>
+            <translation>Приложение (GoldenNugget)</translation>
+        </message>
+        <message>
+            <source>GoldenNugget hit an internal problem.</source>
+            <translation>В GoldenNugget возникла внутренняя проблема.</translation>
+        </message>
+        <message>
+            <source>{0} - Detected an Error</source>
+            <translation>{0} — обнаружена ошибка</translation>
+        </message>
+        <message>
+            <source>GoldenNugget detected an error. Here's what we know - report it to us or copy the details (with the session log) before restarting.</source>
+            <translation>GoldenNugget обнаружил ошибку. Вот что нам известно — сообщите о ней нам или скопируйте подробности (вместе с журналом сеанса) перед перезапуском.</translation>
+        </message>
+        <message>
+            <source>Severity: {0}</source>
+            <translation>Серьёзность: {0}</translation>
+        </message>
+        <message>
+            <source>Likely cause: {0}</source>
+            <translation>Вероятная причина: {0}</translation>
+        </message>
+        <message>
+            <source>No technical details available.</source>
+            <translation>Технических подробностей нет.</translation>
+        </message>
+        <message>
+            <source>Log: {0}</source>
+            <translation>Журнал: {0}</translation>
+        </message>
+        <message>
+            <source>Restore data from backup</source>
+            <translation>Восстановить данные из копии</translation>
+        </message>
+        <message>
+            <source>Restore the protective backup from the failed apply to avoid data loss.</source>
+            <translation>Восстановить защитную копию после неудачного применения, чтобы не потерять данные.</translation>
+        </message>
+        <message>
+            <source>Report on GitHub</source>
+            <translation>Сообщить на GitHub</translation>
+        </message>
+        <message>
+            <source>Copies the error details + session log and opens the issue tracker in your browser with a pre-filled report.</source>
+            <translation>Копирует сведения об ошибке и журнал сеанса и открывает трекер ошибок в браузере с готовым отчётом.</translation>
+        </message>
+        <message>
+            <source>Copy Error</source>
+            <translation>Копировать ошибку</translation>
+        </message>
+        <message>
+            <source>Copies the full error report + session log to the clipboard.</source>
+            <translation>Копирует полный отчёт об ошибке и журнал сеанса в буфер обмена.</translation>
+        </message>
+        <message>
+            <source>Open Log</source>
+            <translation>Открыть журнал</translation>
+        </message>
+        <message>
+            <source>Opens the session log file in your preferred text editor.</source>
+            <translation>Открывает файл журнала сеанса в вашем текстовом редакторе.</translation>
+        </message>
+        <message>
+            <source>Restart App</source>
+            <translation>Перезапустить приложение</translation>
+        </message>
+        <message>
+            <source>Close the error report and relaunch GoldenNugget.</source>
+            <translation>Закрыть отчёт об ошибке и перезапустить GoldenNugget.</translation>
+        </message>
+        <message>
+            <source>App bundle id:</source>
+            <translation>Идентификатор приложения (bundle id):</translation>
+        </message>
+        <message>
+            <source>Select File</source>
+            <translation>Выберите файл</translation>
+        </message>
+        <message>
+            <source>Remove Selected File</source>
+            <translation>Убрать выбранный файл</translation>
+        </message>
+        <message>
+            <source>This feature is currently flagged as dangerous or broken.</source>
+            <translation>Эта функция сейчас помечена как опасная или неработающая.</translation>
+        </message>
+        <message>
+            <source>GoldenNugget safety rules have flagged "{0}" as currently dangerous or broken.</source>
+            <translation>Правила безопасности GoldenNugget пометили «{0}» как опасную или неработающую.</translation>
+        </message>
+        <message>
+            <source>It is recommended not to enable it. Do you still want to enable it?</source>
+            <translation>Рекомендуем не включать её. Всё равно включить?</translation>
+        </message>
+        <message>
+            <source>Disabled Feature Warning</source>
+            <translation>Предупреждение об отключённой функции</translation>
+        </message>
+        <message>
+            <source>• Backup cache: none yet (will be created on this apply)</source>
+            <translation>• Кэш резервных копий: пока нет (будет создан при этом применении)</translation>
+        </message>
+        <message>
+            <source>• Backup cache from: {0} (reused if fresh)</source>
+            <translation>• Кэш резервных копий от: {0} (будет использован, если свежий)</translation>
+        </message>
+        <message>
+            <source>Device Compatibility</source>
+            <translation>Совместимость устройства</translation>
+        </message>
+        <message>
+            <source>Support for this iOS version is experimental. The backup and restore workflow is in beta, and newer tweaks may cause boot loops or require recovery. Keep a separate backup before applying changes.</source>
+            <translation>Поддержка этой версии iOS экспериментальная. Процесс резервного копирования и восстановления находится в бете, а новые твики могут вызывать циклическую перезагрузку или требовать восстановления. Сделайте отдельную резервную копию перед применением изменений.</translation>
+        </message>
+        <message>
+            <source>Feature Sections</source>
+            <translation>Разделы функций</translation>
+        </message>
+        <message>
+            <source>Done</source>
+            <translation>Готово</translation>
+        </message>
+        <message>
+            <source>{0} · iOS {1}</source>
+            <translation>{0} · iOS {1}</translation>
+        </message>
+        <message>
+            <source>Your iOS version is supported. Some tweaks may still depend on your device or iOS version.</source>
+            <translation>Ваша версия iOS поддерживается. Некоторые твики могут зависеть от устройства или версии iOS.</translation>
+        </message>
+        <message>
+            <source>Applying tweaks requires iOS 26.2 or newer. This device cannot apply tweaks with GoldenNugget.</source>
+            <translation>Для применения твиков нужна iOS 26.2 или новее. Это устройство не может применять твики через GoldenNugget.</translation>
+        </message>
+        <message>
+            <source>These checks use your device model, iOS version, and the app’s safety rules. Available does not mean a tweak has been tested on your device.</source>
+            <translation>Эти проверки учитывают модель устройства, версию iOS и правила безопасности приложения. «Доступно» не означает, что твик проверен на вашем устройстве.</translation>
+        </message>
+        <message>
+            <source>Automatic safety rules are off. You can turn them back on in Settings → Safety.</source>
+            <translation>Автоматические правила безопасности выключены. Включить их снова можно в Настройки → Безопасность.</translation>
+        </message>
+        <message>
+            <source>No extra restrictions listed. Check this section for setup instructions.</source>
+            <translation>Дополнительных ограничений нет. Инструкции по настройке смотрите в этом разделе.</translation>
+        </message>
+        <message>
+            <source>Services Managed by Safety Rules</source>
+            <translation>Службы под управлением правил безопасности</translation>
+        </message>
+        <message>
+            <source> · Build {0}</source>
+            <translation> · Сборка {0}</translation>
+        </message>
+        <message>
+            <source>No restrictions in this category.</source>
+            <translation>В этой категории ограничений нет.</translation>
+        </message>
+        <message>
+            <source>No tweaks are available for this device.</source>
+            <translation>Для этого устройства нет доступных твиков.</translation>
+        </message>
+        <message>
+            <source>Hidden Sections</source>
+            <translation>Скрытые разделы</translation>
+        </message>
+        <message>
+            <source>Automatically disabled services</source>
+            <translation>Автоматически отключённые службы</translation>
+        </message>
+        <message>
+            <source>Disabled by safety rules</source>
+            <translation>Отключено правилами безопасности</translation>
+        </message>
+        <message>
+            <source>Daemons are sensitive to the iOS version and device type, and applying incompatible ones can bootloop your device. Proceed with caution.</source>
+            <translation>Демоны зависят от версии iOS и типа устройства, а применение несовместимых может привести к циклической перезагрузке. Действуйте осторожно.</translation>
+        </message>
+        <message>
+            <source>JSON Files (*.json);;Portable Preset with Templates and Icons (*.gnpreset)</source>
+            <translation>Файлы JSON (*.json);;Переносимый пресет с шаблонами и иконками (*.gnpreset)</translation>
+        </message>
+        <message>
+            <source>Preset Files (*.json *.gnpreset)</source>
+            <translation>Файлы пресетов (*.json *.gnpreset)</translation>
+        </message>
+        <message>
+            <source>{0} • iOS {1}</source>
+            <translation>{0} • iOS {1}</translation>
+        </message>
+        <message>
+            <source>Hidden Features Skipped</source>
+            <translation>Скрытые функции пропущены</translation>
+        </message>
+        <message>
+            <source>There is no previous successful apply to roll back yet.</source>
+            <translation>Пока нет предыдущего успешного применения, к которому можно откатиться.</translation>
+        </message>
+        <message>
+            <source>Previous applied state</source>
+            <translation>Предыдущее применённое состояние</translation>
+        </message>
+        <message>
+            <source>No presets yet.</source>
+            <translation>Пресетов пока нет.</translation>
+        </message>
+        <message>
+            <source>This preset contains daemon modifications that were saved for a different device:
+
+</source>
+            <translation>Этот пресет содержит изменения демонов, сохранённые для другого устройства:
+
+</translation>
+        </message>
+        <message>
+            <source>Load Anyway</source>
+            <translation>Всё равно загрузить</translation>
+        </message>
+        <message>
+            <source>iOS {0}x vs current iOS {1}x</source>
+            <translation>iOS {0}x, сейчас iOS {1}x</translation>
+        </message>
+        <message>
+            <source>{0} vs current {1}</source>
+            <translation>{0}, сейчас {1}</translation>
+        </message>
+        <message>
+            <source>This preset contains features that are currently hidden by the safety rules for this device:
+
+• {0}
+
+They will NOT be loaded, so applying may not match the preset's intended state.</source>
+            <translation>Этот пресет содержит функции, которые сейчас скрыты правилами безопасности для этого устройства:
+
+• {0}
+
+Они НЕ будут загружены, поэтому результат применения может не совпасть с задуманным в пресете.</translation>
+        </message>
+        <message>
+            <source>Failed to export preset:
+{0}</source>
+            <translation>Не удалось экспортировать пресет:
+{0}</translation>
+        </message>
+        <message>
+            <source>Limited Support</source>
+            <translation>Ограниченная поддержка</translation>
+        </message>
+        <message>
+            <source>Supported</source>
+            <translation>Поддерживается</translation>
+        </message>
+        <message>
+            <source>Not Supported</source>
+            <translation>Не поддерживается</translation>
+        </message>
+        <message>
+            <source>Available</source>
+            <translation>Доступно</translation>
+        </message>
+        <message>
+            <source>Unavailable</source>
+            <translation>Недоступно</translation>
+        </message>
+        <message>
+            <source>Safety Restrictions</source>
+            <translation>Ограничения безопасности</translation>
+        </message>
+        <message>
+            <source>Unavailable on This Device</source>
+            <translation>Недоступно на этом устройстве</translation>
+        </message>
+        <message>
+            <source>Available Tweaks</source>
+            <translation>Доступные твики</translation>
+        </message>
+        <message>
+            <source>{0} ({1})</source>
+            <translation>{0} ({1})</translation>
+        </message>
+        <message>
+            <source>Wallpapers</source>
+            <translation>Обои</translation>
+        </message>
     </context>
     <context>
         <name>ApplyPreview</name>
@@ -2041,6 +2929,10 @@
             <source>the iOS version could not be verified</source>
             <translation>не удалось определить версию iOS</translation>
         </message>
+        <message>
+            <source>requires an iPhone with Dynamic Island hardware</source>
+            <translation>требуется iPhone с Dynamic Island</translation>
+        </message>
     </context>
     <context>
         <name>ListSearch</name>
@@ -2078,6 +2970,34 @@
         <message>
             <source>Restart app</source>
             <translation>Перезапустить</translation>
+        </message>
+        <message>
+            <source>Auto-reload is available when running from source.</source>
+            <translation>Автоперезапуск доступен при запуске из исходников.</translation>
+        </message>
+        <message>
+            <source>Changes detected…</source>
+            <translation>Обнаружены изменения…</translation>
+        </message>
+        <message>
+            <source>Changes ready — waiting for the device operation</source>
+            <translation>Изменения готовы — ожидание завершения операции с устройством</translation>
+        </message>
+        <message>
+            <source>Wait for the device operation before restarting</source>
+            <translation>Дождитесь завершения операции с устройством перед перезапуском</translation>
+        </message>
+        <message>
+            <source>Waiting for valid Python changes…</source>
+            <translation>Ожидание корректных изменений Python…</translation>
+        </message>
+        <message>
+            <source>Auto-reload stopped: could not restart</source>
+            <translation>Автоперезапуск остановлен: не удалось перезапустить</translation>
+        </message>
+        <message>
+            <source>Could not restart</source>
+            <translation>Не удалось перезапустить</translation>
         </message>
     </context>
     <context>
@@ -2134,6 +3054,26 @@
             <source>Wallpaper Website</source>
             <translation>Сайт с обоями</translation>
         </message>
+        <message>
+            <source>AAR Handling</source>
+            <translation>Работа с AAR</translation>
+        </message>
+        <message>
+            <source>AI Eligibility</source>
+            <translation>Допуск к ИИ-функциям</translation>
+        </message>
+        <message>
+            <source>Global Flags</source>
+            <translation>Глобальные флаги</translation>
+        </message>
+        <message>
+            <source>GoldenNugget translation contributors</source>
+            <translation>Участники перевода GoldenNugget</translation>
+        </message>
+        <message>
+            <source>Nugget translation contributors</source>
+            <translation>Участники перевода Nugget</translation>
+        </message>
     </context>
     <context>
         <name>RestoreProgress</name>
@@ -2164,6 +3104,299 @@
         <message>
             <source>Waiting…</source>
             <translation>Ожидание…</translation>
+        </message>
+        <message>
+            <source>Estimate for the current transfer only. Setup and restart can take additional time.</source>
+            <translation>Оценка только для текущей передачи. Настройка и перезагрузка могут занять дополнительное время.</translation>
+        </message>
+        <message>
+            <source>{0} — stage {1} of 2</source>
+            <translation>{0} — этап {1} из 2</translation>
+        </message>
+        <message>
+            <source>Restore data &amp; changes</source>
+            <translation>Восстановление данных и изменений</translation>
+        </message>
+    </context>
+    <context>
+        <name>PresetTransfer</name>
+        <message>
+            <source>Invalid preset file. Expected a tweak dictionary and valid preset metadata.</source>
+            <translation>Неверный файл пресета. Ожидались словарь твиков и корректные метаданные пресета.</translation>
+        </message>
+    </context>
+    <context>
+        <name>QCoreApplication</name>
+        <message>
+            <source>Background device operation</source>
+            <translation>Фоновая операция с устройством</translation>
+        </message>
+        <message>
+            <source>Abort</source>
+            <translation>Прервать</translation>
+        </message>
+        <message>
+            <source>Resume</source>
+            <translation>Продолжить</translation>
+        </message>
+        <message>
+            <source>Device stayed locked</source>
+            <translation>Устройство осталось заблокированным</translation>
+        </message>
+        <message>
+            <source>The device has not been unlocked long enough to push your photos and videos back.
+
+Unlock it, enter your passcode, and keep it connected via USB, then choose:
+
+  • Resume — keep waiting for the device to be unlocked and push your photos.
+  • Abort — stop now. Your photos are still safe in the backup cache on this computer, but they will not be on the device yet.</source>
+            <translation>Устройство не было разблокировано достаточно долго, чтобы вернуть ваши фото и видео.
+
+Разблокируйте его, введите код-пароль и оставьте подключённым по USB, затем выберите:
+
+  • Продолжить — продолжать ждать разблокировки устройства и вернуть фото.
+  • Прервать — остановиться сейчас. Ваши фото в безопасности в кэше резервных копий на этом компьютере, но на устройстве их пока не будет.</translation>
+        </message>
+        <message>
+            <source>📲 Restoring backup ({0}%)</source>
+            <translation>📲 Восстановление копии ({0}%)</translation>
+        </message>
+        <message>
+            <source>⏱ Time Left: {0}</source>
+            <translation>⏱ Осталось: {0}</translation>
+        </message>
+        <message>
+            <source>The restore finished, but the device disconnected while configuring Setup Assistant.</source>
+            <translation>Восстановление завершено, но устройство отключилось во время настройки Ассистента настройки.</translation>
+        </message>
+        <message>
+            <source>The device disconnected during file transfer. This does not by itself mean the file list is corrupted. Click Show Details for more info.</source>
+            <translation>Устройство отключилось во время передачи файлов. Само по себе это не означает, что список файлов повреждён. Нажмите «Показать подробности», чтобы узнать больше.</translation>
+        </message>
+        <message>
+            <source>Time Left: {0}</source>
+            <translation>Осталось: {0}</translation>
+        </message>
+        <message>
+            <source>Finishing setup…</source>
+            <translation>Завершение настройки…</translation>
+        </message>
+        <message>
+            <source>Backing up device data…</source>
+            <translation>Резервное копирование данных устройства…</translation>
+        </message>
+        <message>
+            <source>Applying changes…</source>
+            <translation>Применение изменений…</translation>
+        </message>
+        <message>
+            <source>Restoring photos &amp; videos…</source>
+            <translation>Восстановление фото и видео…</translation>
+        </message>
+        <message>
+            <source>Restoring to device…</source>
+            <translation>Восстановление на устройство…</translation>
+        </message>
+        <message>
+            <source>Backing up device data...</source>
+            <translation>Резервное копирование данных устройства...</translation>
+        </message>
+        <message>
+            <source>Low computer storage: {0:.1f} GB free. Free space now; the backup may fail if storage runs out.</source>
+            <translation>Мало места на компьютере: свободно {0:.1f} ГБ. Освободите место сейчас; резервное копирование может завершиться ошибкой, если место закончится.</translation>
+        </message>
+        <message>
+            <source>Backing up device...</source>
+            <translation>Резервное копирование устройства...</translation>
+        </message>
+        <message>
+            <source>Updating backup cache...</source>
+            <translation>Обновление кэша резервных копий...</translation>
+        </message>
+        <message>
+            <source>Could not fetch the PosterBoard database because the device is locked. Unlock it, keep it awake, and try again.</source>
+            <translation>Не удалось получить базу данных PosterBoard, потому что устройство заблокировано. Разблокируйте его, не давайте ему заснуть и повторите.</translation>
+        </message>
+        <message>
+            <source>Resetting PosterBoard...</source>
+            <translation>Сброс PosterBoard...</translation>
+        </message>
+        <message>
+            <source>PosterBoard database copy was incomplete, retrying in {0}s... (attempt {1}/{2})</source>
+            <translation>Копия базы данных PosterBoard неполная, повтор через {0} с... (попытка {1}/{2})</translation>
+        </message>
+        <message>
+            <source>Connection lost, retrying in {0}s... (attempt {1}/{2})</source>
+            <translation>Соединение потеряно, повтор через {0} с... (попытка {1}/{2})</translation>
+        </message>
+        <message>
+            <source>Device took too long to unlock</source>
+            <translation>Устройство слишком долго не разблокировали</translation>
+        </message>
+        <message>
+            <source>The device has not been unlocked for too long after the security recovery — it keeps asking for your passcode.
+
+Unlock it, enter the passcode and tap "Trust" if prompted, then choose:
+
+  • Resume — keep waiting (restarts the "Waiting for device to reconnect after security recovery" cycle).
+  • Abort — stop now. Tweaks may not be applied and data protection stays incomplete.</source>
+            <translation>Устройство слишком долго не разблокировали после восстановления безопасности — оно продолжает запрашивать код-пароль.
+
+Разблокируйте его, введите код-пароль и нажмите «Доверять», если появится запрос, затем выберите:
+
+  • Продолжить — продолжать ждать (цикл «Ожидание повторного подключения устройства после восстановления безопасности» начнётся заново).
+  • Прервать — остановиться сейчас. Твики могут быть не применены, а защита данных останется неполной.</translation>
+        </message>
+        <message>
+            <source>The device has not been unlocked for too long after the security recovery.
+
+Unlock it, enter the passcode, tap "Trust" if the computer trust prompt appears, and make sure it stays connected via USB, then choose:
+
+  • Resume — keep waiting (restarts the "Waiting for device to reconnect after security recovery" cycle).
+  • Abort — stop now. Tweaks may not be applied and data protection stays incomplete.</source>
+            <translation>Устройство слишком долго не разблокировали после восстановления безопасности.
+
+Разблокируйте его, введите код-пароль, нажмите «Доверять», если появится запрос доверия компьютеру, и убедитесь, что оно остаётся подключённым по USB, затем выберите:
+
+  • Продолжить — продолжать ждать (цикл «Ожидание повторного подключения устройства после восстановления безопасности» начнётся заново).
+  • Прервать — остановиться сейчас. Твики могут быть не применены, а защита данных останется неполной.</translation>
+        </message>
+        <message>
+            <source>The device's restore service reported a Find My protection error. Turn off Find My iPhone in Settings → [your name] → Find My, then retry the restore. Your protective backup remains on this computer.</source>
+            <translation>Служба восстановления устройства сообщила об ошибке защиты «Локатора». Выключите «Найти iPhone» в Настройки → [ваше имя] → Локатор, затем повторите восстановление. Защитная резервная копия остаётся на этом компьютере.</translation>
+        </message>
+        <message>
+            <source>The protective backup could not be restored to the iPhone.</source>
+            <translation>Не удалось восстановить защитную резервную копию на iPhone.</translation>
+        </message>
+        <message>
+            <source>The device dropped the connection during the data restore.
+
+Your data is not lost — the protective backup taken before the wipe is kept on this computer.
+
+This connection error can have several causes. Keep the iPhone unlocked with the screen on and connected by USB. If the device reported a Find My protection error, turn Find My off before retrying.
+
+Do not erase the phone or set it up as new — the protective backup on this computer is the only copy of your data.</source>
+            <translation>Устройство разорвало соединение во время восстановления данных.
+
+Ваши данные не потеряны — защитная резервная копия, сделанная перед стиранием, хранится на этом компьютере.
+
+У этой ошибки соединения может быть несколько причин. Держите iPhone разблокированным, с включённым экраном и подключённым по USB. Если устройство сообщило об ошибке защиты «Локатора», выключите «Локатор» перед повторной попыткой.
+
+Не стирайте телефон и не настраивайте его как новый — защитная резервная копия на этом компьютере — единственная копия ваших данных.</translation>
+        </message>
+        <message>
+            <source>Device locked — cannot restore backup</source>
+            <translation>Устройство заблокировано — восстановить копию нельзя</translation>
+        </message>
+        <message>
+            <source>The phone is asking for a passcode to start the restore service. This usually means the applied tweaks are preventing it from booting properly.
+
+  • Resume — unlock the device, then keep trying to restore the backup.
+  • Abort — stop now. The protective backup is kept on this computer for a later restore.</source>
+            <translation>Телефон запрашивает код-пароль, чтобы запустить службу восстановления. Обычно это значит, что применённые твики мешают ему нормально загрузиться.
+
+  • Продолжить — разблокируйте устройство, затем продолжайте пытаться восстановить копию.
+  • Прервать — остановиться сейчас. Защитная резервная копия сохранится на этом компьютере для последующего восстановления.</translation>
+        </message>
+        <message>
+            <source>The device has not been unlocked long enough to push your photos and videos back after the reboot.
+
+Unlock it, enter your passcode, and keep it connected via USB, then choose:
+
+  • Resume — keep waiting for the device to be unlocked and push your photos.
+  • Abort — stop now. Your photos are still safe in the backup cache on this computer, but they will not be on the device yet.</source>
+            <translation>Устройство не было разблокировано достаточно долго, чтобы вернуть ваши фото и видео после перезагрузки.
+
+Разблокируйте его, введите код-пароль и оставьте подключённым по USB, затем выберите:
+
+  • Продолжить — продолжать ждать разблокировки устройства и вернуть фото.
+  • Прервать — остановиться сейчас. Ваши фото в безопасности в кэше резервных копий на этом компьютере, но на устройстве их пока не будет.</translation>
+        </message>
+    </context>
+    <context>
+        <name>TweakConflicts</name>
+        <message>
+            <source>Conflicting tweaks</source>
+            <translation>Конфликтующие твики</translation>
+        </message>
+        <message>
+            <source>Some selected tweaks contradict or overwrite each other. Return to the list to change your selection, or continue with the current selection.</source>
+            <translation>Некоторые выбранные твики противоречат друг другу или перезаписывают друг друга. Вернитесь к списку, чтобы изменить выбор, или продолжите с текущим выбором.</translation>
+        </message>
+        <message>
+            <source>Review selection</source>
+            <translation>Проверить выбор</translation>
+        </message>
+        <message>
+            <source>Continue anyway</source>
+            <translation>Всё равно продолжить</translation>
+        </message>
+        <message>
+            <source>One tweak clears a preferences file used by the other.</source>
+            <translation>Один твик очищает файл настроек, который использует другой.</translation>
+        </message>
+        <message>
+            <source>They write different values to the same setting.</source>
+            <translation>Они записывают разные значения в одну и ту же настройку.</translation>
+        </message>
+        <message>
+            <source>The later tweak replaces settings written by the earlier one.</source>
+            <translation>Более поздний твик заменяет настройки, записанные более ранним.</translation>
+        </message>
+        <message>
+            <source>Both layout directions are forced at the same time. Select only one.</source>
+            <translation>Включены оба направления интерфейса одновременно. Выберите только одно.</translation>
+        </message>
+    </context>
+    <context>
+        <name>MainWindow</name>
+        <message>
+            <source>Restore data from backup</source>
+            <translation>Восстановить данные из резервной копии</translation>
+        </message>
+        <message>
+            <source>Enjoying GoldenNugget?</source>
+            <translation>Нравится GoldenNugget?</translation>
+        </message>
+        <message>
+            <source>If you like GoldenNugget, please consider giving it a star on GitHub!</source>
+            <translation>Если вам нравится GoldenNugget, пожалуйста, поставьте ему звезду на GitHub!</translation>
+        </message>
+        <message>
+            <source>Star on GitHub</source>
+            <translation>Звезда на GitHub</translation>
+        </message>
+        <message>
+            <source>Not now</source>
+            <translation>Не сейчас</translation>
+        </message>
+        <message>
+            <source>Warning</source>
+            <translation>Предупреждение</translation>
+        </message>
+        <message>
+            <source>Warning: You are on iOS 26 beta.
+
+This has been known to cause problems and potentially lead to bootloops.
+
+Use at your own risk!</source>
+            <translation>Внимание: вы используете iOS 26 beta.
+
+Вы можете столкнуться с проблемами или даже невозможностью загрузить iOS.
+
+Используйте на свой страх и риск</translation>
+        </message>
+        <message>
+            <source>Don't show this warning again</source>
+            <translation>Больше не показывать это предупреждение</translation>
+        </message>
+    </context>
+    <context>
+        <name>AboutProgramDialog</name>
+        <message>
+            <source>Wallpapers</source>
+            <translation>Обои</translation>
         </message>
     </context>
 </TS>

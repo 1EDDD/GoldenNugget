@@ -451,16 +451,16 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         """
         terminating = []
         if getattr(self, "apply_in_progress", False):
-            terminating.append("apply/reset")
+            terminating.append(QCoreApplication.translate("Nugget", "apply/reset"))
         if getattr(self, "_cache_restore_in_progress", False):
-            terminating.append("data restore")
+            terminating.append(QCoreApplication.translate("Nugget", "data restore"))
         pt_worker = getattr(getattr(self, "ios_passthemes", None), "_worker", None)
         if _still_running(pt_worker):
-            terminating.append("passcode theme write")
+            terminating.append(QCoreApplication.translate("Nugget", "passcode theme write"))
         pairing_worker = getattr(
             getattr(self, "ios_settings", None), "_reset_pairing_thread", None)
         if _still_running(pairing_worker):
-            terminating.append("pairing reset")
+            terminating.append(QCoreApplication.translate("Nugget", "pairing reset"))
         if terminating:
             reply = QtWidgets.QMessageBox.question(
                 self,

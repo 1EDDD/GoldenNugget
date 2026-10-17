@@ -16,7 +16,7 @@ from typing import Optional
 
 import urllib.request
 
-from PySide6.QtCore import QStandardPaths
+from PySide6.QtCore import QCoreApplication, QStandardPaths
 
 from src.version import App_Version as _APP_VERSION
 from src.tweaks.registry import SPECS_BY_SECTION, SECTION_FEATURES
@@ -350,16 +350,19 @@ def confirm_flagged(rule: dict, parent=None) -> bool:
     if reason:
         reason_txt = str(reason)
     else:
-        reason_txt = "This feature is currently flagged as dangerous or broken."
-    text = (f"GoldenNugget safety rules have flagged \"{tweak}\" as currently "
-            f"dangerous or broken.\n\n{reason_txt}\n\n"
-            "It is recommended not to enable it. Do you still want to enable it?")
+        reason_txt = QCoreApplication.translate(
+            "Nugget", "This feature is currently flagged as dangerous or broken.")
+    text = (QCoreApplication.translate(
+                "Nugget", "GoldenNugget safety rules have flagged \"{0}\" as currently dangerous or broken.").format(tweak)
+            + f"\n\n{reason_txt}\n\n"
+            + QCoreApplication.translate(
+                "Nugget", "It is recommended not to enable it. Do you still want to enable it?"))
     box = QMessageBox(parent)
     box.setIcon(QMessageBox.Icon.Warning)
-    box.setWindowTitle("Disabled Feature Warning")
+    box.setWindowTitle(QCoreApplication.translate("Nugget", "Disabled Feature Warning"))
     box.setText(text)
-    continue_btn = box.addButton("Continue Anyway", QMessageBox.ButtonRole.AcceptRole)
-    cancel_btn = box.addButton("Cancel", QMessageBox.ButtonRole.RejectRole)
+    continue_btn = box.addButton(QCoreApplication.translate("Nugget", "Continue Anyway"), QMessageBox.ButtonRole.AcceptRole)
+    cancel_btn = box.addButton(QCoreApplication.translate("Nugget", "Cancel"), QMessageBox.ButtonRole.RejectRole)
     box.setDefaultButton(cancel_btn)
     box.exec()
     return box.clickedButton() is continue_btn

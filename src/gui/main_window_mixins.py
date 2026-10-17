@@ -1288,7 +1288,7 @@ class ApplyMixin:
         if alert is None:
             # do sudo dialog input
             get_sudo_pwd() # clear if it is already there
-            pwd, ok = QtWidgets.QInputDialog.getText(None, "Enter Sudo Password", "Enter Your Computer's Password:", QtWidgets.QLineEdit.Password, "")
+            pwd, ok = QtWidgets.QInputDialog.getText(None, QCoreApplication.translate("Nugget", "Enter Sudo Password"), QCoreApplication.translate("Nugget", "Enter Your Computer's Password:"), QtWidgets.QLineEdit.Password, "")
             if ok and pwd:
                 set_sudo_pwd(pwd)
             return

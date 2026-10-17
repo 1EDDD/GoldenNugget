@@ -1,6 +1,6 @@
 from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QToolButton, QSizePolicy
 from PySide6.QtGui import QFont, QIcon, QPixmap
-from PySide6.QtCore import QSize
+from PySide6.QtCore import QCoreApplication, QSize
 
 from webbrowser import open_new_tab
 
@@ -140,12 +140,12 @@ class AboutProgramDialog(QDialog):
             item_layout = QHBoxLayout(item)
             item_layout.setContentsMargins(0, 0, 0, 0)
             
-            title_label = QLabel(f"{self.tr(title)}:")
+            title_label = QLabel(f"{QCoreApplication.translate('SupportPanel', title)}:")
             self._style(title_label, "about_credit_role")
             item_layout.addWidget(title_label)
             
             name_btn = QToolButton()
-            name_btn.setText(name)
+            name_btn.setText(QCoreApplication.translate("SupportPanel", name))
             name_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
             name_btn.setCursor(Qt.CursorShape.PointingHandCursor)
             self._style(name_btn, 'about_credit_name')
@@ -172,7 +172,7 @@ class AboutProgramDialog(QDialog):
         links_layout.addWidget(github_btn)
         
         website_btn = QToolButton()
-        website_btn.setText("Wallpapers")
+        website_btn.setText(self.tr("Wallpapers"))
         website_btn.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
         website_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._style(website_btn, "about_footer_link")

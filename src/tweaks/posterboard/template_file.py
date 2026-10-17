@@ -287,7 +287,7 @@ class TemplateFile(TendieFile):
             bx_layout = QtWidgets.QVBoxLayout(options_widget)
             bx_layout.setContentsMargins(0, 2, 0, 2)
             bx_lbl = QtWidgets.QLabel(bx_widget)
-            bx_lbl.setText("App bundle id:")
+            bx_lbl.setText(QtCore.QCoreApplication.translate("Nugget", "App bundle id:"))
             bx_layout.addWidget(bx_lbl)
             textbox = QtWidgets.QLineEdit(bx_widget)
             textbox.setPlaceholderText(QtCore.QCoreApplication.tr("Bundle id (default: {0})").format(self.domain.removeprefix('AppDomain-')))

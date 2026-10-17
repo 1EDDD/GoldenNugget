@@ -498,7 +498,7 @@ class IOSPosterboardPage(QWidget):
                 try:
                     templates_tweak.add_template(file, device_version)
                 except Exception as e:
-                    QMessageBox.warning(self.window, "Import Failed", f"Failed to load template:\n{file}\n\n{str(e)}")
+                    QMessageBox.warning(self.window, QCoreApplication.translate("Nugget", "Import Failed"), QCoreApplication.translate("Nugget", "Failed to load template:\n{0}\n\n{1}").format(file, str(e)))
             self._load_templates_list()
 
     def _load_templates_list(self):

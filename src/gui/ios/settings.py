@@ -635,11 +635,13 @@ class IOSSettingsPage(QWidget):
         if checked and pref.use_backup_cache:
             QMessageBox.warning(
                 self.window,
-                "Fast Backup Cache is on",
-                "The Fast Backup Cache also uses the AFC (parallel) media "
-                "channel for photos, so this switch has no effect while the "
-                "cache is on. Turn the cache off to use it on the standard "
-                "backup path.",
+                QCoreApplication.translate("Nugget", "Fast Backup Cache is on"),
+                QCoreApplication.translate(
+                    "Nugget",
+                    "The Fast Backup Cache also uses the AFC (parallel) media "
+                    "channel for photos, so this switch has no effect while the "
+                    "cache is on. Turn the cache off to use it on the standard "
+                    "backup path."),
             )
         pref.use_afc_media = checked
         self.window.settings.setValue("use_afc_media", checked)
@@ -1018,7 +1020,7 @@ class IOSSettingsPage(QWidget):
             "", "*.sqlite3", options=FD.ReadOnly)
         if selected_file in (None, ""):
             tweaks[TweakID.PosterBoard].config_manager.database = None
-            self.pb_db_lbl.setText("sqlite: None")
+            self.pb_db_lbl.setText(QCoreApplication.translate("Nugget", "sqlite: None"))
         else:
             # update_database_file RAISES on a rejected database; without this the
             # exception escapes the slot and lands in the crash handler, which is
@@ -1035,7 +1037,7 @@ class IOSSettingsPage(QWidget):
                     self, QCoreApplication.translate("Nugget", "Error!"),
                     str(e), e.detailed_text or "")
                 return
-            self.pb_db_lbl.setText("sqlite: Selected")
+            self.pb_db_lbl.setText(QCoreApplication.translate("Nugget", "sqlite: Selected"))
 
     def _on_pb_rebuild(self):
         from src.gui.thread_workers.pb_worker import PBRebuildThread

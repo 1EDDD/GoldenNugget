@@ -101,7 +101,7 @@ class SupportPanel(IOSCard):
         label = QLabel(_tr(role))
         label.setObjectName('supportMuted')
         column.addWidget(label)
-        link = QLabel(f'<a href="{url}">{name}</a>')
+        link = QLabel(f'<a href="{url}">{_tr(name)}</a>')
         link.setObjectName('supportCredit')
         link.setWordWrap(True)
         link.setOpenExternalLinks(True)
