@@ -1447,6 +1447,418 @@
             <source>Turning off a tweak only removes it from the next apply. To restore original values, open Apply, choose Restore Defaults, and select the relevant tweak page.</source>
             <translation>Выключение твика лишь исключает его из следующего применения. Чтобы вернуть исходные значения, откройте страницу применения, выберите «Вернуть исходные настройки» и нужный раздел.</translation>
         </message>
+        <message>
+            <source>Add Icon</source>
+            <translation>Добавить значок</translation>
+        </message>
+        <message>
+            <source>Add a wallpaper loop from a .tendies file</source>
+            <translation>Добавить зацикленные обои из файла .tendies</translation>
+        </message>
+        <message>
+            <source>Additional Options</source>
+            <translation>Дополнительные параметры</translation>
+        </message>
+        <message>
+            <source>All operations</source>
+            <translation>Все операции</translation>
+        </message>
+        <message>
+            <source>All results</source>
+            <translation>Все результаты</translation>
+        </message>
+        <message>
+            <source>Analytics &amp; Diagnostics</source>
+            <translation>Аналитика и диагностика</translation>
+        </message>
+        <message>
+            <source>App Log</source>
+            <translation>Журнал</translation>
+        </message>
+        <message>
+            <source>Applies every enabled tweak to your device. The device reboots when done. If you turn Find My off for this apply, turn it back on afterwards.</source>
+            <translation>Применяет все включённые твики к устройству. После этого устройство перезагрузится. Если для применения вы выключали «Локатор», потом включите его снова.</translation>
+        </message>
+        <message>
+            <source>Apply all enabled tweaks and restart the device.</source>
+            <translation>Применить все включённые твики и перезагрузить устройство.</translation>
+        </message>
+        <message>
+            <source>Apply enabled tweaks</source>
+            <translation>Применить включённые твики</translation>
+        </message>
+        <message>
+            <source>Build {0}</source>
+            <translation>Сборка {0}</translation>
+        </message>
+        <message>
+            <source>Check Package…</source>
+            <translation>Проверить пакет…</translation>
+        </message>
+        <message>
+            <source>Clear History</source>
+            <translation>Очистить историю</translation>
+        </message>
+        <message>
+            <source>Clear all icon themes from the current setup.</source>
+            <translation>Убрать все темы иконок из текущей конфигурации.</translation>
+        </message>
+        <message>
+            <source>Configuration</source>
+            <translation>Конфигурация</translation>
+        </message>
+        <message>
+            <source>Connect an iPhone to view storage</source>
+            <translation>Подключите iPhone, чтобы увидеть хранилище</translation>
+        </message>
+        <message>
+            <source>Connected over USB</source>
+            <translation>Подключено по USB</translation>
+        </message>
+        <message>
+            <source>Developer</source>
+            <translation>Разработчик</translation>
+        </message>
+        <message>
+            <source>Devices</source>
+            <translation>Устройства</translation>
+        </message>
+        <message>
+            <source>Disable AirPlay</source>
+            <translation>Отключить AirPlay</translation>
+        </message>
+        <message>
+            <source>Disable Apple Ads</source>
+            <translation>Отключить рекламу Apple</translation>
+        </message>
+        <message>
+            <source>Disable Apple Watch (Nano) Services</source>
+            <translation>Отключить службы Apple Watch (Nano)</translation>
+        </message>
+        <message>
+            <source>Disable Audio Analytics</source>
+            <translation>Отключить аналитику звука</translation>
+        </message>
+        <message>
+            <source>Disable Crash Reporting</source>
+            <translation>Отключить отчёты о сбоях</translation>
+        </message>
+        <message>
+            <source>Disable DeviceCheck</source>
+            <translation>Отключить DeviceCheck</translation>
+        </message>
+        <message>
+            <source>Disable Dynamic Island</source>
+            <translation>Отключить Dynamic Island</translation>
+        </message>
+        <message>
+            <source>Disable Ecosystem Analytics</source>
+            <translation>Отключить аналитику экосистемы</translation>
+        </message>
+        <message>
+            <source>Disable Family Sharing</source>
+            <translation>Отключить Семейный доступ</translation>
+        </message>
+        <message>
+            <source>Disable GameKit Service</source>
+            <translation>Отключить службу GameKit</translation>
+        </message>
+        <message>
+            <source>Disable Maps (Geod)</source>
+            <translation>Отключить Карты (geod)</translation>
+        </message>
+        <message>
+            <source>Disable Mock Location</source>
+            <translation>Отключить подмену геопозиции</translation>
+        </message>
+        <message>
+            <source>Disable News</source>
+            <translation>Отключить News</translation>
+        </message>
+        <message>
+            <source>Disable Reminders</source>
+            <translation>Отключить Напоминания</translation>
+        </message>
+        <message>
+            <source>Disable Safari Suggestions (Parse)</source>
+            <translation>Отключить предложения Safari (Parse)</translation>
+        </message>
+        <message>
+            <source>Disable Sidecar</source>
+            <translation>Отключить Sidecar</translation>
+        </message>
+        <message>
+            <source>Disable Siri Backend Services</source>
+            <translation>Отключить серверные службы Siri</translation>
+        </message>
+        <message>
+            <source>Disable Speech Recognition</source>
+            <translation>Отключить распознавание речи</translation>
+        </message>
+        <message>
+            <source>Disable Translate</source>
+            <translation>Отключить Перевод</translation>
+        </message>
+        <message>
+            <source>Disable Video Subscriptions</source>
+            <translation>Отключить видеоподписки</translation>
+        </message>
+        <message>
+            <source>Disable Web Bookmarks</source>
+            <translation>Отключить веб-закладки</translation>
+        </message>
+        <message>
+            <source>Disable Wi-Fi Logging</source>
+            <translation>Отключить журналирование Wi-Fi</translation>
+        </message>
+        <message>
+            <source>Disables the Dynamic Island on supported hardware. The setting is written as both on and off so you can undo it later.</source>
+            <translation>Отключает Dynamic Island на поддерживаемых устройствах. Параметр записывается и во включённом, и в выключенном виде, поэтому его можно отменить.</translation>
+        </message>
+        <message>
+            <source>Edit organization name</source>
+            <translation>Изменить название организации</translation>
+        </message>
+        <message>
+            <source>Edit value</source>
+            <translation>Изменить значение</translation>
+        </message>
+        <message>
+            <source>Empty</source>
+            <translation>Пусто</translation>
+        </message>
+        <message>
+            <source>Enabled</source>
+            <translation>Включённые</translation>
+        </message>
+        <message>
+            <source>Export Diagnostics</source>
+            <translation>Экспорт диагностики</translation>
+        </message>
+        <message>
+            <source>Failed</source>
+            <translation>Ошибка</translation>
+        </message>
+        <message>
+            <source>Follow Up</source>
+            <translation>Требует внимания</translation>
+        </message>
+        <message>
+            <source>Icon Visibility</source>
+            <translation>Видимость значков</translation>
+        </message>
+        <message>
+            <source>If you disabled Find My, re-enable it on your iPhone: Settings → your name → Find My → Find My iPhone.</source>
+            <translation>Если вы выключали «Локатор», включите его на iPhone: Настройки → ваше имя → Локатор → Найти iPhone.</translation>
+        </message>
+        <message>
+            <source>Import Files (.tendies)</source>
+            <translation>Импорт файлов (.tendies)</translation>
+        </message>
+        <message>
+            <source>Loading storage…</source>
+            <translation>Загрузка данных хранилища…</translation>
+        </message>
+        <message>
+            <source>Manage presets</source>
+            <translation>Управление пресетами</translation>
+        </message>
+        <message>
+            <source>Measurements</source>
+            <translation>Измерения</translation>
+        </message>
+        <message>
+            <source>No icon themes yet. Choose Add Icon or download a pack.</source>
+            <translation>Тем иконок пока нет. Нажмите «Добавить значок» или загрузите набор.</translation>
+        </message>
+        <message>
+            <source>No operations recorded yet</source>
+            <translation>Операций пока нет</translation>
+        </message>
+        <message>
+            <source>No operations recorded yet.</source>
+            <translation>Операций пока нет.</translation>
+        </message>
+        <message>
+            <source>No saved presets yet. Save the current tweaks above or import a preset.</source>
+            <translation>Сохранённых пресетов пока нет. Сохраните текущие твики выше или импортируйте пресет.</translation>
+        </message>
+        <message>
+            <source>Not set</source>
+            <translation>Не задано</translation>
+        </message>
+        <message>
+            <source>Operation History</source>
+            <translation>История операций</translation>
+        </message>
+        <message>
+            <source>PRESET</source>
+            <translation>ПРЕСЕТ</translation>
+        </message>
+        <message>
+            <source>Presets and Device Storage</source>
+            <translation>Пресеты и хранилище устройства</translation>
+        </message>
+        <message>
+            <source>Re-enable Spotlight and services disabled by the previous Recommended set. Apply changes and reboot your device afterwards. Safety rules still apply.</source>
+            <translation>Снова включить Spotlight и службы, отключённые прежним набором «Рекомендуемые». После этого примените изменения и перезагрузите устройство. Правила безопасности по-прежнему действуют.</translation>
+        </message>
+        <message>
+            <source>Rebuild Database (Clownfish)</source>
+            <translation>Пересобрать базу данных (Clownfish)</translation>
+        </message>
+        <message>
+            <source>Recent application log</source>
+            <translation>Последние записи журнала</translation>
+        </message>
+        <message>
+            <source>Refresh connected devices</source>
+            <translation>Обновить список устройств</translation>
+        </message>
+        <message>
+            <source>Report a Bug</source>
+            <translation>Сообщить об ошибке</translation>
+        </message>
+        <message>
+            <source>Reset</source>
+            <translation>Сбросить</translation>
+        </message>
+        <message>
+            <source>Reset Filters</source>
+            <translation>Сбросить фильтры</translation>
+        </message>
+        <message>
+            <source>Restore Call Notification Services</source>
+            <translation>Восстановить службы уведомлений о звонках</translation>
+        </message>
+        <message>
+            <source>Restore the stock values for the selected tweak pages.</source>
+            <translation>Вернуть исходные значения для выбранных страниц твиков.</translation>
+        </message>
+        <message>
+            <source>Rollback Last Apply</source>
+            <translation>Откатить последнее применение</translation>
+        </message>
+        <message>
+            <source>Safety</source>
+            <translation>Безопасность</translation>
+        </message>
+        <message>
+            <source>Save tweaks automatically</source>
+            <translation>Сохранять твики автоматически</translation>
+        </message>
+        <message>
+            <source>Save, switch and share complete tweak configurations.</source>
+            <translation>Сохраняйте, переключайте и передавайте готовые наборы твиков.</translation>
+        </message>
+        <message>
+            <source>Saved presets</source>
+            <translation>Сохранённые пресеты</translation>
+        </message>
+        <message>
+            <source>Search history...</source>
+            <translation>Поиск по истории...</translation>
+        </message>
+        <message>
+            <source>Search tweaks…</source>
+            <translation>Поиск твиков…</translation>
+        </message>
+        <message>
+            <source>Signal &amp; Battery Levels</source>
+            <translation>Уровни сигнала и батареи</translation>
+        </message>
+        <message>
+            <source>Signal Levels</source>
+            <translation>Уровни сигнала</translation>
+        </message>
+        <message>
+            <source>Signal Measurements</source>
+            <translation>Измерения сигнала</translation>
+        </message>
+        <message>
+            <source>Storage information unavailable</source>
+            <translation>Данные о хранилище недоступны</translation>
+        </message>
+        <message>
+            <source>Success</source>
+            <translation>Успешно</translation>
+        </message>
+        <message>
+            <source>System</source>
+            <translation>Системный</translation>
+        </message>
+        <message>
+            <source>System &amp; App Services</source>
+            <translation>Системные службы и службы приложений</translation>
+        </message>
+        <message>
+            <source>Text Overrides</source>
+            <translation>Подмена текста</translation>
+        </message>
+        <message>
+            <source>Turn Find My back on</source>
+            <translation>Снова включите «Локатор»</translation>
+        </message>
+        <message>
+            <source>Turn this on to choose which system services (daemons) to disable: analytics, diagnostics and other background services. Nothing changes on your device until you apply tweaks.</source>
+            <translation>Включите, чтобы выбрать, какие системные службы (демоны) отключить: аналитику, диагностику и другие фоновые службы. На устройстве ничего не изменится, пока вы не примените твики.</translation>
+        </message>
+        <message>
+            <source>View details and logs ▾</source>
+            <translation>Подробности и журналы ▾</translation>
+        </message>
+        <message>
+            <source>View device compatibility and safety restrictions.</source>
+            <translation>Совместимость устройства и ограничения безопасности.</translation>
+        </message>
+        <message>
+            <source>Visibility</source>
+            <translation>Видимость</translation>
+        </message>
+        <message>
+            <source>iOS {0}</source>
+            <translation>iOS {0}</translation>
+        </message>
+        <message>
+            <source>Blue</source>
+            <translation>Синий</translation>
+        </message>
+        <message>
+            <source>Purple</source>
+            <translation>Фиолетовый</translation>
+        </message>
+        <message>
+            <source>Pink</source>
+            <translation>Розовый</translation>
+        </message>
+        <message>
+            <source>Red</source>
+            <translation>Красный</translation>
+        </message>
+        <message>
+            <source>Orange</source>
+            <translation>Оранжевый</translation>
+        </message>
+        <message>
+            <source>Yellow</source>
+            <translation>Жёлтый</translation>
+        </message>
+        <message>
+            <source>Green</source>
+            <translation>Зелёный</translation>
+        </message>
+        <message>
+            <source>Teal</source>
+            <translation>Бирюзовый</translation>
+        </message>
+        <message>
+            <source>Others</source>
+            <translation>Другие</translation>
+        </message>
+        <message>
+            <source>Back</source>
+            <translation>Назад</translation>
+        </message>
     </context>
     <context>
         <name>ApplyPreview</name>
@@ -1631,6 +2043,119 @@
         <message>
             <source>No matches found.</source>
             <translation>Совпадений не найдено.</translation>
+        </message>
+        <message>
+            <source>Clear search</source>
+            <translation>Очистить поиск</translation>
+        </message>
+        <message>
+            <source>Enable daemon modifications to see matching services.</source>
+            <translation>Включите изменения демонов, чтобы увидеть подходящие службы.</translation>
+        </message>
+    </context>
+    <context>
+        <name>Developer</name>
+        <message>
+            <source>Auto Reload (For changes)</source>
+            <translation>Автоперезапуск (при изменениях)</translation>
+        </message>
+        <message>
+            <source>Automatically restart after source changes</source>
+            <translation>Перезапускать после изменения исходников</translation>
+        </message>
+        <message>
+            <source>Restart after local code or UI assets change. Waits for active device operations to finish.</source>
+            <translation>Перезапуск после изменения кода или ресурсов интерфейса. Дожидается завершения текущих операций с устройством.</translation>
+        </message>
+        <message>
+            <source>Restart app</source>
+            <translation>Перезапустить</translation>
+        </message>
+    </context>
+    <context>
+        <name>SupportPanel</name>
+        <message>
+            <source>Co-Developer</source>
+            <translation>Соразработчик</translation>
+        </message>
+        <message>
+            <source>Contributors &amp;&amp; acknowledgements</source>
+            <translation>Участники и благодарности</translation>
+        </message>
+        <message>
+            <source>GoldenNugget community &amp; project</source>
+            <translation>Сообщество и проект GoldenNugget</translation>
+        </message>
+        <message>
+            <source>GoldenNugget on GitHub</source>
+            <translation>GoldenNugget на GitHub</translation>
+        </message>
+        <message>
+            <source>Join for Support!</source>
+            <translation>Нужна помощь? Присоединяйтесь!</translation>
+        </message>
+        <message>
+            <source>Join the GoldenNugget Discord server</source>
+            <translation>Присоединиться к серверу GoldenNugget в Discord</translation>
+        </message>
+        <message>
+            <source>Legacy Translations</source>
+            <translation>Старые переводы</translation>
+        </message>
+        <message>
+            <source>Nugget Creator</source>
+            <translation>Создатель Nugget</translation>
+        </message>
+        <message>
+            <source>Owner / Main Developer</source>
+            <translation>Владелец и главный разработчик</translation>
+        </message>
+        <message>
+            <source>PosterBoard Help</source>
+            <translation>Помощь с PosterBoard</translation>
+        </message>
+        <message>
+            <source>PosterBoard Icons</source>
+            <translation>Значки PosterBoard</translation>
+        </message>
+        <message>
+            <source>Translations</source>
+            <translation>Переводы</translation>
+        </message>
+        <message>
+            <source>Wallpaper Website</source>
+            <translation>Сайт с обоями</translation>
+        </message>
+    </context>
+    <context>
+        <name>RestoreProgress</name>
+        <message>
+            <source>Apply changes</source>
+            <translation>Применение изменений</translation>
+        </message>
+        <message>
+            <source>Device-reported progress</source>
+            <translation>Прогресс по данным устройства</translation>
+        </message>
+        <message>
+            <source>Do not disconnect your iPhone</source>
+            <translation>Не отключайте iPhone</translation>
+        </message>
+        <message>
+            <source>Keep the USB cable connected until GoldenNugget confirms the restore is complete.</source>
+            <translation>Не отсоединяйте USB-кабель, пока GoldenNugget не подтвердит завершение восстановления.</translation>
+        </message>
+        <message>
+            <source>Preparing files</source>
+            <translation>Подготовка файлов</translation>
+        </message>
+        <message>
+            <source>Waiting for the operation to start.</source>
+            <translation>Ожидание начала операции.</translation>
+        </message>
+        <message>
+            <source>Waiting…</source>
+            <translation>Ожидание…</translation>
         </message>
     </context>
 </TS>
