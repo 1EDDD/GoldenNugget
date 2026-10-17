@@ -144,6 +144,8 @@ jobs:
           python tools/prepare_macos_universal.py .macos-qt-wheels
           python -m pip check
           python -m pip freeze > macOS-dependencies.txt
+      - name: Build portable Universal2 libusb
+        run: bash tools/build_macos_libusb.sh
       - name: Build Universal2, validate and package DMG
         run: |
           python compile.py --target-arch=universal2

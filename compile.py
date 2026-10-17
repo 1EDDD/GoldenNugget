@@ -73,6 +73,17 @@ if target_arch:
 
 # macOS-specific flags
 if platform == "darwin":
+    libusb_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".macos-libusb")
+    libusb_dylib = os.path.join(libusb_dir, "libusb-1.0.dylib")
+    if target_arch == "--target-arch=universal2" and not os.path.isfile(libusb_dylib):
+        raise SystemExit("Run bash tools/build_macos_libusb.sh before building Universal2")
+    if os.path.isfile(libusb_dylib):
+        # ctypes dependency discovery must resolve the same portable library
+        # as the explicit binary, rather than the runner's Homebrew bottle.
+        os.environ["DYLD_LIBRARY_PATH"] = os.pathsep.join(filter(None, (
+            libusb_dir, os.environ.get("DYLD_LIBRARY_PATH", ""))))
+        args.append(f"--add-binary={libusb_dylib}:.")
+        args.append(f"--add-data={os.path.join(libusb_dir, 'COPYING')}:licenses/libusb")
     
     # --- MACOS OPENSSL FIX ---
     # Delete sslpsk_pmd3's bundled OpenSSL before PyInstaller collects it.
