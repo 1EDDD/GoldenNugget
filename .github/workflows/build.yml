@@ -151,6 +151,19 @@ jobs:
           QT_QPA_PLATFORM=offscreen dist/Nugget.app/Contents/MacOS/Nugget tools/smoke_macos.py > smoke.log 2>&1
           cat smoke.log
           grep -q 'MACOS_SMOKE_OK' smoke.log
+      - name: Upload macOS failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: Nugget_macOS_diagnostics
+          path: |
+            dist/macOS-validation.json
+            dist/macOS-validation.stderr.log
+            dist/Nugget-macOS-Universal.zip
+            macOS-dependencies.txt
+            smoke.log
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Upload macOS Universal2
         uses: actions/upload-artifact@v6
         with:

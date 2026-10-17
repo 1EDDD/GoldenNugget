@@ -42,10 +42,16 @@ def main():
                 CFBundleVersion=namespace['App_Version'], LSMinimumSystemVersion='14.4')
     plist.write_bytes(plistlib.dumps(data))
     run('codesign', '--force', '--sign', '-', APP)
-    report = subprocess.check_output([sys.executable, str(ROOT / 'tools/validate_macos.py'),
-                                      str(APP)], text=True)
-    json.loads(report)  # Validator must return a complete JSON report and exit successfully.
-    (DIST / 'macOS-validation.json').write_text(report)
+    validation = subprocess.run([sys.executable, str(ROOT / 'tools/validate_macos.py'),
+                                 str(APP)], capture_output=True, text=True)
+    # Preserve the actual findings even when validation fails; check_output
+    # hid its JSON in CalledProcessError.output and left CI with no diagnosis.
+    (DIST / 'macOS-validation.json').write_text(validation.stdout)
+    (DIST / 'macOS-validation.stderr.log').write_text(validation.stderr)
+    print(validation.stdout, end='', flush=True)
+    print(validation.stderr, end='', file=sys.stderr, flush=True)
+    validation.check_returncode()
+    json.loads(validation.stdout)
     archive = DIST / 'Nugget-macOS-Universal.zip'
     run('ditto', '-c', '-k', '--keepParent', APP, archive)
     dmg = DIST / 'Nugget-macOS-Universal2.dmg'
