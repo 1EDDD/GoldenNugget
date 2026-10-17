@@ -1,7 +1,8 @@
-"""Merge native dependency wheels into the Intel build environment, fail closed."""
+"""Merge the other architecture's wheels into the host environment, fail closed."""
 from __future__ import annotations
 
 import importlib.metadata as metadata
+import platform
 from pathlib import Path
 import shutil
 import subprocess
@@ -27,25 +28,28 @@ def arches(path: Path) -> set[str]:
     return set(subprocess.check_output(['lipo', '-archs', str(path)], text=True).split())
 
 
-def merge_binary(intel: Path, arm: Path) -> None:
-    ia, aa = arches(intel), arches(arm)
-    if ARCHES <= ia:
+def merge_binary(target: Path, other: Path) -> None:
+    target_arches, other_arches = arches(target), arches(other)
+    if ARCHES <= target_arches:
         return
-    if 'x86_64' not in ia or 'arm64' not in aa:
-        raise RuntimeError(f'Incompatible architecture pair: {intel}: {ia}, {arm}: {aa}')
+    if not target_arches or not ARCHES <= target_arches | other_arches:
+        raise RuntimeError(f'Incompatible architecture pair: {target}: {target_arches}, '
+                           f'{other}: {other_arches}')
     with tempfile.TemporaryDirectory() as directory:
         slices = []
-        for original, arch, present in [(intel, 'x86_64', ia), (arm, 'arm64', aa)]:
-            target = Path(directory) / arch
+        for arch in sorted(ARCHES):
+            original, present = ((target, target_arches) if arch in target_arches
+                                 else (other, other_arches))
+            slice_path = Path(directory) / arch
             if len(present) == 1:
-                shutil.copy2(original, target)
+                shutil.copy2(original, slice_path)
             else:
-                subprocess.run(['lipo', str(original), '-thin', arch, '-output', str(target)], check=True)
-            slices.append(str(target))
+                subprocess.run(['lipo', str(original), '-thin', arch, '-output', str(slice_path)], check=True)
+            slices.append(str(slice_path))
         output = Path(directory) / 'universal'
         subprocess.run(['lipo', '-create', *slices, '-output', str(output)], check=True)
-        shutil.copymode(intel, output)
-        shutil.copy2(output, intel)
+        shutil.copymode(target, output)
+        shutil.copy2(output, target)
 
 
 def main() -> None:
@@ -53,6 +57,10 @@ def main() -> None:
         raise RuntimeError('The macOS build requires Python 3.15')
     if not ARCHES <= arches(Path(sys.base_prefix) / 'Python'):
         raise RuntimeError('Install the universal2 python.org framework, not a thin Python')
+    host_arch = platform.machine()
+    if host_arch not in ARCHES:
+        raise RuntimeError(f'Unsupported build architecture: {host_arch}')
+    other_arch = (ARCHES - {host_arch}).pop()
     site = Path(sysconfig.get_paths()['purelib'])
     built_wheels = Path(sys.argv[1])
     with tempfile.TemporaryDirectory() as directory:
@@ -77,9 +85,9 @@ def main() -> None:
             if wheel is None:
                 # PySide and shiboken must come from the source builds, never PyPI.
                 if canonicalize_name(name) in {'pyside6', 'shiboken6'}:
-                    raise RuntimeError(f'Missing source-built ARM wheel: {name}=={version}')
+                    raise RuntimeError(f'Missing source-built {other_arch} wheel: {name}=={version}')
                 subprocess.run([sys.executable, '-m', 'pip', 'download', '--no-deps',
-                                '--only-binary=:all:', '--platform', 'macosx_14_4_arm64',
+                                '--only-binary=:all:', '--platform', f'macosx_14_4_{other_arch}',
                                 '--python-version', '3.15', '--implementation', 'cp',
                                 '--abi', 'cp315', '--abi', 'abi3', '--abi', 'abi3t',
                                 '--dest', str(dest), f'{name}=={version}'], check=True)
@@ -88,15 +96,15 @@ def main() -> None:
             with zipfile.ZipFile(wheel) as archive:
                 archive.extractall(unpacked)
             # Preserve architecture-specific codec libraries under their original names.
-            for arm in unpacked.rglob('*'):
-                if not arches(arm):
+            for other in unpacked.rglob('*'):
+                if not arches(other):
                     continue
-                target = site / arm.relative_to(unpacked)
+                target = site / other.relative_to(unpacked)
                 if target.exists():
-                    merge_binary(target, arm)
+                    merge_binary(target, other)
                 else:
                     target.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(arm, target)
+                    shutil.copy2(other, target)
             for path in native:
                 if path.suffix == '.so' and not ARCHES <= arches(path):
                     raise RuntimeError(f'Extension is still thin: {path}')

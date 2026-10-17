@@ -1,4 +1,6 @@
-import json,sys
+import json,os,platform,sys
+if os.environ.get('TEST_ARCH'):
+    assert platform.machine() == os.environ['TEST_ARCH'], platform.machine()
 assert sys.version_info[:2] == (3,15)
 import PySide6
 assert PySide6.__version__ == '6.12.0', PySide6.__version__

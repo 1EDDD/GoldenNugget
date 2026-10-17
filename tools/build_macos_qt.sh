@@ -11,6 +11,12 @@ export MACOSX_DEPLOYMENT_TARGET=14.4
 brew install cmake ninja llvm
 export LLVM_INSTALL_DIR="$(brew --prefix llvm)"
 python -m pip install --upgrade pip setuptools wheel packaging build numpy
+python - <<'ARCH'
+import os
+import platform
+expected = os.environ.get('BUILD_ARCH', platform.machine())
+assert platform.machine() == expected, (platform.machine(), expected)
+ARCH
 
 for module in qtbase qtsvg; do
   git clone --depth 1 --branch "v${qt_version}" "https://github.com/qt/${module}.git" "$build_root/$module"
