@@ -66,6 +66,7 @@
         <file>icon/liquid-glass.svg</file>
         <file>icon/lock.svg</file>
         <file>icon/play-circle.svg</file>
+        <file>dmg_icon.icns</file>
     </qresource>
     <qresource prefix="/translations">
         <file>translations/Nugget_ab.qm</file>
