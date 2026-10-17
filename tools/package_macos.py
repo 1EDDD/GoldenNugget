@@ -59,12 +59,21 @@ def main():
             'Universal2: Intel and Apple Silicon.\n'
             'Drag Nugget.app into Applications.\n'
             'Ad-hoc signed; not notarized.\n')
+        shutil.copy2(ROOT / 'src/qt/dmg_icon.icns', staging / '.VolumeIcon.icns')
+        # hdiutil create has no -icon option. Set the custom icon flag on a
+        # writable volume before converting it to the compressed final image.
+        writable = Path(directory) / 'writable.dmg'
         run('hdiutil', 'create', '-ov', '-volname', 'GoldenNugget Universal2',
-            '-icon', 'src/qt/dmg_icon.icns',
-            '-srcfolder', staging, '-fs', 'HFS+', '-format', 'UDZO', dmg)
-        run('hdiutil', 'verify', dmg)
+            '-srcfolder', staging, '-fs', 'HFS+', '-format', 'UDRW', writable)
         mounted = Path(directory) / 'mounted'
         mounted.mkdir()
+        run('hdiutil', 'attach', '-nobrowse', '-mountpoint', mounted, writable)
+        try:
+            run('xcrun', 'SetFile', '-a', 'C', mounted)
+        finally:
+            run('hdiutil', 'detach', mounted)
+        run('hdiutil', 'convert', writable, '-ov', '-format', 'UDZO', '-o', dmg)
+        run('hdiutil', 'verify', dmg)
         run('hdiutil', 'attach', '-readonly', '-nobrowse', '-mountpoint', mounted, dmg)
         try:
             if not (mounted / 'Nugget.app').is_dir() or (mounted / 'Nugget.app').is_symlink():
