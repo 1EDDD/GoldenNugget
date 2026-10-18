@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QToolButton, QSizePolicy
+from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QToolButton, QSizePolicy, QScrollArea, QFrame
 from PySide6.QtGui import QFont, QIcon, QPixmap, QDesktopServices
 from PySide6.QtCore import QCoreApplication, QSize, Qt, QUrl
 
