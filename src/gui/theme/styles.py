@@ -315,6 +315,11 @@ STYLES = {
     "summary_dialog": """
         QLabel#confirmTitle {{ font-size: 22px; }}
         QPushButton {{ background-image: none; }}
+        QPushButton:disabled {{ background: {bg_tertiary}; color: {text_disabled}; }}
+        QCheckBox {{ color: {text_primary}; font-size: 14px; background: transparent; spacing: 10px; }}
+        QCheckBox::indicator {{ width: 18px; height: 18px; border-radius: 5px;
+            border: 1.5px solid {text_secondary}; background: {bg_input}; }}
+        QCheckBox::indicator:checked {{ background: {accent}; border-color: {accent}; }}
     """,
     "reset_dialog": """
         QScrollArea, QScrollArea > QWidget > QWidget {{ background: transparent; }}

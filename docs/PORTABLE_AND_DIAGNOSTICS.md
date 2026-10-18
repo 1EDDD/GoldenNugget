@@ -31,6 +31,23 @@ contacting a device. Name collisions receive a numeric suffix. A failed import
 removes its staged assets. Successfully imported assets are retained when a
 preset is deleted because another preset or AutoSave may reference them.
 
+## Share codes and QR
+
+**Share as QR** turns the selected preset into one line of text (`GN1.` +
+base64url of zlib-compressed JSON) and the same code as a QR image, which can be
+copied or saved as PNG. **Import Code** accepts the code pasted from anywhere
+(surrounding text and line breaks are ignored), a QR screenshot or photo, or a
+QR image on the clipboard; it shows the setup's risk verdict before saving it as
+a new preset. Nothing is applied until the preset is loaded.
+
+A code carries only the tweaks that are turned on. Templates, icon themes and
+wallpapers are left out because they are files on the sender's computer. When
+decoded, every other tweak is set to off, so loading the preset reproduces the
+sender's setup instead of merging it into the current one. Codes are capped at
+6000 characters and 256 KB after decompression, unknown tweak names are dropped,
+and the result passes the same validation as an imported preset file. QR
+encoding and decoding use OpenCV, which is already a dependency.
+
 ## Diagnostic archive
 
 Open **Settings → About → Export Diagnostics**, or **Export Diagnostics** in

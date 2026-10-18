@@ -159,6 +159,10 @@ hide whole broken features. Behaviours per rule `action`:
   may name a daemon with no UI switch), and the daemons page locks those
   switches ON with a "Daemon Locked by Safety Rules" warning
   (`src/gui/ios/daemons.py`).
+- `"risk"` (`tweak`, `level`: `low`/`medium`/`high`, `reason`) — **warn only**:
+  never blocks or hides anything (`rule_for` skips these rules). Matching
+  notes (`risk_notes()`) join the pre-apply risk verdict
+  (`src/controllers/risk_assessment.py`) when that tweak is selected.
 
 Feature → tweak membership lives in `FEATURE_TWEAKS` (Liquid Glass, Springboard,
 Internal, PosterBoard, Daemons, Status Bar, Templates). `hidden_features()` /

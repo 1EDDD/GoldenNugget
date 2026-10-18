@@ -88,13 +88,21 @@ class IOSPresetsPage(QWidget):
         ]:
             actions.addWidget(self._mini_button(title, handler, danger=title == "Delete"))
         actions.addStretch()
+        self._layout.addLayout(actions)
+        # Transfer actions get their own row so neither row overflows at the
+        # 1000px minimum window width.
+        transfer = QHBoxLayout()
+        transfer.setSpacing(6)
         for title, handler in [
             ("Export", self._export),
             ("Partial Export", self._partial_export),
             ("Import", self._import),
+            ("Share as QR", self._share),
+            ("Import Code", self._import_code),
         ]:
-            actions.addWidget(self._mini_button(title, handler))
-        self._layout.addLayout(actions)
+            transfer.addWidget(self._mini_button(title, handler))
+        transfer.addStretch()
+        self._layout.addLayout(transfer)
 
         self.preset_list = QListWidget()
         self.preset_list.setMinimumHeight(120)
@@ -215,4 +223,15 @@ class IOSPresetsPage(QWidget):
 
     def _import(self):
         if import_preset_flow(self, self.preset_manager):
+            self.refresh()
+
+    def _share(self):
+        name = self._require_selection("Share Preset")
+        if name:
+            from src.gui.dialogs.share_preset import share_preset_flow
+            share_preset_flow(self, self.preset_manager, name)
+
+    def _import_code(self):
+        from src.gui.dialogs.share_preset import import_code_flow
+        if import_code_flow(self, self.preset_manager, self.window):
             self.refresh()

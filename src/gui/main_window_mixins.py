@@ -1017,6 +1017,15 @@ class ApplyMixin:
             if compatibility_warning:
                 lines.append(compatibility_warning)
             from src.gui.ios.components import IOSSummaryDialog
+            report = self._risk_report()
+            risk_panel = acknowledge = None
+            if report is not None:
+                from src.controllers.risk_assessment import RiskLevel
+                from src.gui.ios.risk_panel import RiskPanel
+                risk_panel = RiskPanel(report)
+                if report.level == RiskLevel.HIGH:
+                    acknowledge = QCoreApplication.translate(
+                        "RiskAssessment", "I understand the risks and want to apply anyway")
             dlg = IOSSummaryDialog(
                 title=QCoreApplication.translate("Nugget", "Apply Tweaks"),
                 lines=lines,
@@ -1028,7 +1037,8 @@ class ApplyMixin:
                 confirm_text=QCoreApplication.translate("Nugget", "Apply"),
                 extra_button=(QCoreApplication.translate("Nugget", "Update Cache")
                               if cache_enabled else ""),
-                parent=self, details_callback=self._show_apply_preview)
+                parent=self, details_callback=self._show_apply_preview,
+                header_widget=risk_panel, acknowledge_text=acknowledge or "")
             res = dlg.exec()
             if res == self._SUMMARY_UPDATE_CACHE:
                 self._run_cache_update()
@@ -1038,6 +1048,38 @@ class ApplyMixin:
             if res != QtWidgets.QDialog.Accepted:
                 return False
             return self._confirm_tweak_conflicts()
+
+    def _risk_report(self):
+        """Risk verdict for the current selection, or None if it cannot be built."""
+        try:
+            from src.controllers.apply_preview import load_preview
+            from src.controllers.hotload import HotLoad
+            from src.controllers.preset_manager import PresetManager
+            from src.controllers.risk_assessment import assess, apply_factors
+            from src.controllers.tweak_conflicts import current_conflicts
+            manager = self.device_manager
+            version = manager.get_current_device_version() or ""
+            model = manager.get_current_device_model() or ""
+            hotload = HotLoad(manager.pref_manager.settings)
+            context = dict(device_version=version, device_model=model)
+            hidden = hotload.hidden_tweak_names(**context)
+            data = {name: entry for name, entry in PresetManager()._serialize()["tweaks"].items()
+                    if name not in hidden and hotload.rule_for(name, **context) is None}
+            battery = getattr(self, "_battery_info", None)
+            if not battery or battery.get("udid") != manager.get_current_device_udid():
+                battery = None
+            board = tweaks.get(TweakID.PosterBoard)
+            extra = apply_factors(
+                conflicts=len(current_conflicts(manager)),
+                battery=battery,
+                storage_low=bool(self._storage_warning_line()),
+                first_apply=load_preview(manager.get_current_device_udid(), version) is None,
+                wallpapers=len(board.tendies) if board is not None else 0)
+            return assess(data, version, model, hotload=hotload, extra=extra)
+        except Exception:
+            import logging
+            logging.getLogger("GoldenNugget.risk").exception("Could not assess apply risk")
+            return None
 
     def _storage_warning_line(self):
         """Return a warning when the selected device has little free space."""
