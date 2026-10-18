@@ -192,6 +192,9 @@ class Dialogs(unittest.TestCase):
         tweak_loader.load_plist_tweaks()
         tweak_loader.load_daemons()
         self.pm = PresetManager()
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.pm.presets_dir = self.tmp.name
         old = dict(raw(name='Old Phones', ios_max='18', code=code(RTL=ON)), id='old-phones')
         new = dict(raw(tags=['glass']), id='solid-glass')
         self.index = json.dumps({'format': 1, 'presets': [old, new]}).encode()

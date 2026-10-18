@@ -240,6 +240,11 @@ broken on iOS 26+).
 - `template_file.py` + `template_options/` — the `.batter`-style template
   format: JSON-defined option widgets (picker/remove/replace/set) that edit
   caml/xml/plist payloads at apply time.
+- `community_tweaks.py` — format 3 `.batter` `tweaks`: switchable tweaks that
+  write plist keys or files to domain-mapped paths. `TemplatesTweak.community_writes`
+  collects them; `DeviceManager._apply_tweak_pass` merges their plist keys into
+  the built-in plists (built-in keys win) and refuses whole-file clashes.
+  Switch states ride in presets as `Templates.tweak_states`, one dict per template.
 - `status_bar/status_setter.py` + `status_bar_tweak.py` + `statusbar_archive.py`
   — the UI state is the binary `StatusBarOverrideData` struct (cffi,
   `-malign-double`), which is what gets written on **iOS 26 and below** as

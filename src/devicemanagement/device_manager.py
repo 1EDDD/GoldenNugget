@@ -1139,6 +1139,16 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                         if tweak.enabled:
                             uses_domains = True
 
+            # Community tweaks from .batter templates. Their plist keys merge
+            # into the same files the built-in tweaks write (built-in keys win
+            # a clash); whole files may not replace one GoldenNugget writes.
+            community_plists, community_files = {}, {}
+            if TweakID.Templates in tweaks and TweakID.Templates not in hotload_skipped:
+                community_plists, community_files = tweaks[TweakID.Templates].community_writes(
+                    self.get_current_device_version())
+                if community_plists or community_files:
+                    uses_domains = True
+
             if hotload_skipped:
                 names = sorted(t.name if hasattr(t, "name") else str(t) for t in hotload_skipped)
                 update_label(QCoreApplication.tr(
@@ -1160,6 +1170,8 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     ownership = basic_plists_ownership[location]
                 else:
                     ownership = 501
+                if location.value in community_plists:
+                    plist = {**community_plists.pop(location.value)[0], **plist}
                 self.concat_file(
                     contents=plistlib.dumps(plist),
                     path=location.value,
@@ -1180,6 +1192,9 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             # secondary copy for iOS 27 compatibility. (Phase 3 skips this file
             # to avoid overwriting the tweak copy.)
             home_plist = basic_plists.get(FileLocation.globalPreferences, {})
+            if FileLocation.globalPreferencesHomeDomain.value in community_plists:
+                home_plist = {**community_plists.pop(FileLocation.globalPreferencesHomeDomain.value)[0],
+                              **home_plist}
             self.concat_file(
                 contents=plistlib.dumps(home_plist),
                 path=FileLocation.globalPreferencesHomeDomain.value,
@@ -1194,6 +1209,8 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     files_to_restore=files_to_restore,
                     owner=501, group=501
                 )
+
+            self._add_community_files(community_plists, community_files, files_to_restore, is_ios27)
 
             # Check if backup encryption is enabled and handle it
             backup_password = ""
@@ -1270,6 +1287,24 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     except Exception as e:
                         # ignore clean up errors
                         print(str(e))
+
+    def _add_community_files(self, plists: dict, files: dict,
+                             files_to_restore: list[FileToRestore], is_ios27: bool):
+        """Add community tweak writes that no built-in tweak already covers."""
+        taken = {(item.domain, item.restore_path) for item in files_to_restore}
+        writes = [(path, plistlib.dumps(values), owner) for path, (values, owner) in plists.items()]
+        writes += [(path, data, owner) for path, (data, owner) in files.items()]
+        for path, contents, owner in writes:
+            rel_path, domain = self.get_domain_for_path(path)
+            if (domain, rel_path) in taken:
+                raise NuggetException(QCoreApplication.tr(
+                    "A template tries to replace {0}, which GoldenNugget already writes.").format(path))
+            self.concat_file(contents=contents, path=path, files_to_restore=files_to_restore,
+                             owner=owner, group=owner)
+            app_pref = managed_pref_target(path) if is_ios27 and path in plists else None
+            if app_pref and f"{HOME_PREFIX}{app_pref}" not in plists and f"{HOME_PREFIX}{app_pref}" not in files:
+                self.concat_file(contents=contents, path=f"{HOME_PREFIX}{app_pref}",
+                                 files_to_restore=files_to_restore, owner=501, group=501)
 
     ## RESETTING TWEAKS
     def reset_tweaks(self, reset_pages: list[Page], settings: QSettings, update_label=lambda x: None, show_alert=lambda x: None, prompt_choice=None):

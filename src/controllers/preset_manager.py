@@ -401,6 +401,9 @@ class PresetManager:
             if "templates" in entry and (not isinstance(entry["templates"], list)
                                           or not all(isinstance(path, str) for path in entry["templates"])):
                 return False
+            if "tweak_states" in entry and (not isinstance(entry["tweak_states"], list)
+                                            or not all(isinstance(state, dict) for state in entry["tweak_states"])):
+                return False
             if "themes" in entry:
                 if not isinstance(entry["themes"], list):
                     return False
@@ -444,6 +447,9 @@ class PresetManager:
             data["value"] = tweak.value
         elif isinstance(tweak, TemplatesTweak):
             data["templates"] = [t.path for t in tweak.templates]
+            states = tweak.tweak_states()
+            if any(states):
+                data["tweak_states"] = states
         elif isinstance(tweak, StatusBarTweak):
             data["enabled"] = tweak.enabled
             data["silly_mode"] = tweak.setter.silly_mode
@@ -536,6 +542,7 @@ class PresetManager:
                         tweak.add_template(path)
                     except Exception as e:
                         print(f"Failed to add template: {e}")
+            tweak.restore_tweak_states(data.get("tweak_states"), data["templates"])
 
     def _apply_status_bar(self, tweak: StatusBarTweak, data: dict):
         tweak.enabled = data.get("enabled", False)
