@@ -23,6 +23,12 @@ class IOSCatalogPage(QWidget):
         super().showEvent(event)
         self.ensure_panel()
 
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        home = getattr(self.window, "ios_home", None)
+        if home is not None and hasattr(home, "refresh_catalog_badge"):
+            home.refresh_catalog_badge()
+
     def ensure_panel(self):
         version, model, hotload = _device_context(self.window)
         if self.panel is not None and self._device == (version, model):

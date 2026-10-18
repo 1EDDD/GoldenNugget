@@ -86,6 +86,7 @@ class CatalogDialog(_ThemedDialog):
         self.templates = []
         self.imported = []
         self.added_templates = []
+        self.installed = {}     # see preset_catalog.installed_items
         self.add_template = add_template
         self._download = None
         self.risk_panel = None
@@ -240,13 +241,28 @@ class CatalogDialog(_ThemedDialog):
         self.entries = entries
         self.templates = templates
         self._saved_at = saved_at
-        text = _tr("{0} preset(s) and {1} template(s) in the catalog.").format(len(entries), len(templates))
-        if rejected:
-            text += " " + _tr("{0} damaged entry(s) were skipped.").format(rejected)
+        self._rejected = rejected
+        self.refresh_installed()
+        return True
+
+    def refresh_installed(self):
+        """Re-read what is imported or downloaded, for the update marks."""
+        self.installed = preset_catalog.installed_items(self.pm)
+        text = _tr("{0} preset(s) and {1} template(s) in the catalog.").format(len(self.entries), len(self.templates))
+        if getattr(self, "_rejected", 0):
+            text += " " + _tr("{0} damaged entry(s) were skipped.").format(self._rejected)
+        updates = self.update_count()
+        if updates:
+            text += " " + _tr("{0} update(s) available.").format(updates)
         self.status.setText(text)
         self.status.setVisible(True)
         self._fill_list()
-        return True
+
+    def update_count(self):
+        return preset_catalog.count_updates(self.entries + self.templates, self.installed)
+
+    def status_of(self, entry):
+        return preset_catalog.entry_status(entry, self.installed)
 
     def showing_templates(self):
         return self.kind.currentData() == "templates"
@@ -263,7 +279,9 @@ class CatalogDialog(_ThemedDialog):
         selected = self.selected_entry()
         self.list.clear()
         for entry in self.visible_entries():
-            item = QListWidgetItem(f"{entry.name}\n{entry.author}")
+            mark = {preset_catalog.UPDATE: "  ·  " + _tr("Update available"),
+                    preset_catalog.INSTALLED: "  ·  ✓"}.get(self.status_of(entry)[0], "")
+            item = QListWidgetItem(f"{entry.name}\n{entry.author}{mark}")
             item.setData(Qt.ItemDataRole.UserRole, entry.id)
             item.setToolTip(", ".join(entry.tags))
             self.list.addItem(item)
@@ -289,7 +307,13 @@ class CatalogDialog(_ThemedDialog):
             self.risk_panel = None
         templates = self.showing_templates()
         self.preview_button.setVisible(not templates)
-        self.import_button.setText(_tr("Download and Add") if templates else _tr("Import"))
+        state = self.status_of(entry)[0] if entry is not None else None
+        if state == preset_catalog.UPDATE:
+            self.import_button.setText(_tr("Update"))
+        elif state == preset_catalog.INSTALLED:
+            self.import_button.setText(_tr("Download Again") if templates else _tr("Import Again"))
+        else:
+            self.import_button.setText(_tr("Download and Add") if templates else _tr("Import"))
         for button in (self.preview_button, self.import_button):
             button.setEnabled(entry is not None and self._download is None)
         self.writes.setVisible(templates and entry is not None)
@@ -308,6 +332,10 @@ class CatalogDialog(_ThemedDialog):
             parts.append(_tr("iOS {0}").format(entry.ios_range()))
         if entry.tags:
             parts.append(", ".join(entry.tags))
+        if state == preset_catalog.UPDATE:
+            parts.append(_tr("a newer version than yours"))
+        elif state == preset_catalog.INSTALLED:
+            parts.append(_tr("already added") if templates else _tr("already imported"))
         self.meta.setText("  ·  ".join(parts))
         self.description.setText(entry.description)
         self.description.setVisible(bool(entry.description))
@@ -346,16 +374,25 @@ class CatalogDialog(_ThemedDialog):
         if isinstance(entry, preset_catalog.TemplateEntry):
             self._start_download(entry)
             return
+        state, existing = self.status_of(entry)
         try:
-            name = self.pm.import_share_code(entry.code, entry.name)
+            if state == preset_catalog.UPDATE:
+                # an update replaces the imported preset under its current name
+                name = self.pm.import_share_code(entry.code, existing, preset_catalog.catalog_mark(entry),
+                                                 replace=True)
+            else:
+                name = self.pm.import_share_code(entry.code, entry.name, preset_catalog.catalog_mark(entry))
         except (share_code.ShareCodeError, OSError) as error:
             QMessageBox.critical(self, self.windowTitle(), _error_text(error))
             return
         self.imported.append(name)
+        self.refresh_installed()
         self._changed()
-        QMessageBox.information(
-            self, self.windowTitle(),
-            _tr("“{0}” was saved to your presets. Load it on the Presets page to use it.").format(name))
+        if state == preset_catalog.UPDATE:
+            text = _tr("“{0}” was updated. Load it again on the Presets page to use the new version.")
+        else:
+            text = _tr("“{0}” was saved to your presets. Load it on the Presets page to use it.")
+        QMessageBox.information(self, self.windowTitle(), text.format(name))
 
     def _start_download(self, entry):
         if self._download is not None:
@@ -401,6 +438,7 @@ class CatalogDialog(_ThemedDialog):
                                  _tr("The template could not be added: {0}").format(error))
             return False
         self.added_templates.append(path)
+        self.refresh_installed()
         self._changed()
         QMessageBox.information(
             self, self.windowTitle(),

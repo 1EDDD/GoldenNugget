@@ -4,6 +4,14 @@
     <context>
         <name>Nugget</name>
         <message>
+            <source>Community Tweaks</source>
+            <translation>Твики сообщества</translation>
+        </message>
+        <message>
+            <source>{0} update(s) available</source>
+            <translation>Доступно обновлений: {0}</translation>
+        </message>
+        <message>
             <source>Community Catalog</source>
             <translation>Каталог сообщества</translation>
         </message>
@@ -3156,6 +3164,10 @@ They will NOT be loaded, so applying may not match the preset's intended state.<
     <context>
         <name>QCoreApplication</name>
         <message>
+            <source>Not reset, because GoldenNugget has no copy of what was there before: {0}</source>
+            <translation>Не сброшено, потому что у GoldenNugget нет копии прежнего содержимого: {0}</translation>
+        </message>
+        <message>
             <source>Templates with tweaks need &quot;format_version&quot;: &quot;3&quot;.</source>
             <translation>Шаблонам с твиками нужен &quot;format_version&quot;: &quot;3&quot;.</translation>
         </message>
@@ -3508,6 +3520,18 @@ Password:</source>
     </context>
     <context>
         <name>RiskAssessment</name>
+        <message>
+            <source>{0}: writes system files ({1}). A mistake there can stop the iPhone from starting or pairing.</source>
+            <translation>{0}: записывает системные файлы ({1}). Ошибка в них может помешать iPhone загрузиться или подключиться.</translation>
+        </message>
+        <message>
+            <source>{0}: replaces {1} as a whole; whatever the iPhone kept in it is lost and a reset cannot bring it back.</source>
+            <translation>{0}: заменяет {1} целиком; всё, что iPhone хранил в нём, пропадёт, и сброс это не вернёт.</translation>
+        </message>
+        <message>
+            <source>{0} community tweak(s) from templates; GoldenNugget does not know what their keys do.</source>
+            <translation>Твиков от сообщества из шаблонов: {0}; GoldenNugget не знает, что делают их ключи.</translation>
+        </message>
         <message>
             <source>Low risk</source>
             <translation>Низкий риск</translation>
@@ -3951,6 +3975,42 @@ Password:</source>
     </context>
     <context>
         <name>PresetCatalog</name>
+        <message>
+            <source>{0} update(s) available.</source>
+            <translation>Доступно обновлений: {0}.</translation>
+        </message>
+        <message>
+            <source>Update available</source>
+            <translation>Есть обновление</translation>
+        </message>
+        <message>
+            <source>Update</source>
+            <translation>Обновить</translation>
+        </message>
+        <message>
+            <source>Download Again</source>
+            <translation>Скачать снова</translation>
+        </message>
+        <message>
+            <source>Import Again</source>
+            <translation>Импортировать снова</translation>
+        </message>
+        <message>
+            <source>a newer version than yours</source>
+            <translation>новее, чем у вас</translation>
+        </message>
+        <message>
+            <source>already added</source>
+            <translation>уже добавлен</translation>
+        </message>
+        <message>
+            <source>already imported</source>
+            <translation>уже импортирован</translation>
+        </message>
+        <message>
+            <source>“{0}” was updated. Load it again on the Presets page to use the new version.</source>
+            <translation>«{0}» обновлён. Загрузите его снова на странице «Пресеты», чтобы использовать новую версию.</translation>
+        </message>
         <message>
             <source>Presets and templates shared by the community and reviewed by the GoldenNugget team. Nothing reaches your iPhone until you apply.</source>
             <translation>Пресеты и шаблоны от сообщества, проверенные командой GoldenNugget. На iPhone ничего не попадёт, пока вы не нажмёте «Применить».</translation>

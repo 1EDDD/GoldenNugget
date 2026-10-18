@@ -89,6 +89,13 @@ id, refuses it when the size or hash differs, stores it in the app data folder
 (`catalog_templates/`) and adds it to PosterBoard → Templates, replacing an
 older copy. Older app versions ignore the `templates` key of the index.
 
+Imported presets remember their catalog id and a hash of their share code
+(`metadata.catalog`); downloaded templates are compared by SHA-256. When the
+catalog has a different version, the entry says **Update available**, its
+button becomes **Update** (a preset update replaces the imported preset under
+its current name) and the Community Catalog row on the home screen counts the
+updates, using the cached index only.
+
 ## Diagnostic archive
 
 Open **Settings → About → Export Diagnostics**, or **Export Diagnostics** in

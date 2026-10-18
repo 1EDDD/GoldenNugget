@@ -206,3 +206,29 @@ def apply_factors(*, conflicts=0, battery=None, storage_low=False, first_apply=F
         factors.append(RiskFactor(RiskLevel.LOW, _tr(
             "First apply on this iPhone with this iOS version.")))
     return factors
+
+
+def community_factors(active):
+    """Factors for community tweaks from .batter templates.
+
+    ``active`` is community_tweaks.active(): (template name, tweak, writes)."""
+    from src.tweaks.posterboard.community_tweaks import RISK_HIGH, RISK_MEDIUM, write_risk
+    factors, low = [], 0
+    for name, tweak, writes in active:
+        label = f"{name} — {tweak.label}"
+        high = sorted({write.path for write in writes if write_risk(write) == RISK_HIGH})
+        whole = sorted({write.path for write in writes if write_risk(write) == RISK_MEDIUM})
+        if high:
+            factors.append(RiskFactor(RiskLevel.HIGH, _tr(
+                "{0}: writes system files ({1}). A mistake there can stop the iPhone from starting "
+                "or pairing.").format(label, ", ".join(high))))
+        if whole:
+            factors.append(RiskFactor(RiskLevel.MEDIUM, _tr(
+                "{0}: replaces {1} as a whole; whatever the iPhone kept in it is lost and a reset "
+                "cannot bring it back.").format(label, ", ".join(whole))))
+        if not high and not whole:
+            low += 1
+    if low:
+        factors.append(RiskFactor(RiskLevel.LOW, _tr(
+            "{0} community tweak(s) from templates; GoldenNugget does not know what their keys do.").format(low)))
+    return factors

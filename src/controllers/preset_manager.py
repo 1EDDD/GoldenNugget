@@ -308,12 +308,12 @@ class PresetManager:
             if owned_assets is not None and not committed:
                 shutil.rmtree(owned_assets, ignore_errors=True)
 
-    def _store_imported(self, data: dict, new_name: str) -> str:
+    def _store_imported(self, data: dict, new_name: str, replace: bool = False) -> str:
         """Write validated preset ``data`` under a unique name; return the name."""
         base_name = self._sanitize_name(new_name)
         name = base_name
         counter = 1
-        while os.path.isfile(self.get_preset_path(name)):
+        while not replace and os.path.isfile(self.get_preset_path(name)):
             name = f"{base_name} {counter}"
             counter += 1
 
@@ -361,13 +361,20 @@ class PresetManager:
         from src.controllers.share_code import decode
         return decode(text, self._valid_import_structure)
 
-    def import_share_code(self, text: str, new_name: str = "") -> str:
-        """Store a shared setup as a new preset (never activates it); return its name."""
+    def import_share_code(self, text: str, new_name: str = "", catalog: dict = None,
+                          replace: bool = False) -> str:
+        """Store a shared setup as a new preset (never activates it); return its name.
+
+        ``catalog`` ({"id", "sha256"}) marks a preset imported from the community
+        catalog so a newer version can be offered; ``replace`` overwrites the
+        preset named ``new_name`` instead of picking a free name (an update)."""
         data = self.decode_share_code(text)
         name = new_name or data["metadata"].pop("name", "") or "Shared Preset"
         data["metadata"].pop("name", None)
         data.pop("shared_count", None)
-        return self._store_imported(data, name)
+        if catalog:
+            data["metadata"]["catalog"] = dict(catalog)
+        return self._store_imported(data, name, replace=replace)
 
     @staticmethod
     def _valid_import_structure(data) -> bool:

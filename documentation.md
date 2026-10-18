@@ -325,11 +325,13 @@ __Tweak fields:__
 - `writes_off` *(Optional)* - what to write while it is off, for example to put a key back
 
 __Write types:__
-- `plist` - merges `values` into the plist at `path`. Keys are merged with GoldenNugget's own keys for the same file, so built-in tweaks keep working; if both set the same key, the built-in tweak wins.
+- `plist` - writes `values` as the plist at `path`. Keys are merged with GoldenNugget's own keys for the same file, so built-in tweaks keep working; if both set the same key, the built-in tweak wins. They are **not** merged with what is already on the iPhone: like GoldenNugget's own tweaks, the file is written whole. That is how Managed Preferences are meant to be used (`/var/Managed Preferences/mobile/…`); anywhere else the iPhone's own settings in that file are lost.
 - `file` - writes `source` (a file in the batter, relative to `config.json`, at most 4 MB) to `path`.
-- `empty` - writes an empty file to `path`.
+- `empty` - writes an empty file to `path` (an empty plist when `path` ends in `.plist`, since a zero-byte plist can send iOS 26.2+ into a boot loop).
 - `owner` *(Optional)* - `501` (mobile, default) or `0` (root).
 
 A `file` or `empty` write may not replace a file that GoldenNugget itself writes, and two templates may not replace the same file with different contents. Pairing records, the setup assistant plist and backups are protected. On iOS 27, plist writes to Managed Preferences are also mirrored to the app's preferences in the home folder, the same as built-in tweaks.
 
-The template card lists every file each tweak writes. Check a template before sharing it with `python nugget_cli.py wallpaper validate my.batter`.
+The template card lists every file each tweak writes. Before applying, the summary shows each community tweak on its own line and the risk check rates it: keys in Managed Preferences are low risk, a whole file anywhere else is medium (the iPhone's copy is lost) and system folders (`/var/db`, `/var/root`, `/var/preferences`, `/var/MobileDevice`, `/var/containers`) are high.
+
+**Reset → Community Tweaks** appears once community tweaks have written something to the iPhone. It empties the Managed Preferences files they wrote (which also clears GoldenNugget's own keys in those files, like the other resets) and lists the other files, which cannot be reset because GoldenNugget keeps no copy of what was there before. To undo a tweak's keys without a reset, give it `writes_off`, switch it off and apply. Check a template before sharing it with `python nugget_cli.py wallpaper validate my.batter`.

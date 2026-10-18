@@ -887,7 +887,26 @@ class IOSHomePage(QWidget):
         card.mousePressEvent = lambda e: self.switch_to_ios_page(13)
         card.setCursor(Qt.PointingHandCursor)
         self._paint_catalog_row()
+        QTimer.singleShot(0, self.refresh_catalog_badge)
         return card
+
+    def refresh_catalog_badge(self):
+        """Mention catalog updates for imported presets and added templates,
+        counted against the cached catalog (no download)."""
+        text = QCoreApplication.translate("Nugget", "Presets & templates from the community")
+        try:
+            from src.controllers import preset_catalog
+            from src.controllers.preset_manager import PresetManager
+            data, _saved_at = preset_catalog.read_cache()
+            if data is not None:
+                pm = getattr(getattr(self.window, "ios_presets", None), "preset_manager", None) or PresetManager()
+                entries, templates, _ = preset_catalog.parse_catalog(data, pm._valid_import_structure)
+                updates = preset_catalog.count_updates(entries + templates, preset_catalog.installed_items(pm))
+                if updates:
+                    text = QCoreApplication.translate("Nugget", "{0} update(s) available").format(updates)
+        except Exception:
+            pass
+        self._catalog_caption.setText(text)
 
     def _paint_catalog_row(self):
         if not hasattr(self, "_catalog_icon"):

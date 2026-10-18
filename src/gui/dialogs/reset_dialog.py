@@ -49,9 +49,11 @@ class ResetDialog(QDialog):
         page_names = (QT_TRANSLATE_NOOP("Nugget", "Status Bar"),
                       QT_TRANSLATE_NOOP("Nugget", "Springboard"),
                       QT_TRANSLATE_NOOP("Nugget", "Internal"),
-                      QT_TRANSLATE_NOOP("Nugget", "Daemons"))
+                      QT_TRANSLATE_NOOP("Nugget", "Daemons"),
+                      QT_TRANSLATE_NOOP("Nugget", "Community Tweaks"))
         for page in pages:
-            label = QCoreApplication.translate("Nugget", page.getPageName())
+            name = "Community Tweaks" if page == Page.Templates else page.getPageName()
+            label = QCoreApplication.translate("Nugget", name)
             page_button = QPushButton(label)
             page_button.setObjectName('resetSelection')
             page_button.setCheckable(True)
