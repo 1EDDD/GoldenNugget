@@ -168,7 +168,8 @@ def main() -> int:
 
     from src.gui.theme import ColorThemeManager, FONT_FAMILY
     _color_theme = ColorThemeManager.instance()
-    app.setPalette(_color_theme.build_palette())
+    # Pins the colour scheme too, so the OS light/dark setting never leaks in.
+    _color_theme.apply_to_app(app)
 
     # Register the bundled Inter variable font and make it the single UI font
     # on every platform. Both the dev tree and the PyInstaller bundle

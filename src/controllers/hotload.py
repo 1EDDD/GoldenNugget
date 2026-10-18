@@ -43,6 +43,12 @@ HIDE_ACTION = "hide_feature"
 # and presets cannot turn them back on (the apply pass re-forces them).
 DISABLE_DAEMON_ACTION = "disable_daemon"
 
+# A rule with action == RISK_ACTION never blocks anything: it attaches a
+# warning (fields "tweak", "level": "low"|"medium"|"high", "reason") to the
+# pre-apply risk assessment on matching setups, e.g. "reported to cause a
+# respring loop on iOS 27.0.1". See src/controllers/risk_assessment.py.
+RISK_ACTION = "risk"
+
 # Feature (page) name -> the tweak names that belong to it. A "hide_feature"
 # rule names one of these keys; the UI and the apply/preset paths use this map
 # to resolve which tweaks / pages to hide.
@@ -148,7 +154,7 @@ class HotLoad:
         tweak_name = getattr(tweak_id, "name", str(tweak_id))
         for rule in self._rules.get("rules", []):
             try:
-                if rule.get("tweak") != tweak_name:
+                if rule.get("tweak") != tweak_name or rule.get("action") == RISK_ACTION:
                     continue
                 if not self._rule_applicable(rule, device_version, device_model, app_version):
                     continue
@@ -177,6 +183,22 @@ class HotLoad:
             except Exception:
                 continue
         return None
+
+    def risk_notes(self, device_version=None, device_model=None,
+                   app_version=None) -> list:
+        """Warn-only "risk" rules that match this setup, in file order."""
+        if not self.is_enabled():
+            return []
+        notes = []
+        for rule in self._rules.get("rules", []):
+            try:
+                if rule.get("action") != RISK_ACTION or not rule.get("tweak"):
+                    continue
+                if self._rule_applicable(rule, device_version, device_model, app_version):
+                    notes.append(rule)
+            except Exception:
+                continue
+        return notes
 
     def feature_for(self, tweak_id) -> Optional[str]:
         """Return the feature (page) name a tweak belongs to, or None."""

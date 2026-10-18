@@ -83,6 +83,11 @@ def preview_state(manager, ios27: bool, now: Optional[QTime] = None) -> StatusBa
         state.primary_badge = manager.get_primary_service_badge_override()
     if overridden("is_gsm_signal_strength_bars_overridden"):
         state.bars = _clamp(manager.get_gsm_signal_strength_bars_override(), 0, MAX_BARS)
+    elif ios27:
+        # The iOS 27 archive pins the whole cellular entry (atomic replacement
+        # in dataByApplyingOverlay:), so an unset bar count is written as 0
+        # instead of passing the live signal through -- show that, not 4.
+        state.bars = 0
     secondary = overridden("is_secondary_carrier_overridden")
     if secondary:
         state.secondary_carrier = manager.get_secondary_carrier_override()
@@ -93,7 +98,7 @@ def preview_state(manager, ios27: bool, now: Optional[QTime] = None) -> StatusBa
         state.secondary_bars = _clamp(
             manager.get_secondary_gsm_signal_strength_bars_override(), 0, MAX_BARS)
     elif secondary:
-        state.secondary_bars = MAX_BARS
+        state.secondary_bars = 0 if ios27 else MAX_BARS
 
     if ios27:
         return state
@@ -181,15 +186,25 @@ def _paint_battery(p: QPainter, x: float, mid: float, s: float, level: int) -> f
     return w + 2.5 * s
 
 
-def paint_status_bar(p: QPainter, screen: QRectF, state: StatusBarPreviewState, lock_screen: bool):
-    """Draw the status bar along the top of ``screen`` (a full-width device screen)."""
+def paint_status_bar(p: QPainter, screen: QRectF, state: StatusBarPreviewState, lock_screen: bool,
+                     cutout: str = "island"):
+    """Draw the status bar along the top of ``screen`` (a full-width device screen).
+
+    ``cutout`` is the hardware at the top centre: ``"island"`` (Dynamic
+    Island), ``"notch"`` or ``"none"`` (island turned off, or no cutout). The
+    side zones keep the island's geometry in every case.
+    """
     s = screen.width() / DEVICE_PT_W
     island = QRectF(screen.left() + ISLAND.left() * s, screen.top() + ISLAND.top() * s,
                     ISLAND.width() * s, ISLAND.height() * s)
     p.save()
     p.setPen(Qt.PenStyle.NoPen)
     p.setBrush(QColor(0, 0, 0))
-    p.drawRoundedRect(island, island.height() / 2, island.height() / 2)
+    if cutout == "island":
+        p.drawRoundedRect(island, island.height() / 2, island.height() / 2)
+    elif cutout == "notch":
+        notch = QRectF(screen.center().x() - 81 * s, screen.top() - 8 * s, 162 * s, 40 * s)
+        p.drawRoundedRect(notch, 20 * s, 20 * s)
 
     mid = island.center().y()
     # Left side: carrier on the Lock Screen, time on the Home Screen.

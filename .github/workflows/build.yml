@@ -144,13 +144,32 @@ jobs:
           python tools/prepare_macos_universal.py .macos-qt-wheels
           python -m pip check
           python -m pip freeze > macOS-dependencies.txt
+      - name: Build portable Universal2 libusb
+        run: bash tools/build_macos_libusb.sh
       - name: Build Universal2, validate and package DMG
         run: |
           python compile.py --target-arch=universal2
           python tools/package_macos.py
+          # Keep every uploaded file under dist/: upload-artifact roots the
+          # artifact at the common parent, and a file outside dist/ would nest
+          # the ZIP and DMG under dist/ where the smoke test cannot find them.
+          cp macOS-dependencies.txt dist/
           QT_QPA_PLATFORM=offscreen dist/Nugget.app/Contents/MacOS/Nugget tools/smoke_macos.py > smoke.log 2>&1
           cat smoke.log
           grep -q 'MACOS_SMOKE_OK' smoke.log
+      - name: Upload macOS failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: Nugget_macOS_diagnostics
+          path: |
+            dist/macOS-validation.json
+            dist/macOS-validation.stderr.log
+            dist/Nugget-macOS-Universal.zip
+            macOS-dependencies.txt
+            smoke.log
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Upload macOS Universal2
         uses: actions/upload-artifact@v6
         with:
@@ -160,7 +179,7 @@ jobs:
             dist/Nugget-macOS-Universal.zip
             dist/macOS-validation.json
             dist/SHA256SUMS-macOS.txt
-            macOS-dependencies.txt
+            dist/macOS-dependencies.txt
           if-no-files-found: error
 
   test-macos:

@@ -3482,4 +3482,657 @@ Password:</source>
             <translation>Установка не удалась. Установите usbmuxd и libimobiledevice вручную или откройте подробности, чтобы увидеть ответ менеджера пакетов.</translation>
         </message>
     </context>
+    <context>
+        <name>RiskAssessment</name>
+        <message>
+            <source>Low risk</source>
+            <translation>Низкий риск</translation>
+        </message>
+        <message>
+            <source>Medium risk</source>
+            <translation>Средний риск</translation>
+        </message>
+        <message>
+            <source>High risk</source>
+            <translation>Высокий риск</translation>
+        </message>
+        <message>
+            <source>Rewrites Apple Watch pairing data. If the watch stops pairing, reset this tweak.</source>
+            <translation>Перезаписывает данные сопряжения Apple Watch. Если часы перестанут подключаться, сбросьте этот твик.</translation>
+        </message>
+        <message>
+            <source>Forces the layout direction in every app, which can make some screens hard to use.</source>
+            <translation>Принудительно меняет направление интерфейса во всех приложениях, из-за чего некоторыми экранами неудобно пользоваться.</translation>
+        </message>
+        <message>
+            <source>Clears a Screen Time settings file. Resetting the tweak does not bring its old contents back.</source>
+            <translation>Очищает файл настроек Экранного времени. Сброс твика не вернёт его прежнее содержимое.</translation>
+        </message>
+        <message>
+            <source>Turns on effects Apple did not enable for this hardware; expect lag or app crashes.</source>
+            <translation>Включает эффекты, которые Apple не включила для этого устройства; возможны подтормаживания и вылеты приложений.</translation>
+        </message>
+        <message>
+            <source>You will not be warned when the battery is almost empty.</source>
+            <translation>Вы не получите предупреждения, когда батарея почти разрядится.</translation>
+        </message>
+        <message>
+            <source>The screen stays on while charging, which wears an OLED display faster.</source>
+            <translation>Экран не гаснет во время зарядки, из-за чего OLED-дисплей изнашивается быстрее.</translation>
+        </message>
+        <message>
+            <source>Turns off thermal monitoring: the iPhone can overheat or shut down under load.</source>
+            <translation>Отключает контроль температуры: под нагрузкой iPhone может перегреться или выключиться.</translation>
+        </message>
+        <message>
+            <source>Turns off location services: Find My, Maps and emergency location stop working.</source>
+            <translation>Отключает службы геолокации: перестают работать «Локатор», Карты и передача местоположения в экстренных вызовах.</translation>
+        </message>
+        <message>
+            <source>Blocks iOS updates, including security fixes.</source>
+            <translation>Блокирует обновления iOS, в том числе исправления безопасности.</translation>
+        </message>
+        <message>
+            <source>Reported as problematic on this iOS version.</source>
+            <translation>На этой версии iOS с ним сообщали о проблемах.</translation>
+        </message>
+        <message>
+            <source>Little free space on the iPhone: the restore may fail partway.</source>
+            <translation>На iPhone мало свободного места: восстановление может прерваться.</translation>
+        </message>
+        <message>
+            <source>First apply on this iPhone with this iOS version.</source>
+            <translation>Первое применение на этом iPhone с этой версией iOS.</translation>
+        </message>
+        <message>
+            <source>Not made for this iPhone or iOS version: {0}.</source>
+            <translation>Не предназначено для этого iPhone или версии iOS: {0}.</translation>
+        </message>
+        <message>
+            <source>{0} debug or experimental option(s); they can cause visual glitches.</source>
+            <translation>Отладочных или экспериментальных опций: {0}; они могут вызывать графические сбои.</translation>
+        </message>
+        <message>
+            <source>{0} tweaks at once: if something breaks, the cause is hard to find. Consider applying in smaller batches.</source>
+            <translation>Твиков за раз: {0}. Если что-то сломается, причину будет трудно найти. Лучше применять их небольшими партиями.</translation>
+        </message>
+        <message>
+            <source>Battery at {0}% and not charging: if the iPhone switches off mid-restore, the apply fails.</source>
+            <translation>Заряд {0}% и iPhone не заряжается: если он выключится во время восстановления, применение не удастся.</translation>
+        </message>
+        <message>
+            <source>{0} conflict(s) between selected tweaks.</source>
+            <translation>Конфликтов между выбранными твиками: {0}.</translation>
+        </message>
+        <message>
+            <source>{0} wallpaper package(s): a broken one can leave a blank Lock Screen until it is removed.</source>
+            <translation>Пакетов обоев: {0}. Повреждённый пакет может оставить пустой экран блокировки, пока его не удалят.</translation>
+        </message>
+        <message>
+            <source>Nothing in this selection is known to cause problems.</source>
+            <translation>Ни один из выбранных твиков не известен как проблемный.</translation>
+        </message>
+        <message>
+            <source>…and {0} more</source>
+            <translation>…и ещё {0}</translation>
+        </message>
+        <message>
+            <source>I understand the risks and want to apply anyway</source>
+            <translation>Я понимаю риски и всё равно хочу применить</translation>
+        </message>
+    </context>
+    <context>
+        <name>ShareCode</name>
+        <message>
+            <source>No QR code was found in the image.</source>
+            <translation>На изображении не найден QR-код.</translation>
+        </message>
+        <message>
+            <source>Nothing to share: no tweaks are turned on in this preset.</source>
+            <translation>Нечем поделиться: в этом пресете не включено ни одного твика.</translation>
+        </message>
+        <message>
+            <source>This preset is too large to share as a code.</source>
+            <translation>Пресет слишком большой, чтобы поделиться им в виде кода.</translation>
+        </message>
+        <message>
+            <source>No GoldenNugget share code found.</source>
+            <translation>Код GoldenNugget не найден.</translation>
+        </message>
+        <message>
+            <source>The share code is too long.</source>
+            <translation>Код слишком длинный.</translation>
+        </message>
+        <message>
+            <source>This share code was made by an unsupported version of GoldenNugget.</source>
+            <translation>Этот код создан неподдерживаемой версией GoldenNugget.</translation>
+        </message>
+        <message>
+            <source>The share code contains invalid tweak data.</source>
+            <translation>Код содержит некорректные данные твиков.</translation>
+        </message>
+        <message>
+            <source>This preset is too large for a QR code.</source>
+            <translation>Пресет слишком большой для QR-кода.</translation>
+        </message>
+        <message>
+            <source>The image could not be opened.</source>
+            <translation>Не удалось открыть изображение.</translation>
+        </message>
+        <message>
+            <source>The share code expands to too much data.</source>
+            <translation>Код распаковывается в слишком большой объём данных.</translation>
+        </message>
+        <message>
+            <source>The share code is damaged or incomplete.</source>
+            <translation>Код повреждён или неполный.</translation>
+        </message>
+        <message>
+            <source>This QR code is not a GoldenNugget share code.</source>
+            <translation>Этот QR-код не является кодом GoldenNugget.</translation>
+        </message>
+        <message>
+            <source>Scan the QR code or send the text code. Anyone with GoldenNugget can import it with Import Code. Templates, icon themes and wallpapers are not included, since they are files on this computer.</source>
+            <translation>Отсканируйте QR-код или отправьте текстовый код. Любой пользователь GoldenNugget может импортировать его кнопкой «Импорт кода». Шаблоны, темы иконок и обои не передаются: это файлы на этом компьютере.</translation>
+        </message>
+        <message>
+            <source>QR code</source>
+            <translation>QR-код</translation>
+        </message>
+        <message>
+            <source>Share code</source>
+            <translation>Код пресета</translation>
+        </message>
+        <message>
+            <source>Copy Code</source>
+            <translation>Копировать код</translation>
+        </message>
+        <message>
+            <source>Copied</source>
+            <translation>Скопировано</translation>
+        </message>
+        <message>
+            <source>Save QR Image…</source>
+            <translation>Сохранить QR…</translation>
+        </message>
+        <message>
+            <source>PNG Images (*.png)</source>
+            <translation>Изображения PNG (*.png)</translation>
+        </message>
+        <message>
+            <source>Import Code</source>
+            <translation>Импорт кода</translation>
+        </message>
+        <message>
+            <source>Paste a GoldenNugget share code, or open a screenshot or photo of its QR code. The setup is saved as a new preset; nothing is applied until you load it.</source>
+            <translation>Вставьте код GoldenNugget или откройте скриншот либо фото его QR-кода. Набор сохранится как новый пресет; ничего не применится, пока вы его не загрузите.</translation>
+        </message>
+        <message>
+            <source>Preset name</source>
+            <translation>Название пресета</translation>
+        </message>
+        <message>
+            <source>Import</source>
+            <translation>Импортировать</translation>
+        </message>
+        <message>
+            <source>Open QR Image…</source>
+            <translation>Открыть изображение QR…</translation>
+        </message>
+        <message>
+            <source>Images (*.png *.jpg *.jpeg *.bmp *.webp)</source>
+            <translation>Изображения (*.png *.jpg *.jpeg *.bmp *.webp)</translation>
+        </message>
+        <message>
+            <source>Done</source>
+            <translation>Готово</translation>
+        </message>
+        <message>
+            <source>The image could not be saved.</source>
+            <translation>Не удалось сохранить изображение.</translation>
+        </message>
+        <message>
+            <source>Paste</source>
+            <translation>Вставить</translation>
+        </message>
+        <message>
+            <source>Cancel</source>
+            <translation>Отмена</translation>
+        </message>
+        <message>
+            <source>{0} tweak(s) turned on.</source>
+            <translation>Включено твиков: {0}.</translation>
+        </message>
+        <message>
+            <source>Share Preset</source>
+            <translation>Поделиться пресетом</translation>
+        </message>
+        <message>
+            <source>Share “{0}”</source>
+            <translation>Поделиться «{0}»</translation>
+        </message>
+        <message>
+            <source>Shared Preset</source>
+            <translation>Присланный пресет</translation>
+        </message>
+        <message>
+            <source>Made on iOS {0}.</source>
+            <translation>Создан на iOS {0}.</translation>
+        </message>
+        <message>
+            <source>The preset could not be read.</source>
+            <translation>Не удалось прочитать пресет.</translation>
+        </message>
+    </context>
+    <context>
+        <name>Nugget</name>
+        <message>
+            <source>Share as QR</source>
+            <translation>Поделиться QR</translation>
+        </message>
+        <message>
+            <source>Import Code</source>
+            <translation>Импорт кода</translation>
+        </message>
+        <message>
+            <source>Share Preset</source>
+            <translation>Поделиться пресетом</translation>
+        </message>
+    </context>
+    <context>
+        <name>DeviceTwin</name>
+        <message>
+            <source>Status bar overrides</source>
+            <translation>изменения статус-бара</translation>
+        </message>
+        <message>
+            <source>Dynamic Island turned off</source>
+            <translation>Dynamic Island отключён</translation>
+        </message>
+        <message>
+            <source>Lock Screen footnote</source>
+            <translation>подпись на экране блокировки</translation>
+        </message>
+        <message>
+            <source>Supervision text</source>
+            <translation>текст о контроле устройства</translation>
+        </message>
+        <message>
+            <source>Solid Lock Screen clock</source>
+            <translation>часы без Liquid Glass</translation>
+        </message>
+        <message>
+            <source>Solid Dock</source>
+            <translation>Dock без Liquid Glass</translation>
+        </message>
+        <message>
+            <source>Flat icons</source>
+            <translation>плоские иконки</translation>
+        </message>
+        <message>
+            <source>Search button hidden</source>
+            <translation>кнопка поиска скрыта</translation>
+        </message>
+        <message>
+            <source>Clock icon without seconds hand</source>
+            <translation>иконка «Часы» без секундной стрелки</translation>
+        </message>
+        <message>
+            <source>Build number in the status bar</source>
+            <translation>номер сборки в статус-баре</translation>
+        </message>
+        <message>
+            <source>Right-to-left layout</source>
+            <translation>интерфейс справа налево</translation>
+        </message>
+        <message>
+            <source>Custom icons</source>
+            <translation>свои иконки</translation>
+        </message>
+        <message>
+            <source>Wallpaper</source>
+            <translation>обои</translation>
+        </message>
+        <message>
+            <source>FaceTime</source>
+            <translation>FaceTime</translation>
+        </message>
+        <message>
+            <source>Calendar</source>
+            <translation>Календарь</translation>
+        </message>
+        <message>
+            <source>Photos</source>
+            <translation>Фото</translation>
+        </message>
+        <message>
+            <source>Camera</source>
+            <translation>Камера</translation>
+        </message>
+        <message>
+            <source>Mail</source>
+            <translation>Почта</translation>
+        </message>
+        <message>
+            <source>Notes</source>
+            <translation>Заметки</translation>
+        </message>
+        <message>
+            <source>Reminders</source>
+            <translation>Напоминания</translation>
+        </message>
+        <message>
+            <source>Clock</source>
+            <translation>Часы</translation>
+        </message>
+        <message>
+            <source>Weather</source>
+            <translation>Погода</translation>
+        </message>
+        <message>
+            <source>Maps</source>
+            <translation>Карты</translation>
+        </message>
+        <message>
+            <source>Music</source>
+            <translation>Музыка</translation>
+        </message>
+        <message>
+            <source>Settings</source>
+            <translation>Настройки</translation>
+        </message>
+        <message>
+            <source>App Store</source>
+            <translation>App Store</translation>
+        </message>
+        <message>
+            <source>Wallet</source>
+            <translation>Wallet</translation>
+        </message>
+        <message>
+            <source>Health</source>
+            <translation>Здоровье</translation>
+        </message>
+        <message>
+            <source>Files</source>
+            <translation>Файлы</translation>
+        </message>
+        <message>
+            <source>Phone</source>
+            <translation>Телефон</translation>
+        </message>
+        <message>
+            <source>Safari</source>
+            <translation>Safari</translation>
+        </message>
+        <message>
+            <source>Messages</source>
+            <translation>Сообщения</translation>
+        </message>
+        <message>
+            <source>Build</source>
+            <translation>Сборка</translation>
+        </message>
+        <message>
+            <source>This iPhone is supervised and managed.</source>
+            <translation>Этот iPhone находится под контролем и управлением.</translation>
+        </message>
+        <message>
+            <source>iPhone preview</source>
+            <translation>Предпросмотр на iPhone</translation>
+        </message>
+        <message>
+            <source>Search</source>
+            <translation>Поиск</translation>
+        </message>
+        <message>
+            <source>This is a drawing to compare looks, not a screenshot of your iPhone.</source>
+            <translation>Это рисунок для сравнения внешнего вида, а не снимок экрана вашего iPhone.</translation>
+        </message>
+        <message>
+            <source>None of the selected tweaks change how the screens look.</source>
+            <translation>Ни один из выбранных твиков не меняет внешний вид экранов.</translation>
+        </message>
+        <message>
+            <source>Close</source>
+            <translation>Закрыть</translation>
+        </message>
+        <message>
+            <source>iPhone Preview</source>
+            <translation>Предпросмотр на iPhone</translation>
+        </message>
+        <message>
+            <source>On the preview: {0}.</source>
+            <translation>На предпросмотре: {0}.</translation>
+        </message>
+        <message>
+            <source>{0} more tweak(s) change behaviour, not looks, so they are not drawn.</source>
+            <translation>Ещё твиков: {0}. Они меняют поведение, а не внешний вид, поэтому не показаны.</translation>
+        </message>
+        <message>
+            <source>Preview on iPhone</source>
+            <translation>Предпросмотр на iPhone</translation>
+        </message>
+        <message>
+            <source>See the Lock Screen and Home Screen with the selected tweaks before applying.</source>
+            <translation>Посмотреть экран блокировки и домашний экран с выбранными твиками до применения.</translation>
+        </message>
+    </context>
+    <context>
+        <name>Nugget</name>
+        <message>
+            <source>Preview</source>
+            <translation>Предпросмотр</translation>
+        </message>
+    </context>
+    <context>
+        <name>PresetCatalog</name>
+        <message>
+            <source>In the browser, click “Propose changes”, then “Create pull request”.</source>
+            <translation>В браузере нажмите «Propose changes», затем «Create pull request».</translation>
+        </message>
+        <message>
+            <source>Preset Catalog</source>
+            <translation>Каталог пресетов</translation>
+        </message>
+        <message>
+            <source>Presets shared by the community and reviewed by the GoldenNugget team. Importing saves a preset; nothing reaches your iPhone until you load it and apply.</source>
+            <translation>Пресеты от сообщества, проверенные командой GoldenNugget. Импорт только сохраняет пресет: на iPhone ничего не попадёт, пока вы его не загрузите и не примените.</translation>
+        </message>
+        <message>
+            <source>Search by name, author or tag</source>
+            <translation>Поиск по названию, автору или тегу</translation>
+        </message>
+        <message>
+            <source>Refresh</source>
+            <translation>Обновить</translation>
+        </message>
+        <message>
+            <source>Import</source>
+            <translation>Импорт</translation>
+        </message>
+        <message>
+            <source>Submit to Catalog</source>
+            <translation>Отправить в каталог</translation>
+        </message>
+        <message>
+            <source>Your preset is sent as a pull request to the GoldenNugget-Presets repository on GitHub (you need a free GitHub account). The team reviews it before it appears in the catalog. Templates, icon themes and wallpapers are not included.</source>
+            <translation>Пресет отправляется как pull request в репозиторий GoldenNugget-Presets на GitHub (нужен бесплатный аккаунт GitHub). Команда проверит его, прежде чем он появится в каталоге. Шаблоны, темы иконок и обои не передаются.</translation>
+        </message>
+        <message>
+            <source>Name</source>
+            <translation>Название</translation>
+        </message>
+        <message>
+            <source>Author</source>
+            <translation>Автор</translation>
+        </message>
+        <message>
+            <source>Your nickname</source>
+            <translation>Ваш ник</translation>
+        </message>
+        <message>
+            <source>What it changes, in a sentence or two</source>
+            <translation>Что он меняет, в одном-двух предложениях</translation>
+        </message>
+        <message>
+            <source>Description</source>
+            <translation>Описание</translation>
+        </message>
+        <message>
+            <source>Tags</source>
+            <translation>Теги</translation>
+        </message>
+        <message>
+            <source>battery, minimal</source>
+            <translation>батарея, минимализм</translation>
+        </message>
+        <message>
+            <source>Lowest iOS</source>
+            <translation>Мин. iOS</translation>
+        </message>
+        <message>
+            <source>Any</source>
+            <translation>Любая</translation>
+        </message>
+        <message>
+            <source>Highest iOS</source>
+            <translation>Макс. iOS</translation>
+        </message>
+        <message>
+            <source>How to Submit…</source>
+            <translation>Как отправить…</translation>
+        </message>
+        <message>
+            <source>Close</source>
+            <translation>Закрыть</translation>
+        </message>
+        <message>
+            <source>Loading the catalog…</source>
+            <translation>Загрузка каталога…</translation>
+        </message>
+        <message>
+            <source>{0} preset(s) in the catalog.</source>
+            <translation>Пресетов в каталоге: {0}.</translation>
+        </message>
+        <message>
+            <source>Cancel</source>
+            <translation>Отмена</translation>
+        </message>
+        <message>
+            <source>Open GitHub</source>
+            <translation>Открыть GitHub</translation>
+        </message>
+        <message>
+            <source>Only for iOS {0}</source>
+            <translation>Только для iOS {0}</translation>
+        </message>
+        <message>
+            <source>No presets found</source>
+            <translation>Пресеты не найдены</translation>
+        </message>
+        <message>
+            <source>by {0}</source>
+            <translation>автор: {0}</translation>
+        </message>
+        <message>
+            <source>{0} tweak(s)</source>
+            <translation>твиков: {0}</translation>
+        </message>
+        <message>
+            <source>“{0}” was saved to your presets. Load it on the Presets page to use it.</source>
+            <translation>«{0}» сохранён в ваши пресеты. Чтобы использовать его, загрузите его на странице «Пресеты».</translation>
+        </message>
+        <message>
+            <source>The preset is too long to fill in automatically, so it was copied. Paste it into the empty file on GitHub.</source>
+            <translation>Пресет слишком длинный, чтобы подставить его автоматически, поэтому он скопирован. Вставьте его в пустой файл на GitHub.</translation>
+        </message>
+        <message>
+            <source>Could not load the catalog: {0}</source>
+            <translation>Не удалось загрузить каталог: {0}</translation>
+        </message>
+        <message>
+            <source>{0} damaged entry(s) were skipped.</source>
+            <translation>Пропущено повреждённых записей: {0}.</translation>
+        </message>
+        <message>
+            <source>iOS {0}</source>
+            <translation>iOS {0}</translation>
+        </message>
+        <message>
+            <source>Could not reach the catalog, so this is the copy saved on {0}.</source>
+            <translation>Каталог недоступен, показана копия от {0}.</translation>
+        </message>
+        <message>
+            <source>A text field has the wrong type.</source>
+            <translation>Текстовое поле имеет неверный тип.</translation>
+        </message>
+        <message>
+            <source>The name and author are required.</source>
+            <translation>Название и автор обязательны.</translation>
+        </message>
+        <message>
+            <source>A text field is too long.</source>
+            <translation>Текстовое поле слишком длинное.</translation>
+        </message>
+        <message>
+            <source>iOS versions look like 18 or 18.4.</source>
+            <translation>Версия iOS указывается так: 18 или 18.4.</translation>
+        </message>
+        <message>
+            <source>Unsupported catalog entry format.</source>
+            <translation>Неподдерживаемый формат записи каталога.</translation>
+        </message>
+        <message>
+            <source>File names use lowercase letters, digits and dashes (2–48 characters).</source>
+            <translation>Имя файла: строчные латинские буквы, цифры и дефисы (2–48 символов).</translation>
+        </message>
+        <message>
+            <source>Up to 8 tags of at most 24 characters.</source>
+            <translation>Не больше 8 тегов, до 24 символов каждый.</translation>
+        </message>
+        <message>
+            <source>The entry has no share code.</source>
+            <translation>В записи нет кода пресета.</translation>
+        </message>
+        <message>
+            <source>The minimum iOS version is above the maximum.</source>
+            <translation>Минимальная версия iOS выше максимальной.</translation>
+        </message>
+        <message>
+            <source>The share code must be the whole value.</source>
+            <translation>Поле code должно содержать только код пресета.</translation>
+        </message>
+        <message>
+            <source>The share code turns on no known tweaks.</source>
+            <translation>Код не включает ни одного известного твика.</translation>
+        </message>
+        <message>
+            <source>The catalog is too large.</source>
+            <translation>Каталог слишком большой.</translation>
+        </message>
+        <message>
+            <source>The catalog needs a newer version of GoldenNugget.</source>
+            <translation>Для каталога нужна более новая версия GoldenNugget.</translation>
+        </message>
+        <message>
+            <source>The catalog could not be read.</source>
+            <translation>Не удалось прочитать каталог.</translation>
+        </message>
+    </context>
+    <context>
+        <name>Nugget</name>
+        <message>
+            <source>Presets made by the community, reviewed by the team</source>
+            <translation>Пресеты от сообщества, проверенные командой</translation>
+        </message>
+        <message>
+            <source>Browse Catalog</source>
+            <translation>Открыть каталог</translation>
+        </message>
+        <message>
+            <source>Submit to Catalog</source>
+            <translation>Отправить в каталог</translation>
+        </message>
+    </context>
 </TS>

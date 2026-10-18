@@ -385,7 +385,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.setStyleSheet(t("global"))
         self._applied_color_mode = self._color_theme.mode
         # Also update the QPalette so native widgets pick up the colors
-        QtWidgets.QApplication.instance().setPalette(self._color_theme.build_palette())
+        self._color_theme.apply_to_app()
         # Re-style the ios_pages stack
         self.ios_pages.setStyleSheet(t("page_bg"))
         if self.theme_manager.current_theme == ThemeManager.CLASSIC:

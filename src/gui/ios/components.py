@@ -147,7 +147,8 @@ class IOSSummaryDialog(QDialog):
     """
     def __init__(self, title: str, lines: list[str], muted: str = "",
                  confirm_text: str = "", extra_button: str = "",
-                 extra_result: int = 2, parent=None, details_callback=None):
+                 extra_result: int = 2, parent=None, details_callback=None,
+                 header_widget=None, acknowledge_text: str = "", preview_callback=None):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.setModal(True)
@@ -168,6 +169,9 @@ class IOSSummaryDialog(QDialog):
         header.addWidget(self._summary_icon)
         header.addWidget(title_lbl, 1)
         layout.addLayout(header)
+        if header_widget is not None:
+            header_widget.setParent(self)
+            layout.addWidget(header_widget)
 
         scroll = QScrollArea(self)
         scroll.setWidgetResizable(True)
@@ -195,12 +199,19 @@ class IOSSummaryDialog(QDialog):
 
         layout.addStretch()
 
-        if details_callback is not None:
-            details_btn = QPushButton(QCoreApplication.translate("ApplyPreview", "View changes"), self)
-            details_btn.setObjectName("cancelBtn")
-            details_btn.setCursor(Qt.PointingHandCursor)
-            details_btn.clicked.connect(lambda: details_callback(self))
-            layout.addWidget(details_btn)
+        secondary = QHBoxLayout()
+        secondary.setSpacing(12)
+        for text, callback in ((QCoreApplication.translate("ApplyPreview", "View changes"), details_callback),
+                               (QCoreApplication.translate("DeviceTwin", "Preview on iPhone"), preview_callback)):
+            if callback is None:
+                continue
+            button = QPushButton(text, self)
+            button.setObjectName("cancelBtn")
+            button.setCursor(Qt.PointingHandCursor)
+            button.clicked.connect(lambda _checked=False, cb=callback: cb(self))
+            secondary.addWidget(button)
+        if secondary.count():
+            layout.addLayout(secondary)
 
         buttons = QHBoxLayout()
         buttons.setSpacing(12)
@@ -222,6 +233,16 @@ class IOSSummaryDialog(QDialog):
         self.confirm_btn.clicked.connect(self.accept)
         self.confirm_btn.setDefault(True)
         buttons.addWidget(self.confirm_btn)
+        # A checkbox the user must tick before confirming (e.g. high risk).
+        self.acknowledge = None
+        if acknowledge_text:
+            from PySide6.QtWidgets import QCheckBox
+            self.acknowledge = QCheckBox(acknowledge_text, self)
+            self.confirm_btn.setEnabled(False)
+            self.confirm_btn.setDefault(False)
+            cancel_btn.setDefault(True)
+            self.acknowledge.toggled.connect(self.confirm_btn.setEnabled)
+            layout.addWidget(self.acknowledge)
         layout.addLayout(buttons)
         for button in self.findChildren(QPushButton):
             button.setMinimumHeight(48)
