@@ -8,7 +8,9 @@ from PySide6.QtWidgets import (
     QComboBox, QSizePolicy, QScrollArea, QProgressBar, QToolButton, QTabWidget
 )
 
-from src.gui.ios.components import IOSCard, IOSPrimaryButton
+from src.gui.widgets import (
+    IOSCard, IOSPrimaryButton,
+)
 from src.gui.theme import t, ColorThemeManager, theme_icon, theme_pixmap
 
 from src.gui.ios.feature_icons import FEATURE_ICONS

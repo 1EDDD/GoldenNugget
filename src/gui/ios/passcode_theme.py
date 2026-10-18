@@ -38,7 +38,7 @@ from pymobiledevice3.exceptions import (
     NotPairedError, PasswordRequiredError, UserDeniedPairingError,
     PairingDialogResponsePendingError, FatalPairingError,
 )
-from src.gui.ios.components import (
+from src.gui.widgets import (
     IOSSectionHeader, IOSCard, IOSPrimaryButton,
 )
 from src.gui.theme import ColorThemeManager

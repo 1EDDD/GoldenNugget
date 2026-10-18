@@ -110,6 +110,9 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.settings = self.translator.settings
         self.ui = Ui_Nugget()
         self.ui.setupUi(self)
+        from src.gui.widgets import NavigationSidebar
+        self.ui.sidebar.hide()
+        self.ui.sidebar = NavigationSidebar(self.ui, self)
         # Designer pins the window to exactly 1000x600 (min == max). Keep that
         # as the minimum, but let the user grow it: at 600px most pages scroll.
         self.setMaximumSize(16777215, 16777215)  # QWIDGETSIZE_MAX
@@ -204,7 +207,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
 
         # Shared reusable header: one instance for every iOS subpage,
         # reconfigured on page change (title / back / right action).
-        from src.gui.ios.components import IOSNavBar
+        from src.gui.widgets import IOSNavBar
         self.ios_nav = IOSNavBar("", on_back=self._go_back)
         self._ios_page_titles = {
             0: "GoldenNugget",
@@ -290,20 +293,6 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.body_row.addWidget(self.content_stack, 1)
         self.shell_layout.addLayout(self.body_row)
         self.setCentralWidget(shell)
-
-        # Presets are a first-class page, separate from Settings.  The
-        # generated Designer UI predates this page, so add its sidebar item
-        # here instead of editing the generated file.
-        self.ui.presetsPageBtn = QtWidgets.QToolButton(self.ui.sidebar)
-        self.ui.presetsPageBtn.setObjectName("presetsPageBtn")
-        self.ui.presetsPageBtn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
-        self.ui.presetsPageBtn.setIcon(QtGui.QIcon(":/icon/folder.svg"))
-        self.ui.presetsPageBtn.setText(QCoreApplication.translate("Nugget", "Presets"))
-        self.ui.presetsPageBtn.setCheckable(True)
-        self.ui.presetsPageBtn.setAutoExclusive(True)
-        self.ui.presetsPageBtn.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
-        self.ui.presetsPageBtn.setProperty("cls", "sidebarBtn")
-        self.ui.verticalLayout.insertWidget(self.ui.verticalLayout.indexOf(self.ui.sidebarDiv2), self.ui.presetsPageBtn)
 
         self.apply_theme(self.theme_manager.current_theme)
 
@@ -413,25 +402,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.ui.phoneVersionLbl.setText(
             f'<a style="text-decoration:none; color:{c.text_secondary}" href="#">Version</a>')
 
-        # Always-visible shell chrome: the sidebar and device bar are shown on
-        # every page/tab, so their text color must be themed explicitly
-        # (otherwise it falls back to whatever the .ui bundled).
-        chrome = f"""
-            QToolButton {{
-                color: {c.text_primary};
-                background: transparent;
-            }}
-            QToolButton:hover {{
-                color: {c.text_primary};
-                background-color: {c.surface_hover};
-            }}
-            QToolButton:checked {{
-                color: {c.text_inverse};
-                background-color: {c.accent};
-            }}
-            QLabel {{ color: {c.text_primary}; }}
-        """
-        self.ui.sidebar.setStyleSheet(chrome)
+        self.ui.sidebar._retheme()
 
         # Credit buttons hardcode #3b3b3b borders in the generated .ui
         bordered_style = themed_stylesheet("classic_bordered_btn")

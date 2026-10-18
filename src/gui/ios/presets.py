@@ -7,7 +7,9 @@ from PySide6.QtWidgets import (
 )
 
 from src.controllers.preset_manager import PresetManager
-from src.gui.ios.components import IOSSectionHeader, IOSCard, IOSSwitch, IOSPrimaryButton
+from src.gui.widgets import (
+    IOSSectionHeader, IOSCard, IOSSwitch, IOSPrimaryButton,
+)
 from src.gui.ios.preset_menu import (
     load_preset_flow, save_preset_flow, delete_preset_flow,
     export_preset_flow, partial_export_preset_flow, import_preset_flow,

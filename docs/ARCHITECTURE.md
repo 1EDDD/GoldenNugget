@@ -600,3 +600,34 @@ Local transfer/inspection modules:
   `tools/test_cache_placement.py` (no device needed); smoke run =
   `QT_QPA_PLATFORM=offscreen python main_app.py --test-mode`. `tools/` also
   holds device operation utilities (backups, syslog capture, sparse inspection).
+
+
+## awesomeUI widget library
+
+Shared widgets now come from the vendored `awesomeui/` package, sourced from
+`~/Projects/awesomeUI/awesomeui`. It contains the theme-aware controls, standalone
+Sidebar and other independent widgets, PhoneFrame, MultiComboBox, and
+ResizableImageLabel. It imports only PySide6 and the standard library.
+`src/gui/widgets.py` binds it to GoldenNugget's existing theme manager, `t()`,
+icon renderer, and lazy visible-widget theme connections. Pages import shared
+controls through this adapter. `src/gui/ios/components.py` retains the
+application's input/summary dialogs and compatibility exports. The phone-frame
+and Designer custom-element modules also retain compatibility imports.
+
+MainWindow replaces the generated sidebar at runtime with awesomeUI Sidebar;
+existing `ui.*PageBtn` references point to its items so feature gating and page
+callbacks use the same controllers. The generated Designer module is unchanged.
+The full-screen iOS layout and persisted theme/accent behavior are preserved.
+Settings → Appearance → Show Sidebar enables navigation alongside the iOS pages
+without switching layouts or leaving the current page. It is off by default,
+applies immediately, and persists as `ui/show_sidebar` in the app settings.
+Application-specific pages, safety dialogs, restore progress and device logic
+remain owned by GoldenNugget; they compose the shared controls.
+
+Update the library with `python3 tools/sync_awesomeui.py` (optional `--source
+/path/to/awesomeUI`), then verify with `--check`. The manifest records working-tree
+SHA-256 hashes as well as the source commit. Runtime and frozen builds use the
+checked-in copy, with no sibling-checkout or pip-install requirement. PyInstaller
+collects the statically imported modules and ships the upstream license. Include
+`awesomeui/controls.py` when running translation extraction; its original
+translation contexts are preserved.

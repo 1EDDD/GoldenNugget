@@ -496,16 +496,29 @@ class SettingsMixin:
             pass  # Silent fail - autosave is best-effort
 
 
+    def sidebar_enabled(self) -> bool:
+        return self.settings.value("ui/show_sidebar", False, type=bool)
+
+    def set_sidebar_enabled(self, enabled: bool):
+        self.settings.setValue("ui/show_sidebar", bool(enabled))
+        self._sync_settings()
+        show_sidebar = self.theme_manager.current_theme == ThemeManager.CLASSIC or bool(enabled)
+        self.ui.sidebar.setVisible(show_sidebar)
+        self.ios_home.cards_grid.setVisible(not show_sidebar)
+        self._sync_sidebar_selection()
+
     def apply_theme(self, theme: int):
         """Apply the UI mode WITHOUT navigating away.
 
         CLASSIC: sidebar + classic home; iOS-style pages open as actions.
-        IOS: full-screen iOS UI with the shared header providing back
-        navigation. Only the chrome changes — the current page stays put.
+        IOS: iOS UI with an optional sidebar and the shared header providing
+        back navigation. Only the chrome changes — the current page stays put.
         """
         self.theme_manager.save_theme(theme)
         is_ios = theme == ThemeManager.IOS
-        self.ui.sidebar.setVisible(not is_ios)
+        show_sidebar = not is_ios or self.sidebar_enabled()
+        self.ui.sidebar.setVisible(show_sidebar)
+        self.ios_home.cards_grid.setVisible(not show_sidebar)
         self.ui.deviceBar.setVisible(not is_ios)
         if is_ios:
             # iOS mode: full-screen, no padding
@@ -599,7 +612,7 @@ class NavigationMixin:
 
 
     def _page_section_targets(self, page):
-        from src.gui.ios.components import IOSCollapsibleSection, IOSSectionHeader
+        from src.gui.widgets import IOSCollapsibleSection, IOSSectionHeader
         scrolls = page.findChildren(QtWidgets.QScrollArea)
         for widget in page.findChildren(QtWidgets.QWidget):
             if not widget.isVisibleTo(page):
@@ -613,7 +626,7 @@ class NavigationMixin:
                 yield widget.property("navigationTitle") or widget.text(), widget
 
     def _jump_to_page_section(self, page, name):
-        from src.gui.ios.components import IOSCollapsibleSection
+        from src.gui.widgets import IOSCollapsibleSection
         for label, target in self._page_section_targets(page):
             if label != name:
                 continue

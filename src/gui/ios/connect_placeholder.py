@@ -1,7 +1,9 @@
 from PySide6.QtCore import Qt, QCoreApplication
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QLabel, QPushButton, QScrollArea, QHBoxLayout
 
-from src.gui.ios.components import IOSPrimaryButton
+from src.gui.widgets import (
+    IOSPrimaryButton,
+)
 from src.gui.theme import t, theme_pixmap, ColorThemeManager
 
 

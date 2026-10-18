@@ -4,11 +4,10 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QScrollArea, QDialog, QLabel, QHBoxLayout, QPushButton
 )
 
-from src.gui.ios.components import (
-    IOSCollapsibleSection, IOSCard, IOSValueRow,
-    IOSSwitch, TextInputDialog, NumberInputDialog, decimals_for_step,
-    IOSSearchField, IOSSearchEmpty, IOSSegmentedFilter,
+from src.gui.widgets import (
+    IOSCollapsibleSection, IOSCard, IOSValueRow, IOSSwitch, IOSSearchField, IOSSearchEmpty, IOSSegmentedFilter,
 )
+from src.gui.ios.components import TextInputDialog, NumberInputDialog, decimals_for_step
 from src.gui.ios.compat import device_family, is_tweak_compatible
 from src.gui.theme import ColorThemeManager, t, theme_icon, theme_pixmap
 from src.tweaks.tweaks import tweaks, TweakID

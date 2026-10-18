@@ -8,8 +8,8 @@ from PySide6.QtWidgets import (
 from pathlib import Path
 
 from src.exceptions.nugget_exception import NuggetException
-from src.gui.ios.components import (
-    IOSCard, IOSSectionHeader, IOSSwitch, IOSSettingsAction, IOSSearchField, IOSSearchEmpty, IOSCollapsibleSection
+from src.gui.widgets import (
+    IOSCard, IOSSectionHeader, IOSSwitch, IOSSettingsAction, IOSSearchField, IOSSearchEmpty, IOSCollapsibleSection,
 )
 from src.gui.pages.main.settings import available_languages
 from src.controllers.video_handler import set_ignore_frame_limit
@@ -70,6 +70,12 @@ class IOSSettingsPage(QWidget):
         self._accent_picker = AccentPicker()
         accent_row.addWidget(self._accent_picker)
         self.content_layout.addWidget(accent_row_card)
+
+        self.sidebar_switch = self._make_switch(
+            QCoreApplication.translate("Nugget", "Show Sidebar"),
+            self.window.settings.value("ui/show_sidebar", False, type=bool),
+            self._on_sidebar_toggled,
+        )
 
         # Choose which widget the home screen shows next to the device picker.
         home_widget_card = IOSCard()
@@ -435,6 +441,9 @@ class IOSSettingsPage(QWidget):
     def _style_label(self, label, key):
         label.setProperty('theme_style_key', key)
         label.setStyleSheet(t(key))
+
+    def _on_sidebar_toggled(self, checked):
+        self.window.set_sidebar_enabled(checked)
 
     def _make_switch(self, title: str, checked: bool, on_toggled) -> IOSSwitch:
         c = self._tm.colors

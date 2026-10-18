@@ -6,10 +6,10 @@ from PySide6.QtWidgets import (
 )
 from packaging.version import Version, InvalidVersion
 
-from src.gui.ios.components import (
+from src.gui.widgets import (
     IOSCard, IOSSectionHeader, IOSSwitch,
-    TextInputDialog, NumberInputDialog
 )
+from src.gui.ios.components import TextInputDialog, NumberInputDialog
 from src.gui.theme import ColorThemeManager, theme_icon, t
 from src.gui.ios.statusbar_preview import StatusBarPreview, preview_state
 from src.tweaks.tweaks import tweaks, TweakID

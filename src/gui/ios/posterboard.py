@@ -9,7 +9,9 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QPixmap, QIcon, QImageReader
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
-from src.gui.ios.components import IOSCard, IOSPrimaryButton, IOSSwitch
+from src.gui.widgets import (
+    IOSCard, IOSPrimaryButton, IOSSwitch,
+)
 from src.gui.theme import ColorThemeManager, t, theme_pixmap
 from src.tweaks.tweaks import tweaks, TweakID
 
