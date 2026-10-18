@@ -1038,7 +1038,8 @@ class ApplyMixin:
                 extra_button=(QCoreApplication.translate("Nugget", "Update Cache")
                               if cache_enabled else ""),
                 parent=self, details_callback=self._show_apply_preview,
-                header_widget=risk_panel, acknowledge_text=acknowledge or "")
+                header_widget=risk_panel, acknowledge_text=acknowledge or "",
+                preview_callback=self.show_device_twin)
             res = dlg.exec()
             if res == self._SUMMARY_UPDATE_CACHE:
                 self._run_cache_update()
@@ -1048,6 +1049,10 @@ class ApplyMixin:
             if res != QtWidgets.QDialog.Accepted:
                 return False
             return self._confirm_tweak_conflicts()
+
+    def show_device_twin(self, parent=None):
+        from src.gui.dialogs.device_twin import show_current_twin
+        show_current_twin(self, parent if isinstance(parent, QtWidgets.QWidget) else self)
 
     def _risk_report(self):
         """Risk verdict for the current selection, or None if it cannot be built."""

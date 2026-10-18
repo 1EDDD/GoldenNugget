@@ -3739,4 +3739,190 @@ Password:</source>
             <translation>Поделиться пресетом</translation>
         </message>
     </context>
+    <context>
+        <name>DeviceTwin</name>
+        <message>
+            <source>Status bar overrides</source>
+            <translation>изменения статус-бара</translation>
+        </message>
+        <message>
+            <source>Dynamic Island turned off</source>
+            <translation>Dynamic Island отключён</translation>
+        </message>
+        <message>
+            <source>Lock Screen footnote</source>
+            <translation>подпись на экране блокировки</translation>
+        </message>
+        <message>
+            <source>Supervision text</source>
+            <translation>текст о контроле устройства</translation>
+        </message>
+        <message>
+            <source>Solid Lock Screen clock</source>
+            <translation>часы без Liquid Glass</translation>
+        </message>
+        <message>
+            <source>Solid Dock</source>
+            <translation>Dock без Liquid Glass</translation>
+        </message>
+        <message>
+            <source>Flat icons</source>
+            <translation>плоские иконки</translation>
+        </message>
+        <message>
+            <source>Search button hidden</source>
+            <translation>кнопка поиска скрыта</translation>
+        </message>
+        <message>
+            <source>Clock icon without seconds hand</source>
+            <translation>иконка «Часы» без секундной стрелки</translation>
+        </message>
+        <message>
+            <source>Build number in the status bar</source>
+            <translation>номер сборки в статус-баре</translation>
+        </message>
+        <message>
+            <source>Right-to-left layout</source>
+            <translation>интерфейс справа налево</translation>
+        </message>
+        <message>
+            <source>Custom icons</source>
+            <translation>свои иконки</translation>
+        </message>
+        <message>
+            <source>Wallpaper</source>
+            <translation>обои</translation>
+        </message>
+        <message>
+            <source>FaceTime</source>
+            <translation>FaceTime</translation>
+        </message>
+        <message>
+            <source>Calendar</source>
+            <translation>Календарь</translation>
+        </message>
+        <message>
+            <source>Photos</source>
+            <translation>Фото</translation>
+        </message>
+        <message>
+            <source>Camera</source>
+            <translation>Камера</translation>
+        </message>
+        <message>
+            <source>Mail</source>
+            <translation>Почта</translation>
+        </message>
+        <message>
+            <source>Notes</source>
+            <translation>Заметки</translation>
+        </message>
+        <message>
+            <source>Reminders</source>
+            <translation>Напоминания</translation>
+        </message>
+        <message>
+            <source>Clock</source>
+            <translation>Часы</translation>
+        </message>
+        <message>
+            <source>Weather</source>
+            <translation>Погода</translation>
+        </message>
+        <message>
+            <source>Maps</source>
+            <translation>Карты</translation>
+        </message>
+        <message>
+            <source>Music</source>
+            <translation>Музыка</translation>
+        </message>
+        <message>
+            <source>Settings</source>
+            <translation>Настройки</translation>
+        </message>
+        <message>
+            <source>App Store</source>
+            <translation>App Store</translation>
+        </message>
+        <message>
+            <source>Wallet</source>
+            <translation>Wallet</translation>
+        </message>
+        <message>
+            <source>Health</source>
+            <translation>Здоровье</translation>
+        </message>
+        <message>
+            <source>Files</source>
+            <translation>Файлы</translation>
+        </message>
+        <message>
+            <source>Phone</source>
+            <translation>Телефон</translation>
+        </message>
+        <message>
+            <source>Safari</source>
+            <translation>Safari</translation>
+        </message>
+        <message>
+            <source>Messages</source>
+            <translation>Сообщения</translation>
+        </message>
+        <message>
+            <source>Build</source>
+            <translation>Сборка</translation>
+        </message>
+        <message>
+            <source>This iPhone is supervised and managed.</source>
+            <translation>Этот iPhone находится под контролем и управлением.</translation>
+        </message>
+        <message>
+            <source>iPhone preview</source>
+            <translation>Предпросмотр на iPhone</translation>
+        </message>
+        <message>
+            <source>Search</source>
+            <translation>Поиск</translation>
+        </message>
+        <message>
+            <source>This is a drawing to compare looks, not a screenshot of your iPhone.</source>
+            <translation>Это рисунок для сравнения внешнего вида, а не снимок экрана вашего iPhone.</translation>
+        </message>
+        <message>
+            <source>None of the selected tweaks change how the screens look.</source>
+            <translation>Ни один из выбранных твиков не меняет внешний вид экранов.</translation>
+        </message>
+        <message>
+            <source>Close</source>
+            <translation>Закрыть</translation>
+        </message>
+        <message>
+            <source>iPhone Preview</source>
+            <translation>Предпросмотр на iPhone</translation>
+        </message>
+        <message>
+            <source>On the preview: {0}.</source>
+            <translation>На предпросмотре: {0}.</translation>
+        </message>
+        <message>
+            <source>{0} more tweak(s) change behaviour, not looks, so they are not drawn.</source>
+            <translation>Ещё твиков: {0}. Они меняют поведение, а не внешний вид, поэтому не показаны.</translation>
+        </message>
+        <message>
+            <source>Preview on iPhone</source>
+            <translation>Предпросмотр на iPhone</translation>
+        </message>
+        <message>
+            <source>See the Lock Screen and Home Screen with the selected tweaks before applying.</source>
+            <translation>Посмотреть экран блокировки и домашний экран с выбранными твиками до применения.</translation>
+        </message>
+    </context>
+    <context>
+        <name>Nugget</name>
+        <message>
+            <source>Preview</source>
+            <translation>Предпросмотр</translation>
+        </message>
+    </context>
 </TS>

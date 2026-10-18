@@ -148,7 +148,7 @@ class IOSSummaryDialog(QDialog):
     def __init__(self, title: str, lines: list[str], muted: str = "",
                  confirm_text: str = "", extra_button: str = "",
                  extra_result: int = 2, parent=None, details_callback=None,
-                 header_widget=None, acknowledge_text: str = ""):
+                 header_widget=None, acknowledge_text: str = "", preview_callback=None):
         super().__init__(parent)
         self.setWindowTitle(title)
         self.setModal(True)
@@ -199,12 +199,19 @@ class IOSSummaryDialog(QDialog):
 
         layout.addStretch()
 
-        if details_callback is not None:
-            details_btn = QPushButton(QCoreApplication.translate("ApplyPreview", "View changes"), self)
-            details_btn.setObjectName("cancelBtn")
-            details_btn.setCursor(Qt.PointingHandCursor)
-            details_btn.clicked.connect(lambda: details_callback(self))
-            layout.addWidget(details_btn)
+        secondary = QHBoxLayout()
+        secondary.setSpacing(12)
+        for text, callback in ((QCoreApplication.translate("ApplyPreview", "View changes"), details_callback),
+                               (QCoreApplication.translate("DeviceTwin", "Preview on iPhone"), preview_callback)):
+            if callback is None:
+                continue
+            button = QPushButton(text, self)
+            button.setObjectName("cancelBtn")
+            button.setCursor(Qt.PointingHandCursor)
+            button.clicked.connect(lambda _checked=False, cb=callback: cb(self))
+            secondary.addWidget(button)
+        if secondary.count():
+            layout.addLayout(secondary)
 
         buttons = QHBoxLayout()
         buttons.setSpacing(12)

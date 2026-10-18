@@ -137,6 +137,7 @@ Need support? Join our [Discord Server][server].
 - Presets: save, switch, export and import whole tweak setups (`.gnpreset`); see [Portable presets](docs/PORTABLE_AND_DIAGNOSTICS.md)
 - Share a preset as a QR code or a one-line code, and import someone else's setup from a screenshot or pasted text
 - Risk check before every apply: a Low / Medium / High verdict with reasons, and an explicit confirmation for high-risk setups
+- Preview on iPhone: see the Lock Screen and Home Screen with your tweaks, drawn for your model, before applying (also for presets and shared codes)
 - Command line: everything above is scriptable through `python nugget_cli.py --help`, with `--json` output and `--dry-run` applies
 </details>
 

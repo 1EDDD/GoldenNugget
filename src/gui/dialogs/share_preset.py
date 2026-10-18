@@ -157,6 +157,9 @@ class ImportCodeDialog(_ThemedDialog):
         buttons = QHBoxLayout()
         buttons.setSpacing(12)
         buttons.addWidget(self._button(_tr("Cancel"), self.reject))
+        self.preview_button = self._button(
+            QCoreApplication.translate("DeviceTwin", "Preview on iPhone"), self._preview)
+        buttons.addWidget(self.preview_button)
         self.import_button = self._button(_tr("Import"), self._import, secondary=False)
         buttons.addWidget(self.import_button)
         self._layout.addLayout(buttons)
@@ -227,6 +230,14 @@ class ImportCodeDialog(_ThemedDialog):
             self._risk_holder.addWidget(self.risk_panel)
         self.name_edit.setVisible(data is not None)
         self.import_button.setEnabled(data is not None)
+        self.preview_button.setEnabled(data is not None)
+
+    def _preview(self):
+        if self.data is None:
+            return
+        from src.gui.dialogs.device_twin import show_twin
+        show_twin(self, self.data["tweaks"], self.device_version, self.device_model,
+                  title=self.name_edit.text().strip())
 
     def _import(self):
         if self.data is None:

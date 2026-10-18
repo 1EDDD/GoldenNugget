@@ -83,7 +83,7 @@ class IOSPresetsPage(QWidget):
         actions = QHBoxLayout()
         actions.setSpacing(6)
         for title, handler in [
-            ("Load", self._load), ("Delete", self._delete),
+            ("Load", self._load), ("Preview", self._preview), ("Delete", self._delete),
             ("Refresh", self.refresh), ("Rollback Last Apply", self._rollback),
         ]:
             actions.addWidget(self._mini_button(title, handler, danger=title == "Delete"))
@@ -235,3 +235,13 @@ class IOSPresetsPage(QWidget):
         from src.gui.dialogs.share_preset import import_code_flow
         if import_code_flow(self, self.preset_manager, self.window):
             self.refresh()
+
+    def _preview(self):
+        name = self._require_selection("Preview")
+        data = self.preset_manager.read_preset(name) if name else None
+        if data is None:
+            return
+        from src.gui.dialogs.device_twin import show_twin
+        manager = self.window.device_manager
+        show_twin(self, data["tweaks"], manager.get_current_device_version() or "",
+                  manager.get_current_device_model() or "", title=name)

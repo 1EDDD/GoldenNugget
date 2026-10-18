@@ -463,6 +463,19 @@ verdict is shown for an imported share code. A High verdict disables Apply until
 the user ticks "I understand the risks". The verdict is advice: an unlisted
 tweak is Low only because nothing is known against it.
 
+**Preview on iPhone** (`gui/ios/device_twin.py`, `gui/dialogs/device_twin.py`)
+draws the selection on a full Lock Screen and Home Screen in a frame that
+matches the device: Dynamic Island, notch or Home button (unknown devices use
+the island shape). `build_state()` works on preset-shaped data, so the Apply
+page, the pre-apply summary, a saved preset and an Import Code result all use
+the same picture. It draws the status bar overrides (via `statusbar_preview`),
+Dynamic Island off, the Lock Screen footnote and supervision text, Liquid Glass
+on/off for the clock, Dock and icons, the search button, the Clock icon seconds
+hand, the build number, RTL order, icon themes and the first PosterBoard
+wallpaper's preview. Tweaks that are incompatible with the device are not drawn;
+tweaks without a visible result are counted in the legend instead. It is a
+stylised drawing, not a device screenshot.
+
 Apply and reset workers append a bounded local operation history through
 `controllers/apply_history.py`. Settings shows the ten newest entries with
 timestamp, operation, device, iOS version and result; it can clear the history
