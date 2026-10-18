@@ -366,6 +366,32 @@ class Dialogs(unittest.TestCase):
             panel._import()
         self.assertEqual(changes, [1])
 
+    def test_updates_are_marked_and_replace_the_import(self):
+        from src.gui.dialogs.preset_catalog import CatalogDialog
+        store = Path(self.tmp.name) / 'store'
+        store.mkdir()
+        patcher = mock.patch.object(preset_catalog, 'templates_dir', return_value=str(store))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        with mock.patch.object(preset_catalog, 'read_cache', return_value=(None, 0)):
+            dialog = CatalogDialog(self.pm, '26.1', 'iPhone15,3', None, fetch=False)
+        self.addCleanup(dialog.deleteLater)
+        dialog.load_data(self.index)
+        with mock.patch('src.gui.dialogs.preset_catalog.QMessageBox.information'):
+            dialog._import()
+        self.assertEqual(dialog.status_of(dialog.selected_entry())[0], preset_catalog.INSTALLED)
+        self.assertEqual(dialog.import_button.text(), 'Import Again')
+        newer = dict(raw(tags=['glass'], code=code(NoLiquidDock=ON, NoLiquidClock=ON)), id='solid-glass')
+        dialog.load_data(json.dumps({'format': 1, 'presets': [newer]}).encode())
+        self.assertEqual(dialog.update_count(), 1)
+        self.assertIn('Update available', dialog.list.currentItem().text())
+        self.assertEqual(dialog.import_button.text(), 'Update')
+        with mock.patch('src.gui.dialogs.preset_catalog.QMessageBox.information'):
+            dialog._import()
+        self.assertEqual(self.pm.list_presets(), ['Solid Glass'], 'an update replaces, never copies')
+        self.assertTrue(self.pm.read_preset('Solid Glass')['tweaks']['NoLiquidClock']['enabled'])
+        self.assertEqual(dialog.update_count(), 0)
+
     def test_add_template_replaces_an_older_copy(self):
         from src.gui.dialogs.preset_catalog import add_template
         from src.tweaks.tweaks import TweakID, tweaks

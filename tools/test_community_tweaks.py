@@ -205,5 +205,96 @@ class Restore(unittest.TestCase):
             self.manager()._add_community_files({}, {'/var/db/x.plist': (b'1', 0)}, files, False)
 
 
+class Safety(unittest.TestCase):
+    def test_empty_plist_is_a_valid_plist(self):
+        [item] = parse_tweaks([tweak(writes=[{'type': 'empty', 'path': SPRINGBOARD},
+                                             {'type': 'empty', 'path': '/var/mobile/Library/x.db'}])], no_sources)
+        self.assertEqual(plistlib.loads(item.writes[0].data), {})
+        self.assertEqual(item.writes[1].data, b'')
+
+    def test_risk_levels(self):
+        from src.controllers.risk_assessment import RiskLevel, community_factors
+        from src.tweaks.posterboard.community_tweaks import active
+        tweaks_ = parse_tweaks([
+            tweak(id='keys', default=True),
+            tweak(id='home', default=True, writes=[{'type': 'plist', 'path': '/var/mobile/Library/Preferences/a.plist',
+                                                     'values': {'A': 1}}]),
+            tweak(id='sys', default=True, writes=[{'type': 'plist', 'path': '/var/db/x.plist', 'values': {'A': 1}}]),
+            tweak(id='off')], no_sources)
+        found = active([('Pack', tweaks_)], '26.2')
+        self.assertEqual([item.id for _, item, _ in found], ['keys', 'home', 'sys'])
+        levels = sorted(factor.level for factor in community_factors(found))
+        self.assertEqual(levels, [RiskLevel.LOW, RiskLevel.MEDIUM, RiskLevel.HIGH])
+
+    def test_preview_lists_each_tweak(self):
+        from src.controllers.apply_preview import capture_preview, preview_lines
+        from src.tweaks.tweaks import tweaks, TweakID
+        folder = tempfile.TemporaryDirectory()
+        self.addCleanup(folder.cleanup)
+        holder = tweaks[TweakID.Templates]
+        before = list(holder.templates)
+        self.addCleanup(setattr, holder, 'templates', before)
+        holder.templates = [TemplateFile(make_batter(folder.name, CONFIG, {'files/blob.bin': b'x'}))]
+        manager = SimpleNamespace(get_current_device_version=lambda: '26.2',
+                                  get_current_device_model=lambda: 'iPhone16,2',
+                                  pref_manager=SimpleNamespace(settings=None))
+        preview = capture_preview(manager)
+        keys = [key for key in preview['entries'] if key.startswith('Community/')]
+        self.assertEqual(keys, ['Community/tweaks.batter/dock', 'Community/tweaks.batter/blob'])
+        self.assertTrue(any('Pack — Hide Dock' in line for line in preview_lines(preview, None)))
+
+
+class ResetRecord(unittest.TestCase):
+    def setUp(self):
+        self.folder = tempfile.TemporaryDirectory()
+        self.addCleanup(self.folder.cleanup)
+        from unittest import mock
+        patcher = mock.patch('src.restore.lastapply.lastapply_path',
+                             side_effect=lambda udid: os.path.join(self.folder.name, udid + '.json'))
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def test_record_merges_and_plans_reset(self):
+        from src.tweaks.posterboard.community_tweaks import clear_record, load_record, reset_plan, write_record
+        write_record('U', {SPRINGBOARD: ({'A': 1}, 501)}, {})
+        write_record('U', {SPRINGBOARD: ({'B': 1}, 501), '/var/mobile/Library/Preferences/a.plist': ({'C': 1}, 501)},
+                     {'/var/mobile/x.bin': (b'', 501)})
+        record = load_record('U')
+        self.assertEqual(record['plists'][SPRINGBOARD], ['A', 'B'])
+        self.assertEqual(reset_plan(record), ([SPRINGBOARD], ['/var/mobile/Library/Preferences/a.plist',
+                                                              '/var/mobile/x.bin']))
+        clear_record('U')
+        self.assertEqual(load_record('U'), {})
+
+    def test_reset_page_appears_and_empties_managed_files(self):
+        import asyncio
+        from src.tweaks.posterboard.community_tweaks import load_record, write_record
+        from src.utils.pages import Page, get_resettable_pages
+        dm = DeviceManager.__new__(DeviceManager)
+        dm.get_current_device_udid = lambda: 'U'
+        self.assertNotIn(Page.Templates, get_resettable_pages(dm))
+        write_record('U', {SPRINGBOARD: ({'A': 1}, 501)}, {'/var/mobile/x.bin': (b'', 501)})
+        self.assertIn(Page.Templates, get_resettable_pages(dm))
+        written, labels = [], []
+        dm._raise_if_unsupported = lambda: None
+        dm.get_current_device_version = lambda: '27.0'
+
+        async def skip(files, uses):
+            return None
+
+        async def restore(files, update_label, **kwargs):
+            written.extend((item.domain, item.restore_path, item.contents) for item in files)
+        dm.add_skip_setup = skip
+        dm.start_restore = restore
+        from unittest import mock
+        with mock.patch('src.restore.lastapply.clear_lastapply'), \
+                mock.patch('src.controllers.apply_preview.clear_preview'):
+            ok = asyncio.run(dm._reset_tweaks([Page.Templates], None, labels.append))
+        self.assertTrue(ok)
+        self.assertIn(('ManagedPreferencesDomain', 'mobile/com.apple.springboard.plist', plistlib.dumps({})), written)
+        self.assertTrue(any('/var/mobile/x.bin' in text for text in labels))
+        self.assertEqual(load_record('U'), {})
+
+
 if __name__ == '__main__':
     unittest.main()

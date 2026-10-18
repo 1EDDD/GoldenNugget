@@ -1086,6 +1086,12 @@ class ApplyMixin:
                 storage_low=bool(self._storage_warning_line()),
                 first_apply=load_preview(manager.get_current_device_udid(), version) is None,
                 wallpapers=len(board.tendies) if board is not None else 0)
+            templates = tweaks.get(TweakID.Templates)
+            if templates is not None and "Templates" in data:
+                from src.controllers.risk_assessment import community_factors
+                from src.tweaks.posterboard.community_tweaks import active
+                extra += community_factors(active(
+                    [(item.name, getattr(item, "tweaks", [])) for item in templates.templates], version))
             return assess(data, version, model, hotload=hotload, extra=extra)
         except Exception:
             import logging

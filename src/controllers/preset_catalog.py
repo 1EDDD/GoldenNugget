@@ -318,6 +318,58 @@ def template_entry(path, entry_id: str, data: bytes = None) -> TemplateEntry:
         template.clean_files()
 
 
+# --- what is already installed ------------------------------------------
+
+INSTALLED, UPDATE = "installed", "update"
+
+
+def code_digest(code: str) -> str:
+    return hashlib.sha256(code.encode("utf-8")).hexdigest()
+
+
+def catalog_mark(entry: CatalogEntry) -> dict:
+    """Preset metadata linking an imported preset to its catalog entry."""
+    return {"id": entry.id, "sha256": code_digest(entry.code)}
+
+
+def installed_items(pm, folder=None) -> dict:
+    """{("preset" | "template", id): (sha256, preset name or file path)}."""
+    result = {}
+    for name in pm.list_presets():
+        meta = pm.get_preset_metadata(name) or {}
+        mark = meta.get("catalog")
+        if isinstance(mark, dict) and isinstance(mark.get("id"), str) and isinstance(mark.get("sha256"), str):
+            result[("preset", mark["id"])] = (mark["sha256"], name)
+    try:
+        folder = folder or templates_dir()
+        for file in os.listdir(folder):
+            if file.endswith(".batter") and ID_PATTERN.match(file[:-len(".batter")]):
+                path = os.path.join(folder, file)
+                with open(path, "rb") as stream:
+                    digest = hashlib.sha256(stream.read(MAX_TEMPLATE_BYTES + 1)).hexdigest()
+                result[("template", file[:-len(".batter")])] = (digest, path)
+    except OSError:
+        pass
+    return result
+
+
+def entry_status(entry, installed: dict):
+    """(INSTALLED | UPDATE | None, preset name or path) for a catalog entry."""
+    if isinstance(entry, TemplateEntry):
+        known = installed.get(("template", entry.id))
+        digest = entry.sha256
+    else:
+        known = installed.get(("preset", entry.id))
+        digest = code_digest(entry.code)
+    if known is None:
+        return None, None
+    return (INSTALLED if known[0] == digest else UPDATE), known[1]
+
+
+def count_updates(entries, installed: dict) -> int:
+    return sum(entry_status(entry, installed)[0] == UPDATE for entry in entries)
+
+
 # --- downloaded templates -------------------------------------------------
 
 def templates_dir() -> str:

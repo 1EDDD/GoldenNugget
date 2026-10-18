@@ -694,6 +694,10 @@ class DeviceManager:
             udid = self.get_current_device_udid()
             if udid:
                 write_lastapply(udid, sparse_signature(files_to_restore))
+                from src.tweaks.posterboard.community_tweaks import write_record
+                community = getattr(self, "_last_community_writes", None)
+                if isinstance(community, tuple) and len(community) == 2:
+                    write_record(udid, *community)
             write_preview(preview_udid, preview_version, preview)
             self._last_operation_preview = preview
             if preview is not None:
@@ -1148,6 +1152,8 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     self.get_current_device_version())
                 if community_plists or community_files:
                     uses_domains = True
+            # kept for the reset record; the merge below pops from community_plists
+            self._last_community_writes = (dict(community_plists), dict(community_files))
 
             if hotload_skipped:
                 names = sorted(t.name if hasattr(t, "name") else str(t) for t in hotload_skipped)
@@ -1327,6 +1333,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             # to already holds the tweaked values, so restoring a captured
             # "original" re-wrote the very tweaks the user asked to remove.
             files_to_null: list[str] = []
+            community_leftover: list[str] = []
             uses_domains = False
 
             # plain if-chains, not match: the page set is a long, stable list
@@ -1384,6 +1391,11 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                         owner=0, group=0
                     )
                     uses_domains = True
+                elif page == Page.Templates:
+                    ## COMMUNITY TWEAKS FROM TEMPLATES
+                    from src.tweaks.posterboard.community_tweaks import load_record, reset_plan
+                    to_empty, community_leftover = reset_plan(load_record(udid))
+                    files_to_null.extend(path for path in to_empty if path not in files_to_null)
                 elif page == Page.InternalOptions:
                     ## INTERNAL OPTIONS
                     files_to_null.append(FileLocation.globalPreferences.value)
@@ -1448,6 +1460,13 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                 # A partial reset cannot be reconstructed from selection history.
                 from src.controllers.apply_preview import clear_preview
                 clear_preview(udid)
+                if Page.Templates in reset_pages:
+                    from src.tweaks.posterboard.community_tweaks import clear_record
+                    clear_record(udid)
+            if community_leftover:
+                update_label(QCoreApplication.tr(
+                    "Not reset, because GoldenNugget has no copy of what was there before: {0}").format(
+                        ", ".join(community_leftover)))
             update_label(QCoreApplication.tr("Success!"))
             return True
         except Exception as e:

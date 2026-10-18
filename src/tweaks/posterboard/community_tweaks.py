@@ -22,13 +22,17 @@ device paths, the same places GoldenNugget's own tweaks write to:
 Write types: ``plist`` merges ``values`` into the plist at ``path`` together
 with GoldenNugget's own keys for that file (built-in tweaks win a clash),
 ``file`` writes ``source`` (a file in the archive, relative to config.json)
-and ``empty`` writes an empty file. A string value of exactly ``"$value"`` is
+and ``empty`` writes an empty file (an empty plist for ``.plist`` paths: a
+zero-byte plist can send iOS 26.2+ into a boot loop). A string value of exactly ``"$value"`` is
 replaced with the control's value. ``writes_off`` is applied while the switch
 is off, so a tweak can put a key back.
 
 Paths must map to a backup domain the restore pipeline knows
 (src/restore/path_mapping.py); nothing else can be written.
 """
+import json
+import os
+import plistlib
 import posixpath
 import re
 from dataclasses import dataclass, field
@@ -46,6 +50,10 @@ ID_PATTERN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,63}$")
 VALUE_TOKEN = "$value"
 WRITE_TYPES = ("plist", "file", "empty")
 CONTROL_TYPES = ("slider", "text", "choice")
+
+MANAGED_PREFIX = "/var/Managed Preferences/"
+SYSTEM_PREFIXES = ("/var/db/", "/var/root/", "/var/preferences/", "/var/MobileDevice/", "/var/containers/")
+RISK_LOW, RISK_MEDIUM, RISK_HIGH = 1, 2, 3
 
 # Files GoldenNugget itself must own, or that would break pairing or setup.
 BLOCKED_PREFIXES = (
@@ -261,6 +269,8 @@ def parse_write(raw, read_source) -> Write:
             _fail(QT_TRANSLATE_NOOP("CommunityTweaks", "A plist write needs a values object."))
         _check_plist_value(values)
         write.values = values
+    elif write.type == "empty" and write.path.endswith(".plist"):
+        write.data = plistlib.dumps({})
     elif write.type == "file":
         source = raw.get("source")
         if not isinstance(source, str) or not source or posixpath.normpath(source) != source \
@@ -323,7 +333,7 @@ def collect(tweak_lists, version=None) -> tuple:
                     plists.setdefault(write.path, {}).update(write.values)
                     owners[write.path] = write.owner
                 else:
-                    data = write.data if write.type == "file" else b""
+                    data = write.data
                     if write.path in plists or (write.path in files and files[write.path][0] != data):
                         _conflict(write.path, origins[write.path], name)
                     files[write.path] = (data, write.owner)
@@ -335,3 +345,95 @@ def _conflict(path, first, second):
     raise CommunityTweakError(QCoreApplication.translate(
         "CommunityTweaks", "{0} and {1} both replace {2}.").format(first, second, path))
 
+
+
+def active(tweak_lists, version=None) -> list:
+    """[(template name, tweak, writes)] for every tweak that writes something
+    on this apply: switched on, or switched off with ``writes_off``."""
+    result = []
+    for name, tweak_list in tweak_lists:
+        for tweak in tweak_list:
+            if tweak.supports(version):
+                writes = tweak.active_writes()
+                if writes:
+                    result.append((name, tweak, writes))
+    return result
+
+
+def write_risk(write) -> int:
+    """How much a single write can hurt.
+
+    Managed Preferences are an overlay GoldenNugget rewrites on every apply,
+    so keys there are the same kind of change as a built-in tweak. Anywhere
+    else the whole file is replaced, losing whatever the iPhone kept in it,
+    and the system folders hold files iOS needs to boot and pair."""
+    if write.path.startswith(SYSTEM_PREFIXES):
+        return RISK_HIGH
+    if write.type != "plist" or not write.path.startswith(MANAGED_PREFIX):
+        return RISK_MEDIUM
+    return RISK_LOW
+
+
+# --- what the last apply wrote, for reset --------------------------------
+
+def _record_path(udid) -> str:
+    from src.restore.lastapply import lastapply_path
+    return lastapply_path(udid) + ".community"
+
+
+def write_record(udid, plists: dict, files: dict):
+    """Remember the paths (and plist keys) community tweaks just wrote."""
+    if not udid:
+        return
+    record = {"schema": 1, "plists": {path: sorted(values) for path, (values, _owner) in plists.items()},
+              "files": sorted(files)}
+    try:
+        old = load_record(udid)
+        for path, keys in old.get("plists", {}).items():
+            record["plists"][path] = sorted(set(record["plists"].get(path, [])) | set(keys))
+        record["files"] = sorted(set(record["files"]) | set(old.get("files", [])))
+        if not record["plists"] and not record["files"]:
+            return
+        path = _record_path(udid)
+        with open(path + ".part", "w", encoding="utf-8") as stream:
+            json.dump(record, stream, ensure_ascii=False)
+        os.replace(path + ".part", path)
+    except (OSError, ValueError, TypeError):
+        pass
+
+
+def load_record(udid) -> dict:
+    if not udid:
+        return {}
+    try:
+        with open(_record_path(udid), encoding="utf-8") as stream:
+            record = json.load(stream)
+    except (OSError, ValueError):
+        return {}
+    if not isinstance(record, dict) or record.get("schema") != 1 \
+            or not isinstance(record.get("plists"), dict) or not isinstance(record.get("files"), list):
+        return {}
+    plists = {path: keys for path, keys in record["plists"].items()
+              if isinstance(path, str) and isinstance(keys, list)}
+    files = [path for path in record["files"] if isinstance(path, str)]
+    return {"plists": plists, "files": files}
+
+
+def clear_record(udid):
+    try:
+        os.unlink(_record_path(udid))
+    except OSError:
+        pass
+
+
+def reset_plan(record: dict) -> tuple:
+    """(paths to empty, paths that cannot be reset) for a stored record.
+
+    Managed Preferences files are emptied, as the built-in resets do. Any
+    other file was replaced whole, and GoldenNugget kept no copy of what was
+    there before, so it is only reported."""
+    to_empty, leftover = [], []
+    for path in sorted(record.get("plists", {})):
+        (to_empty if path.startswith(MANAGED_PREFIX) else leftover).append(path)
+    leftover += [path for path in record.get("files", []) if path not in leftover]
+    return to_empty, sorted(leftover)
