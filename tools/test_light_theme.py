@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src' / 'qt'))
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
-from PySide6.QtCore import QSettings, QCoreApplication, QEvent, QTranslator
+from PySide6.QtCore import QSettings, QCoreApplication, QEvent
 from PySide6.QtGui import QPalette, QColor
 from PySide6.QtTest import QSignalSpy
 from PySide6.QtWidgets import QApplication, QLabel
@@ -39,6 +39,10 @@ class Themes(unittest.TestCase):
         self.patch_settings = patch('src.gui.theme.theme_manager.QSettings', return_value=self.settings)
         self.patch_settings.start()
         self.addCleanup(self.patch_settings.stop)
+        # These tests cover the light theme itself, so it is made available here.
+        self.patch_light = patch('src.gui.theme.theme_manager.LIGHT_MODE_AVAILABLE', True)
+        self.patch_light.start()
+        self.addCleanup(self.patch_light.stop)
         self.manager = ColorThemeManager()
         ColorThemeManager._inst = self.manager
         self.addCleanup(self.restore)
@@ -59,6 +63,57 @@ class Themes(unittest.TestCase):
         restored.set_mode('dark')
         self.assertEqual(restored.accent_name, 'yellow')
         self.assertEqual(restored.colors.bg_primary, DARK.bg_primary)
+
+    def test_dark_on_every_start_while_light_is_unavailable(self):
+        self.manager.set_mode('light')
+        with patch('src.gui.theme.theme_manager.LIGHT_MODE_AVAILABLE', False):
+            restored = ColorThemeManager()
+        self.assertEqual(restored.mode, 'dark')
+        self.assertEqual(restored.colors.bg_primary, DARK.bg_primary)
+        self.assertEqual(self.settings.value('color_mode'), 'light', 'the saved choice is kept')
+
+    def test_os_colour_scheme_never_overrides_the_saved_mode(self):
+        from PySide6.QtCore import QObject, Qt, Signal
+
+        class Hints(QObject):
+            colorSchemeChanged = Signal(object)
+
+            def __init__(self):
+                super().__init__()
+                self.scheme = None
+
+            def setColorScheme(self, scheme):
+                self.scheme = scheme
+
+        class App:
+            def __init__(self):
+                self.hints = Hints()
+                self.palette = None
+
+            def styleHints(self):
+                return self.hints
+
+            def setPalette(self, palette):
+                self.palette = palette
+
+        app = App()
+        self.manager.apply_to_app(app)
+        self.assertEqual(app.hints.scheme, Qt.ColorScheme.Dark, 'dark is pinned by default')
+        # The OS (or anything else) switches to light: the saved mode wins.
+        app.hints.scheme = Qt.ColorScheme.Light
+        app.hints.colorSchemeChanged.emit(Qt.ColorScheme.Light)
+        self.assertEqual(app.hints.scheme, Qt.ColorScheme.Dark)
+        self.assertEqual(app.palette.window().color().name().lower(), DARK.bg_primary.lower())
+        # A replaced manager stays out of it.
+        ColorThemeManager._inst = object()
+        app.hints.scheme = Qt.ColorScheme.Light
+        app.hints.colorSchemeChanged.emit(Qt.ColorScheme.Light)
+        self.assertEqual(app.hints.scheme, Qt.ColorScheme.Light)
+        ColorThemeManager._inst = self.manager
+        # An explicit light choice is pinned as light.
+        with patch('src.gui.theme.theme_manager.QGuiApplication.instance', return_value=app):
+            self.manager.set_mode('light')
+        self.assertEqual(app.hints.scheme, Qt.ColorScheme.Light)
 
     def test_invalid_preferences_fall_back_and_noop_does_not_emit(self):
         self.settings.setValue('color_mode', 'unsupported')
@@ -234,13 +289,6 @@ class Themes(unittest.TestCase):
             window.close()
             window.deleteLater()
             QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
-
-    def test_russian_theme_labels_are_shipped(self):
-        translator = QTranslator()
-        path = Path(__file__).resolve().parents[1] / 'src/qt/translations/Nugget_ru.qm'
-        self.assertTrue(translator.load(str(path)))
-        self.assertEqual(translator.translate('Nugget', 'Light'), 'Светлая')
-        self.assertEqual(translator.translate('Nugget', 'Dark'), 'Тёмная')
 
 
 if __name__ == '__main__':

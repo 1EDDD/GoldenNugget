@@ -186,15 +186,25 @@ def _paint_battery(p: QPainter, x: float, mid: float, s: float, level: int) -> f
     return w + 2.5 * s
 
 
-def paint_status_bar(p: QPainter, screen: QRectF, state: StatusBarPreviewState, lock_screen: bool):
-    """Draw the status bar along the top of ``screen`` (a full-width device screen)."""
+def paint_status_bar(p: QPainter, screen: QRectF, state: StatusBarPreviewState, lock_screen: bool,
+                     cutout: str = "island"):
+    """Draw the status bar along the top of ``screen`` (a full-width device screen).
+
+    ``cutout`` is the hardware at the top centre: ``"island"`` (Dynamic
+    Island), ``"notch"`` or ``"none"`` (island turned off, or no cutout). The
+    side zones keep the island's geometry in every case.
+    """
     s = screen.width() / DEVICE_PT_W
     island = QRectF(screen.left() + ISLAND.left() * s, screen.top() + ISLAND.top() * s,
                     ISLAND.width() * s, ISLAND.height() * s)
     p.save()
     p.setPen(Qt.PenStyle.NoPen)
     p.setBrush(QColor(0, 0, 0))
-    p.drawRoundedRect(island, island.height() / 2, island.height() / 2)
+    if cutout == "island":
+        p.drawRoundedRect(island, island.height() / 2, island.height() / 2)
+    elif cutout == "notch":
+        notch = QRectF(screen.center().x() - 81 * s, screen.top() - 8 * s, 162 * s, 40 * s)
+        p.drawRoundedRect(notch, 20 * s, 20 * s)
 
     mid = island.center().y()
     # Left side: carrier on the Lock Screen, time on the Home Screen.

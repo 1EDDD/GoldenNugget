@@ -1,0 +1,244 @@
+"""Offline preset catalog regressions: validation, index, submitting and the CI tool."""
+import json
+import os
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+import unittest
+from unittest import mock
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src' / 'qt'))
+os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
+
+from PySide6.QtWidgets import QApplication
+
+APP = QApplication.instance() or QApplication([])
+import resources_rc  # noqa: F401
+
+from src.controllers import preset_catalog, share_code
+from src.controllers.preset_catalog import CatalogEntry, CatalogError
+from src.controllers.preset_manager import PresetManager
+
+ON = {'enabled': True, 'value': True}
+VALID = PresetManager._valid_import_structure
+TOOL = Path(__file__).resolve().parent / 'preset_catalog.py'
+
+
+def code(**tweaks):
+    return share_code.encode(tweaks or {'NoLiquidDock': ON})
+
+
+def raw(**fields):
+    data = {'format': 1, 'name': 'Solid Glass', 'author': 'Team', 'code': code()}
+    data.update(fields)
+    return data
+
+
+class Validation(unittest.TestCase):
+    def test_valid_entry(self):
+        entry = preset_catalog.validate_entry(
+            raw(tags=[' Minimal '], ios_min='26.0', description=' Solid dock. '), 'solid-glass', VALID)
+        self.assertEqual((entry.id, entry.tags, entry.tweak_count), ('solid-glass', ['minimal'], 1))
+        self.assertEqual(entry.description, 'Solid dock.')
+        self.assertEqual(entry.ios_range(), '26.0+')
+
+    def test_rejections(self):
+        cases = [
+            (raw(), 'Bad_Name'), (raw(), 'a'), (raw(name=''), 'ok-id'), (raw(author=3), 'ok-id'),
+            (raw(name='x' * 61), 'ok-id'), (raw(tags=['t'] * 9), 'ok-id'), (raw(tags=['x' * 25]), 'ok-id'),
+            (raw(ios_min='latest'), 'ok-id'), (raw(ios_min='18', ios_max='17'), 'ok-id'),
+            (raw(code='see ' + code()), 'ok-id'), (raw(code=None), 'ok-id'), (raw(format=2), 'ok-id'),
+        ]
+        for data, entry_id in cases:
+            with self.subTest(data=data, entry_id=entry_id), self.assertRaises(CatalogError):
+                preset_catalog.validate_entry(data, entry_id, VALID)
+        with self.assertRaises(share_code.ShareCodeError):
+            preset_catalog.validate_entry(raw(code='GN1.AAAA'), 'ok-id', VALID)
+        unknown = share_code.PREFIX + share_code.encode({'NoLiquidDock': ON})[4:]
+        with mock.patch.object(share_code, 'decode', return_value={'shared_count': 0}), \
+                self.assertRaises(CatalogError):
+            preset_catalog.validate_entry(raw(code=unknown), 'ok-id', VALID)
+
+    def test_ios_range(self):
+        entry = CatalogEntry('a-b', 'n', 'a', 'c', ios_min='17.2', ios_max='18')
+        self.assertTrue(entry.supports(''))
+        self.assertFalse(entry.supports('17.1'))
+        self.assertTrue(entry.supports('17.2'))
+        self.assertTrue(entry.supports('18.7.1'), '"18" covers every 18.x release')
+        self.assertFalse(entry.supports('26.0'))
+        self.assertTrue(CatalogEntry('a-b', 'n', 'a', 'c', ios_max='18.4').supports('18.4.1'))
+        self.assertTrue(CatalogEntry('a-b', 'n', 'a', 'c').supports('26.1'))
+
+    def test_search(self):
+        entry = CatalogEntry('a-b', 'Battery Saver', 'nuggetfan', 'c', 'Fewer daemons', tags=['battery'])
+        self.assertTrue(entry.matches('battery FAN'))
+        self.assertTrue(entry.matches(''))
+        self.assertFalse(entry.matches('glass'))
+
+
+class Index(unittest.TestCase):
+    def test_round_trip_skips_damaged_rows(self):
+        good = preset_catalog.validate_entry(raw(), 'solid-glass', VALID)
+        other = preset_catalog.validate_entry(raw(name='Mirror', code=code(RTL=ON)), 'mirror', VALID)
+        index = preset_catalog.build_index([good, other], generated=5)
+        self.assertEqual([row['id'] for row in index['presets']], ['mirror', 'solid-glass'])
+        index['presets'] += [{'id': 'BAD', 'name': 'x'}, 'junk', dict(index['presets'][0])]
+        entries, rejected = preset_catalog.parse_index(json.dumps(index).encode(), VALID)
+        self.assertEqual([entry.id for entry in entries], ['mirror', 'solid-glass'])
+        self.assertEqual(rejected, 3, 'bad id, non-object and duplicate id are skipped')
+
+    def test_unusable_indexes(self):
+        for data in (b'not json', b'[]', json.dumps({'format': 2, 'presets': []}).encode(),
+                     b' ' * (preset_catalog.MAX_INDEX_BYTES + 1)):
+            with self.subTest(data=data[:20]), self.assertRaises(CatalogError):
+                preset_catalog.parse_index(data, VALID)
+
+    def test_cache(self):
+        preset_catalog.write_cache(b'{"format": 1}')
+        data, saved_at = preset_catalog.read_cache()
+        self.assertEqual(data, b'{"format": 1}')
+        self.assertGreater(saved_at, 0)
+
+
+class Submitting(unittest.TestCase):
+    def test_submission_file(self):
+        filename, text = preset_catalog.submission(
+            'Solid Glass!', 'kik', code(), description='Solid.', ios_min='26.0', tags=['glass', ' ', 'Min'],
+            validate=VALID)
+        self.assertEqual(filename, 'solid-glass.json')
+        data = json.loads(text)
+        self.assertEqual(data['tags'], ['glass', 'min'])
+        self.assertNotIn('ios_max', data, 'empty fields are left out')
+        self.assertEqual(preset_catalog.validate_entry(data, 'solid-glass', VALID).name, 'Solid Glass!')
+        with self.assertRaises(CatalogError):
+            preset_catalog.submission('Name', '', code(), validate=VALID)
+
+    def test_slug(self):
+        self.assertEqual(preset_catalog.slugify('  My  Cool--Setup  '), 'my-cool-setup')
+        self.assertTrue(preset_catalog.slugify('Мой пресет').startswith('preset-'))
+        self.assertTrue(preset_catalog.ID_PATTERN.match(preset_catalog.slugify('Мой пресет')))
+
+    def test_submit_url(self):
+        url, prefilled = preset_catalog.submit_url('a-b.json', '{"name": "A & B"}\n')
+        self.assertTrue(prefilled)
+        self.assertTrue(url.startswith(preset_catalog.REPO_URL + '/new/main/presets?filename=a-b.json&value='))
+        self.assertIn('%26', url)
+        self.assertNotIn(' ', url)
+        with mock.patch.object(preset_catalog, 'MAX_SUBMIT_URL', 80):
+            url, prefilled = preset_catalog.submit_url('a-b.json', 'x' * 100)
+        self.assertFalse(prefilled)
+        self.assertNotIn('value=', url)
+
+
+class Tool(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        (self.root / 'presets').mkdir()
+        self.write('solid-glass', raw())
+        self.git('init', '-q', '-b', 'main')
+        self.git('add', '-A')
+        self.git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'base')
+
+    def git(self, *args):
+        subprocess.run(['git', '-C', str(self.root), *args], check=True, capture_output=True)
+
+    def write(self, name, data):
+        (self.root / 'presets' / f'{name}.json').write_text(json.dumps(data), encoding='utf-8')
+
+    def run_tool(self, *args):
+        return subprocess.run([sys.executable, str(TOOL), *args], capture_output=True, text=True)
+
+    def test_build_and_check(self):
+        out = self.root / 'site' / 'index.json'
+        self.assertEqual(self.run_tool('build', str(self.root), str(out)).returncode, 0)
+        entries, rejected = preset_catalog.parse_index(out.read_bytes(), VALID)
+        self.assertEqual(([entry.id for entry in entries], rejected), (['solid-glass'], 0))
+        summary = self.root / 'summary.md'
+        result = self.run_tool('check', str(self.root), '--summary', str(summary))
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn('| `presets/solid-glass.json` | Solid Glass |', summary.read_text())
+
+    def test_check_finds_problems(self):
+        self.git('checkout', '-qb', 'pr')
+        self.write('copy', raw(name='Copy'))
+        self.write('Bad', raw())
+        (self.root / 'presets' / 'broken.json').write_text('{', encoding='utf-8')
+        (self.root / 'README.md').write_text('hi', encoding='utf-8')
+        self.git('add', '-A')
+        self.git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'pr')
+        result = self.run_tool('check', str(self.root), '--changed-since', 'main')
+        self.assertEqual(result.returncode, 1)
+        for text in ('presets/Bad.json::File names', 'presets/broken.json::Not valid JSON',
+                     'presets/copy.json::The same share code', 'README.md::Community pull requests'):
+            self.assertIn(text, result.stdout)
+        self.assertEqual(self.run_tool('build', str(self.root), str(self.root / 'i.json')).returncode, 1)
+
+    def test_deleting_is_for_maintainers(self):
+        self.git('checkout', '-qb', 'pr')
+        self.git('rm', '-q', 'presets/solid-glass.json')
+        self.git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'rm')
+        result = self.run_tool('check', str(self.root), '--changed-since', 'main')
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('Only maintainers remove presets', result.stdout)
+
+
+class Dialogs(unittest.TestCase):
+    def setUp(self):
+        from src.tweaks import tweak_loader
+        tweak_loader.load_plist_tweaks()
+        tweak_loader.load_daemons()
+        self.pm = PresetManager()
+        old = dict(raw(name='Old Phones', ios_max='18', code=code(RTL=ON)), id='old-phones')
+        new = dict(raw(tags=['glass']), id='solid-glass')
+        self.index = json.dumps({'format': 1, 'presets': [old, new]}).encode()
+
+    def test_catalog_dialog_filters_and_imports(self):
+        from src.gui.dialogs.preset_catalog import CatalogDialog
+        with mock.patch.object(preset_catalog, 'read_cache', return_value=(None, 0)):
+            dialog = CatalogDialog(self.pm, '26.1', 'iPhone15,3', None, fetch=False)
+        self.addCleanup(dialog.deleteLater)
+        self.assertFalse(dialog.import_button.isEnabled())
+        self.assertTrue(dialog.load_data(self.index))
+        self.assertEqual([entry.id for entry in dialog.visible_entries()], ['solid-glass'])
+        dialog.compatible_only.setChecked(False)
+        self.assertEqual(dialog.list.count(), 2)
+        dialog.search.setText('glass')
+        self.assertEqual(dialog.list.count(), 1)
+        self.assertEqual(dialog.selected_entry().id, 'solid-glass')
+        self.assertIsNotNone(dialog.risk_panel)
+        self.assertFalse(dialog.load_data(b'junk'), 'a bad download keeps the shown list')
+        self.assertEqual(dialog.list.count(), 1)
+        with mock.patch('src.gui.dialogs.preset_catalog.QMessageBox.information'):
+            dialog._import()
+        self.assertEqual(dialog.imported, ['Solid Glass'])
+        stored = self.pm.read_preset('Solid Glass')
+        self.assertTrue(stored['tweaks']['NoLiquidDock']['enabled'])
+        self.assertFalse(stored['tweaks']['RTL']['enabled'])
+
+    def test_submit_dialog(self):
+        from src.gui.dialogs.preset_catalog import SubmitPresetDialog
+        self.pm.save_preset('Mine', 'My description')
+        dialog = SubmitPresetDialog(self.pm, 'Mine', code())
+        self.addCleanup(dialog.deleteLater)
+        self.assertEqual(dialog.description_edit.toPlainText(), 'My description')
+        with self.assertRaises(CatalogError):
+            dialog.build()
+        dialog.author_edit.setText('kik')
+        dialog.tags_edit.setText('glass, minimal')
+        filename, text = dialog.build()
+        self.assertEqual(filename, 'mine.json')
+        self.assertEqual(json.loads(text)['tags'], ['glass', 'minimal'])
+        with mock.patch('src.gui.dialogs.preset_catalog.QDesktopServices.openUrl') as opened, \
+                mock.patch('src.gui.dialogs.preset_catalog.QMessageBox.information'):
+            dialog._submit()
+        url = opened.call_args.args[0].toString(opened.call_args.args[0].ComponentFormattingOption.FullyEncoded)
+        self.assertIn('/new/main/presets?filename=mine.json&value=', url)
+        self.assertEqual(dialog.submitted, ('mine.json', True))
+
+
+if __name__ == '__main__':
+    unittest.main()
