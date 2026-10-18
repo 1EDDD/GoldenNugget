@@ -4016,8 +4016,8 @@ Password:</source>
             <translation>В браузере нажмите «Propose changes», затем «Create pull request».</translation>
         </message>
         <message>
-            <source>Preset Catalog</source>
-            <translation>Каталог пресетов</translation>
+            <source>Community Catalog</source>
+            <translation>Каталог сообщества</translation>
         </message>
         <message>
             <source>Presets shared by the community and reviewed by the GoldenNugget team. Importing saves a preset; nothing reaches your iPhone until you load it and apply.</source>

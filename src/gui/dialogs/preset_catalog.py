@@ -66,7 +66,7 @@ class CatalogDialog(_ThemedDialog):
 
     def __init__(self, preset_manager, device_version="", device_model="", hotload=None,
                  parent=None, fetch=True):
-        super().__init__(_tr("Preset Catalog"), parent)
+        super().__init__(_tr("Community Catalog"), parent)
         self.pm = preset_manager
         self.device_version = device_version
         self.device_model = device_model
