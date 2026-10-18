@@ -165,3 +165,7 @@ class TweakID(Enum):
 
     # Experimental status-bar defaults (appended to preserve existing IDs).
     SBShowRSSI = auto()
+
+    # New Liquid Glass options (appended to preserve existing IDs).
+    DisableIconShimmer = auto()
+    DisableIconGlassOutline = auto()

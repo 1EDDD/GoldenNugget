@@ -1405,6 +1405,7 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
                     files_to_null.append(FileLocation.coreMotion.value)
                     files_to_null.append(FileLocation.pasteboard.value)
                     files_to_null.append(FileLocation.notes.value)
+                    files_to_null.append(FileLocation.accessibility.value)
 
             # add the files to null from the list
             is_ios27 = bool(dev_version) and Version(dev_version) >= Version("27.0")
