@@ -60,6 +60,49 @@ class Themes(unittest.TestCase):
         self.assertEqual(restored.accent_name, 'yellow')
         self.assertEqual(restored.colors.bg_primary, DARK.bg_primary)
 
+    def test_os_colour_scheme_never_overrides_the_saved_mode(self):
+        from PySide6.QtCore import QObject, Qt, Signal
+
+        class Hints(QObject):
+            colorSchemeChanged = Signal(object)
+
+            def __init__(self):
+                super().__init__()
+                self.scheme = None
+
+            def setColorScheme(self, scheme):
+                self.scheme = scheme
+
+        class App:
+            def __init__(self):
+                self.hints = Hints()
+                self.palette = None
+
+            def styleHints(self):
+                return self.hints
+
+            def setPalette(self, palette):
+                self.palette = palette
+
+        app = App()
+        self.manager.apply_to_app(app)
+        self.assertEqual(app.hints.scheme, Qt.ColorScheme.Dark, 'dark is pinned by default')
+        # The OS (or anything else) switches to light: the saved mode wins.
+        app.hints.scheme = Qt.ColorScheme.Light
+        app.hints.colorSchemeChanged.emit(Qt.ColorScheme.Light)
+        self.assertEqual(app.hints.scheme, Qt.ColorScheme.Dark)
+        self.assertEqual(app.palette.window().color().name().lower(), DARK.bg_primary.lower())
+        # A replaced manager stays out of it.
+        ColorThemeManager._inst = object()
+        app.hints.scheme = Qt.ColorScheme.Light
+        app.hints.colorSchemeChanged.emit(Qt.ColorScheme.Light)
+        self.assertEqual(app.hints.scheme, Qt.ColorScheme.Light)
+        ColorThemeManager._inst = self.manager
+        # An explicit light choice is pinned as light.
+        with patch('src.gui.theme.theme_manager.QGuiApplication.instance', return_value=app):
+            self.manager.set_mode('light')
+        self.assertEqual(app.hints.scheme, Qt.ColorScheme.Light)
+
     def test_invalid_preferences_fall_back_and_noop_does_not_emit(self):
         self.settings.setValue('color_mode', 'unsupported')
         self.settings.setValue('accent_color', 'unknown')

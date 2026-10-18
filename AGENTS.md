@@ -26,9 +26,13 @@ This document describes the background threads, async backup/restore operations,
   `accent_name` is the stable user choice, while `accent_hex()` / `accent_rgb()`
   return its current mode's actual color. Native QPalette roles are applied
   for active, inactive and disabled widgets on every change.
-- The app does not follow the OS theme. `set_system_theme()`,
-  `apply_system_theme()` and `QStyleHints.colorSchemeChanged` wiring do not
-  exist; do not introduce calls to them without implementing them.
+- The app does not follow the OS theme. `set_system_theme()` and
+  `apply_system_theme()` do not exist. `apply_to_app()` instead PINS Qt's
+  colour scheme to the saved mode (`QStyleHints.setColorScheme`, Qt 6.8+) so
+  native title bars and system dialogs never switch with the OS, and its
+  `colorSchemeChanged` handler only re-asserts the saved mode (only the live
+  singleton answers). Always go through `apply_to_app()`, never a bare
+  `app.setPalette(...)`.
 - `styles.py` — `STYLES` dict of Qt stylesheet templates using `{slot}` named
   placeholders (literal braces are doubled `{{`/`}}`).
 - `accent_picker.py` — `AccentPicker` widget: row of circular preset buttons,
@@ -128,9 +132,9 @@ This document describes the background threads, async backup/restore operations,
 - Theme UI lives in Settings → **Appearance** (`src/gui/ios/settings.py`):
   "Accent Color" selects the accent via `set_accent(...)`. The light/dark
   selector was removed from the page; the saved `color_mode` still applies at startup.
-- The app does **not** follow the OS colour scheme: nothing is connected to
-  `QStyleHints.colorSchemeChanged` in `main_app.py`. The persisted palette is
-  applied at startup and rebuilt on mode/accent changes via `build_palette()`.
+- The app does **not** follow the OS colour scheme: `main_app.py` calls
+  `ColorThemeManager.apply_to_app(app)`, which applies the persisted palette and
+  pins the Qt colour scheme to it; mode/accent changes re-run it.
 
 ## HotLoad Safety Rules (src/controllers/hotload.py)
 
