@@ -249,6 +249,10 @@ class IOSPresetsPage(QWidget):
             self.refresh()
 
     def _browse_catalog(self):
+        show = getattr(self.window, "show_ios_page", None)
+        if show is not None and hasattr(self.window, "ios_catalog"):
+            show(self.window.ios_pages.indexOf(self.window.ios_catalog))
+            return
         from src.gui.dialogs.preset_catalog import browse_catalog_flow
         if browse_catalog_flow(self, self.preset_manager, self.window):
             self.refresh()

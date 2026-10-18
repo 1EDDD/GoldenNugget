@@ -4,6 +4,14 @@
     <context>
         <name>Nugget</name>
         <message>
+            <source>Community Catalog</source>
+            <translation>Каталог сообщества</translation>
+        </message>
+        <message>
+            <source>Presets &amp; templates from the community</source>
+            <translation>Пресеты и шаблоны от сообщества</translation>
+        </message>
+        <message>
             <source>  ·  {0}/{1} enabled</source>
             <translation>  ·  включено {0}/{1}</translation>
         </message>

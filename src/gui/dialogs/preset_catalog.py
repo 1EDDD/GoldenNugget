@@ -65,8 +65,19 @@ class CatalogDialog(_ThemedDialog):
     """List on the left, the selected preset with its risk on the right."""
 
     def __init__(self, preset_manager, device_version="", device_model="", hotload=None,
-                 parent=None, fetch=True):
+                 parent=None, fetch=True, embedded=False):
         super().__init__(_tr("Community Catalog"), parent)
+        # embedded: a plain widget on the Community Catalog page, whose nav bar
+        # already shows the title and which has nothing to close
+        self.embedded = embedded
+        self.on_change = None   # called after an import or an added template
+        if embedded:
+            self.setWindowFlags(Qt.WindowType.Widget)
+            self.setModal(False)
+            self._layout.setContentsMargins(16, 16, 16, 16)
+            heading = self.findChild(QLabel, "confirmTitle")
+            if heading is not None:
+                heading.hide()
         self.pm = preset_manager
         self.device_version = device_version
         self.device_model = device_model
@@ -80,7 +91,8 @@ class CatalogDialog(_ThemedDialog):
         self.risk_panel = None
         self._reply = None
         self._saved_at = 0
-        self.setMinimumSize(880, 620)
+        if not embedded:
+            self.setMinimumSize(880, 620)
         self._muted(_tr("Presets and templates shared by the community and reviewed by the GoldenNugget "
                         "team. Nothing reaches your iPhone until you apply."))
         self.kind = IOSSegmentedFilter([(_tr("Presets"), "presets"), (_tr("Templates"), "templates")])
@@ -149,7 +161,8 @@ class CatalogDialog(_ThemedDialog):
         footer = QHBoxLayout()
         footer.addWidget(self._button(_tr("How to Submit…"), self._open_repo))
         footer.addStretch()
-        footer.addWidget(self._button(_tr("Close"), self.accept))
+        if not embedded:
+            footer.addWidget(self._button(_tr("Close"), self.accept))
         self._layout.addLayout(footer)
         self._retheme()
         self._show_selected()
@@ -339,6 +352,7 @@ class CatalogDialog(_ThemedDialog):
             QMessageBox.critical(self, self.windowTitle(), _error_text(error))
             return
         self.imported.append(name)
+        self._changed()
         QMessageBox.information(
             self, self.windowTitle(),
             _tr("“{0}” was saved to your presets. Load it on the Presets page to use it.").format(name))
@@ -387,22 +401,31 @@ class CatalogDialog(_ThemedDialog):
                                  _tr("The template could not be added: {0}").format(error))
             return False
         self.added_templates.append(path)
+        self._changed()
         QMessageBox.information(
             self, self.windowTitle(),
             _tr("“{0}” was added to PosterBoard → Templates. Turn on the tweaks you want there, "
                 "then apply.").format(entry.name))
         return True
 
-    def _open_repo(self):
-        anchor = "#submitting-a-template" if self.showing_templates() else "#submitting-a-preset"
-        QDesktopServices.openUrl(QUrl(preset_catalog.REPO_URL + anchor))
+    def _changed(self):
+        if self.on_change is not None:
+            self.on_change()
 
-    def done(self, result):
+    def stop(self):
+        """Abort downloads still running (the embedded page never calls done())."""
         for pending in (self._reply, self._download[0] if self._download else None):
             if pending is not None:
                 pending.abort()
                 pending.deleteLater()
         self._reply = self._download = None
+
+    def _open_repo(self):
+        anchor = "#submitting-a-template" if self.showing_templates() else "#submitting-a-preset"
+        QDesktopServices.openUrl(QUrl(preset_catalog.REPO_URL + anchor))
+
+    def done(self, result):
+        self.stop()
         super().done(result)
 
 
@@ -526,11 +549,15 @@ def browse_catalog_flow(parent, pm, window=None):
     dialog.exec()
     imported = list(dialog.imported)
     if dialog.added_templates:
-        page = getattr(window, "ios_posterboard", None)
-        if page is not None and hasattr(page, "_load_templates_list"):
-            page._load_templates_list()
+        refresh_template_list(window)
     dialog.deleteLater()
     return imported
+
+
+def refresh_template_list(window):
+    page = getattr(window, "ios_posterboard", None)
+    if page is not None and hasattr(page, "_load_templates_list"):
+        page._load_templates_list()
 
 
 def submit_preset_flow(parent, pm, name, window=None) -> bool:

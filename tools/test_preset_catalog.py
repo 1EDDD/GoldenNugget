@@ -347,6 +347,25 @@ class Dialogs(unittest.TestCase):
         self.assertEqual(added, [('dock-tweaks.batter', '26.1')])
         self.assertEqual(dialog.added_templates, [str(store / 'dock-tweaks.batter')])
 
+    def test_embedded_page_mode(self):
+        from PySide6.QtWidgets import QPushButton
+        from src.gui.dialogs.preset_catalog import CatalogDialog
+        from PySide6.QtWidgets import QWidget
+        host = QWidget()
+        self.addCleanup(host.deleteLater)
+        with mock.patch.object(preset_catalog, 'read_cache', return_value=(None, 0)):
+            panel = CatalogDialog(self.pm, '26.1', 'iPhone15,3', None, host, fetch=False, embedded=True)
+        self.assertFalse(panel.isWindow())
+        self.assertNotIn(preset_catalog.QT_TRANSLATE_NOOP('PresetCatalog', 'Close'),
+                         [button.text() for button in panel.findChildren(QPushButton)])
+        changes = []
+        panel.on_change = lambda: changes.append(1)
+        panel.load_data(self.index)
+        panel.compatible_only.setChecked(False)
+        with mock.patch('src.gui.dialogs.preset_catalog.QMessageBox.information'):
+            panel._import()
+        self.assertEqual(changes, [1])
+
     def test_add_template_replaces_an_older_copy(self):
         from src.gui.dialogs.preset_catalog import add_template
         from src.tweaks.tweaks import TweakID, tweaks

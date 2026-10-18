@@ -50,7 +50,8 @@ encoding and decoding use OpenCV, which is already a dependency.
 
 ## Preset catalog
 
-**Browse Catalog** on the Presets page lists presets shared by the community.
+The **Community Catalog** page (its tile on the home screen, or **Browse
+Catalog** on the Presets page) lists presets shared by the community.
 Each one shows its author, iOS range, tags and a risk verdict for the connected
 iPhone, and can be previewed on the virtual iPhone before **Import** saves it
 as a new preset. As with share codes, nothing is applied until the preset is

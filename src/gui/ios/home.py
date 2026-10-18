@@ -362,6 +362,9 @@ class IOSHomePage(QWidget):
          self.statusbar_card, _, self.passcode_theme_card) = cards_row
         self.cards_grid = _CardGrid(cards_row)
         layout.addWidget(self.cards_grid)
+        # a slim row instead of a seventh tile, so the six tiles keep one row
+        self.catalog_card = self._make_catalog_row()
+        layout.addWidget(self.catalog_card)
 
         # Apply / Reset share one row on the home screen.
         actions = QHBoxLayout()
@@ -531,6 +534,7 @@ class IOSHomePage(QWidget):
             self._paint_tile_icon(icon_lbl, icon_res)
             title_lbl.setStyleSheet(t("home_tile_title"))
             sub_lbl.setStyleSheet(t("home_tile_subtitle"))
+        self._paint_catalog_row()
         self.update_passcode_support()
 
     def populate_device_picker(self):
@@ -860,6 +864,37 @@ class IOSHomePage(QWidget):
         card.mousePressEvent = lambda e: self.switch_to_ios_page(page_index)
         card.setCursor(Qt.PointingHandCursor)
         return card
+
+    def _make_catalog_row(self) -> IOSCard:
+        """The Community Catalog entry: icon, name and caption on one line."""
+        card = _TileCard()
+        row = QHBoxLayout(card)
+        row.setContentsMargins(16, 10, 16, 10)
+        row.setSpacing(12)
+        self._catalog_icon = QLabel(card)
+        self._catalog_icon.setFixedSize(28, 28)
+        self._catalog_icon.setStyleSheet("background-color: transparent;")
+        row.addWidget(self._catalog_icon)
+        self._catalog_title = QLabel(QCoreApplication.translate("Nugget", "Community Catalog"), card)
+        row.addWidget(self._catalog_title)
+        self._catalog_caption = QLabel(
+            QCoreApplication.translate("Nugget", "Presets & templates from the community"), card)
+        row.addWidget(self._catalog_caption, 1)
+        self._catalog_chevron = QLabel("›", card)
+        row.addWidget(self._catalog_chevron)
+        card.mousePressEvent = lambda e: self.switch_to_ios_page(13)
+        card.setCursor(Qt.PointingHandCursor)
+        self._paint_catalog_row()
+        return card
+
+    def _paint_catalog_row(self):
+        if not hasattr(self, "_catalog_icon"):
+            return
+        self._catalog_icon.setPixmap(theme_pixmap(
+            FEATURE_ICONS["Community Catalog"], self._c.text_primary, 28, self.devicePixelRatioF()))
+        self._catalog_title.setStyleSheet(t("home_tile_title"))
+        self._catalog_caption.setStyleSheet(t("home_tile_subtitle"))
+        self._catalog_chevron.setStyleSheet(t("home_tile_subtitle") + "font-size: 20px;")
 
     def _paint_tile_icon(self, label: QLabel, icon_res: str):
         """Draw a feature icon at tile size (and screen density) in the
