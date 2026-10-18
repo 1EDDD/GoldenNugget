@@ -83,6 +83,11 @@ def preview_state(manager, ios27: bool, now: Optional[QTime] = None) -> StatusBa
         state.primary_badge = manager.get_primary_service_badge_override()
     if overridden("is_gsm_signal_strength_bars_overridden"):
         state.bars = _clamp(manager.get_gsm_signal_strength_bars_override(), 0, MAX_BARS)
+    elif ios27:
+        # The iOS 27 archive pins the whole cellular entry (atomic replacement
+        # in dataByApplyingOverlay:), so an unset bar count is written as 0
+        # instead of passing the live signal through -- show that, not 4.
+        state.bars = 0
     secondary = overridden("is_secondary_carrier_overridden")
     if secondary:
         state.secondary_carrier = manager.get_secondary_carrier_override()
@@ -93,7 +98,7 @@ def preview_state(manager, ios27: bool, now: Optional[QTime] = None) -> StatusBa
         state.secondary_bars = _clamp(
             manager.get_secondary_gsm_signal_strength_bars_override(), 0, MAX_BARS)
     elif secondary:
-        state.secondary_bars = MAX_BARS
+        state.secondary_bars = 0 if ios27 else MAX_BARS
 
     if ios27:
         return state

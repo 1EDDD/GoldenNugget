@@ -219,7 +219,10 @@ class IOSStatusBarPage(QWidget):
             "iOS 27 replaced the status bar override file, so only the carrier "
             "entry can be changed here: its name, service badge and signal bars. "
             "The badge and bars apply to the carrier name, so set one first. "
-            "The other options need iOS 26 or lower."
+            "The carrier entry is replaced as a whole, so the network-type "
+            "indicator is never overridden and the signal bars stay at the "
+            "value you set (empty by default) rather than following the real "
+            "signal. The other options need iOS 26 or lower."
         ))
         self._ios27_note.setWordWrap(True)
         self.content_layout.addWidget(self._ios27_note)
