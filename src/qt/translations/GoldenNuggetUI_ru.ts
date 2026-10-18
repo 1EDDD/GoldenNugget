@@ -3944,6 +3944,74 @@ Password:</source>
     <context>
         <name>PresetCatalog</name>
         <message>
+            <source>Presets and templates shared by the community and reviewed by the GoldenNugget team. Nothing reaches your iPhone until you apply.</source>
+            <translation>Пресеты и шаблоны от сообщества, проверенные командой GoldenNugget. На iPhone ничего не попадёт, пока вы не нажмёте «Применить».</translation>
+        </message>
+        <message>
+            <source>Presets</source>
+            <translation>Пресеты</translation>
+        </message>
+        <message>
+            <source>Templates</source>
+            <translation>Шаблоны</translation>
+        </message>
+        <message>
+            <source>{0} preset(s) and {1} template(s) in the catalog.</source>
+            <translation>В каталоге пресетов: {0}, шаблонов: {1}.</translation>
+        </message>
+        <message>
+            <source>No templates found</source>
+            <translation>Шаблоны не найдены</translation>
+        </message>
+        <message>
+            <source>Download and Add</source>
+            <translation>Скачать и добавить</translation>
+        </message>
+        <message>
+            <source>{0} MB</source>
+            <translation>{0} МБ</translation>
+        </message>
+        <message>
+            <source>{0} KB</source>
+            <translation>{0} КБ</translation>
+        </message>
+        <message>
+            <source>Restores its own files to {0}.</source>
+            <translation>Восстанавливает свои файлы в {0}.</translation>
+        </message>
+        <message>
+            <source>What its tweaks write on the iPhone:</source>
+            <translation>Что его твики записывают на iPhone:</translation>
+        </message>
+        <message>
+            <source>Downloading “{0}”…</source>
+            <translation>Скачивание «{0}»…</translation>
+        </message>
+        <message>
+            <source>Could not download the template: {0}</source>
+            <translation>Не удалось скачать шаблон: {0}</translation>
+        </message>
+        <message>
+            <source>The template could not be added: {0}</source>
+            <translation>Не удалось добавить шаблон: {0}</translation>
+        </message>
+        <message>
+            <source>“{0}” was added to PosterBoard → Templates. Turn on the tweaks you want there, then apply.</source>
+            <translation>«{0}» добавлен в PosterBoard → Шаблоны. Включите там нужные твики и примените.</translation>
+        </message>
+        <message>
+            <source>The template entry is damaged.</source>
+            <translation>Запись шаблона повреждена.</translation>
+        </message>
+        <message>
+            <source>The template is larger than 25 MB.</source>
+            <translation>Шаблон больше 25 МБ.</translation>
+        </message>
+        <message>
+            <source>The downloaded template does not match the catalog. Try again later.</source>
+            <translation>Скачанный шаблон не совпадает с каталогом. Попробуйте позже.</translation>
+        </message>
+        <message>
             <source>In the browser, click “Propose changes”, then “Create pull request”.</source>
             <translation>В браузере нажмите «Propose changes», затем «Create pull request».</translation>
         </message>

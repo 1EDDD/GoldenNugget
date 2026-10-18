@@ -78,6 +78,16 @@ opens GitHub's "new file" page with the file already written; GitHub forks the
 repository and opens the pull request for people without write access. When
 the file is too long for a URL, it goes to the clipboard instead.
 
+The **Templates** tab lists `.batter` templates from `templates/<id>.batter`
+in the same repository. The check loads each one with the app's template rules
+and the static validator, and the pull request summary lists every file each
+template's tweaks write (see "Community Tweaks" in `documentation.md`).
+`build` copies the templates next to `index.json` and records their size and
+SHA-256. **Download and Add** fetches a template only from `TEMPLATES_URL` by
+id, refuses it when the size or hash differs, stores it in the app data folder
+(`catalog_templates/`) and adds it to PosterBoard → Templates, replacing an
+older copy. Older app versions ignore the `templates` key of the index.
+
 ## Diagnostic archive
 
 Open **Settings → About → Export Diagnostics**, or **Export Diagnostics** in

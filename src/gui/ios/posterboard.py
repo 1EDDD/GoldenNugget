@@ -515,6 +515,7 @@ class IOSPosterboardPage(QWidget):
 
         widgets = {}
         for template in templates:
+            template.loaded = False  # its old card was just removed
             template.create_ui(self.window, tweaks[TweakID.Templates], widgets, self.templates_layout)
 
     def _create_video_tab(self) -> QWidget:
