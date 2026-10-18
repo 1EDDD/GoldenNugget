@@ -48,6 +48,36 @@ sender's setup instead of merging it into the current one. Codes are capped at
 and the result passes the same validation as an imported preset file. QR
 encoding and decoding use OpenCV, which is already a dependency.
 
+## Preset catalog
+
+**Browse Catalog** on the Presets page lists presets shared by the community.
+Each one shows its author, iOS range, tags and a risk verdict for the connected
+iPhone, and can be previewed on the virtual iPhone before **Import** saves it
+as a new preset. As with share codes, nothing is applied until the preset is
+loaded. With a device connected the list shows only presets made for its iOS
+version; untick the box to see all.
+
+The catalog is the `GoldenNugget-Team/GoldenNugget-Presets` repository: one
+`presets/<id>.json` file per preset, holding a share code plus a name, author,
+description, optional `ios_min`/`ios_max` and up to 8 tags. Every pull request
+there is checked by `tools/preset_catalog.py check` (run from this repository's
+`main`, through `pull_request_target`, so a pull request cannot change its own
+check). The check validates each file, rejects duplicate codes, stops anyone
+outside the team from touching files other than `presets/*.json` and writes a
+risk table to the pull request. Maintainers review and merge; after a merge
+`tools/preset_catalog.py build` writes `index.json`, which GitHub Pages serves
+to the app (`src/controllers/preset_catalog.py`, `INDEX_URL`).
+
+The app treats the index as untrusted: it is size-capped, every row is
+validated again with the same rules and its share code is decoded locally;
+damaged rows are skipped. The last good index is cached, so the catalog still
+opens offline.
+
+**Submit to Catalog** fills in the catalog details for the selected preset and
+opens GitHub's "new file" page with the file already written; GitHub forks the
+repository and opens the pull request for people without write access. When
+the file is too long for a URL, it goes to the clipboard instead.
+
 ## Diagnostic archive
 
 Open **Settings → About → Export Diagnostics**, or **Export Diagnostics** in

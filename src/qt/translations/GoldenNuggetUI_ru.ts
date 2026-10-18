@@ -3925,4 +3925,214 @@ Password:</source>
             <translation>Предпросмотр</translation>
         </message>
     </context>
+    <context>
+        <name>PresetCatalog</name>
+        <message>
+            <source>In the browser, click “Propose changes”, then “Create pull request”.</source>
+            <translation>В браузере нажмите «Propose changes», затем «Create pull request».</translation>
+        </message>
+        <message>
+            <source>Preset Catalog</source>
+            <translation>Каталог пресетов</translation>
+        </message>
+        <message>
+            <source>Presets shared by the community and reviewed by the GoldenNugget team. Importing saves a preset; nothing reaches your iPhone until you load it and apply.</source>
+            <translation>Пресеты от сообщества, проверенные командой GoldenNugget. Импорт только сохраняет пресет: на iPhone ничего не попадёт, пока вы его не загрузите и не примените.</translation>
+        </message>
+        <message>
+            <source>Search by name, author or tag</source>
+            <translation>Поиск по названию, автору или тегу</translation>
+        </message>
+        <message>
+            <source>Refresh</source>
+            <translation>Обновить</translation>
+        </message>
+        <message>
+            <source>Import</source>
+            <translation>Импорт</translation>
+        </message>
+        <message>
+            <source>Submit to Catalog</source>
+            <translation>Отправить в каталог</translation>
+        </message>
+        <message>
+            <source>Your preset is sent as a pull request to the GoldenNugget-Presets repository on GitHub (you need a free GitHub account). The team reviews it before it appears in the catalog. Templates, icon themes and wallpapers are not included.</source>
+            <translation>Пресет отправляется как pull request в репозиторий GoldenNugget-Presets на GitHub (нужен бесплатный аккаунт GitHub). Команда проверит его, прежде чем он появится в каталоге. Шаблоны, темы иконок и обои не передаются.</translation>
+        </message>
+        <message>
+            <source>Name</source>
+            <translation>Название</translation>
+        </message>
+        <message>
+            <source>Author</source>
+            <translation>Автор</translation>
+        </message>
+        <message>
+            <source>Your nickname</source>
+            <translation>Ваш ник</translation>
+        </message>
+        <message>
+            <source>What it changes, in a sentence or two</source>
+            <translation>Что он меняет, в одном-двух предложениях</translation>
+        </message>
+        <message>
+            <source>Description</source>
+            <translation>Описание</translation>
+        </message>
+        <message>
+            <source>Tags</source>
+            <translation>Теги</translation>
+        </message>
+        <message>
+            <source>battery, minimal</source>
+            <translation>батарея, минимализм</translation>
+        </message>
+        <message>
+            <source>Lowest iOS</source>
+            <translation>Мин. iOS</translation>
+        </message>
+        <message>
+            <source>Any</source>
+            <translation>Любая</translation>
+        </message>
+        <message>
+            <source>Highest iOS</source>
+            <translation>Макс. iOS</translation>
+        </message>
+        <message>
+            <source>How to Submit…</source>
+            <translation>Как отправить…</translation>
+        </message>
+        <message>
+            <source>Close</source>
+            <translation>Закрыть</translation>
+        </message>
+        <message>
+            <source>Loading the catalog…</source>
+            <translation>Загрузка каталога…</translation>
+        </message>
+        <message>
+            <source>{0} preset(s) in the catalog.</source>
+            <translation>Пресетов в каталоге: {0}.</translation>
+        </message>
+        <message>
+            <source>Cancel</source>
+            <translation>Отмена</translation>
+        </message>
+        <message>
+            <source>Open GitHub</source>
+            <translation>Открыть GitHub</translation>
+        </message>
+        <message>
+            <source>Only for iOS {0}</source>
+            <translation>Только для iOS {0}</translation>
+        </message>
+        <message>
+            <source>No presets found</source>
+            <translation>Пресеты не найдены</translation>
+        </message>
+        <message>
+            <source>by {0}</source>
+            <translation>автор: {0}</translation>
+        </message>
+        <message>
+            <source>{0} tweak(s)</source>
+            <translation>твиков: {0}</translation>
+        </message>
+        <message>
+            <source>“{0}” was saved to your presets. Load it on the Presets page to use it.</source>
+            <translation>«{0}» сохранён в ваши пресеты. Чтобы использовать его, загрузите его на странице «Пресеты».</translation>
+        </message>
+        <message>
+            <source>The preset is too long to fill in automatically, so it was copied. Paste it into the empty file on GitHub.</source>
+            <translation>Пресет слишком длинный, чтобы подставить его автоматически, поэтому он скопирован. Вставьте его в пустой файл на GitHub.</translation>
+        </message>
+        <message>
+            <source>Could not load the catalog: {0}</source>
+            <translation>Не удалось загрузить каталог: {0}</translation>
+        </message>
+        <message>
+            <source>{0} damaged entry(s) were skipped.</source>
+            <translation>Пропущено повреждённых записей: {0}.</translation>
+        </message>
+        <message>
+            <source>iOS {0}</source>
+            <translation>iOS {0}</translation>
+        </message>
+        <message>
+            <source>Could not reach the catalog, so this is the copy saved on {0}.</source>
+            <translation>Каталог недоступен, показана копия от {0}.</translation>
+        </message>
+        <message>
+            <source>A text field has the wrong type.</source>
+            <translation>Текстовое поле имеет неверный тип.</translation>
+        </message>
+        <message>
+            <source>The name and author are required.</source>
+            <translation>Название и автор обязательны.</translation>
+        </message>
+        <message>
+            <source>A text field is too long.</source>
+            <translation>Текстовое поле слишком длинное.</translation>
+        </message>
+        <message>
+            <source>iOS versions look like 18 or 18.4.</source>
+            <translation>Версия iOS указывается так: 18 или 18.4.</translation>
+        </message>
+        <message>
+            <source>Unsupported catalog entry format.</source>
+            <translation>Неподдерживаемый формат записи каталога.</translation>
+        </message>
+        <message>
+            <source>File names use lowercase letters, digits and dashes (2–48 characters).</source>
+            <translation>Имя файла: строчные латинские буквы, цифры и дефисы (2–48 символов).</translation>
+        </message>
+        <message>
+            <source>Up to 8 tags of at most 24 characters.</source>
+            <translation>Не больше 8 тегов, до 24 символов каждый.</translation>
+        </message>
+        <message>
+            <source>The entry has no share code.</source>
+            <translation>В записи нет кода пресета.</translation>
+        </message>
+        <message>
+            <source>The minimum iOS version is above the maximum.</source>
+            <translation>Минимальная версия iOS выше максимальной.</translation>
+        </message>
+        <message>
+            <source>The share code must be the whole value.</source>
+            <translation>Поле code должно содержать только код пресета.</translation>
+        </message>
+        <message>
+            <source>The share code turns on no known tweaks.</source>
+            <translation>Код не включает ни одного известного твика.</translation>
+        </message>
+        <message>
+            <source>The catalog is too large.</source>
+            <translation>Каталог слишком большой.</translation>
+        </message>
+        <message>
+            <source>The catalog needs a newer version of GoldenNugget.</source>
+            <translation>Для каталога нужна более новая версия GoldenNugget.</translation>
+        </message>
+        <message>
+            <source>The catalog could not be read.</source>
+            <translation>Не удалось прочитать каталог.</translation>
+        </message>
+    </context>
+    <context>
+        <name>Nugget</name>
+        <message>
+            <source>Presets made by the community, reviewed by the team</source>
+            <translation>Пресеты от сообщества, проверенные командой</translation>
+        </message>
+        <message>
+            <source>Browse Catalog</source>
+            <translation>Открыть каталог</translation>
+        </message>
+        <message>
+            <source>Submit to Catalog</source>
+            <translation>Отправить в каталог</translation>
+        </message>
+    </context>
 </TS>

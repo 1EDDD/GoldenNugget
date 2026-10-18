@@ -459,7 +459,9 @@ It combines a per-tweak and per-daemon risk table, registry compatibility,
 warn-only HotLoad `risk` rules for the device's iOS version, conflicts, battery,
 free space, wallpaper packages, a first apply on this iOS version and the
 number of tweaks changed at once. It works on preset-shaped data, so the same
-verdict is shown for an imported share code. A High verdict disables Apply until
+verdict is shown for an imported share code and for every preset in the
+community catalog (`controllers/preset_catalog.py`,
+`gui/dialogs/preset_catalog.py`; see docs/PORTABLE_AND_DIAGNOSTICS.md). A High verdict disables Apply until
 the user ticks "I understand the risks". The verdict is advice: an unlisted
 tweak is Low only because nothing is known against it.
 

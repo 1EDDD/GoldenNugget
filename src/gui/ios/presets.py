@@ -24,6 +24,8 @@ class IOSPresetsPage(QWidget):
         self.window = window
         self.preset_manager = PresetManager()
         self._tm = ColorThemeManager.instance()
+        self._mini_buttons = []
+        self._danger_buttons = []
         self.setObjectName("iosContainer")
 
         root = QVBoxLayout(self)
@@ -57,6 +59,16 @@ class IOSPresetsPage(QWidget):
         autosave_layout.addWidget(self.autosave_switch)
         self._layout.addWidget(autosave_card)
 
+        catalog_card = IOSCard()
+        catalog_layout = QHBoxLayout(catalog_card)
+        catalog_layout.setContentsMargins(16, 10, 16, 10)
+        self._catalog_label = QLabel(QCoreApplication.translate(
+            "Nugget", "Presets made by the community, reviewed by the team"))
+        self._catalog_label.setWordWrap(True)
+        catalog_layout.addWidget(self._catalog_label, 1)
+        catalog_layout.addWidget(self._mini_button("Browse Catalog", self._browse_catalog))
+        self._layout.addWidget(catalog_card)
+
         editor = IOSCard()
         editor_layout = QVBoxLayout(editor)
         editor_layout.setContentsMargins(16, 12, 16, 12)
@@ -78,8 +90,6 @@ class IOSPresetsPage(QWidget):
             QCoreApplication.translate("Nugget", "Saved presets")))
         # Compact toolbars sit ABOVE the list: the window is only 600px tall,
         # so full-height buttons under the list ended up below the fold.
-        self._mini_buttons = []
-        self._danger_buttons = []
         actions = QHBoxLayout()
         actions.setSpacing(6)
         for title, handler in [
@@ -99,6 +109,7 @@ class IOSPresetsPage(QWidget):
             ("Import", self._import),
             ("Share as QR", self._share),
             ("Import Code", self._import_code),
+            ("Submit to Catalog", self._submit_to_catalog),
         ]:
             transfer.addWidget(self._mini_button(title, handler))
         transfer.addStretch()
@@ -135,7 +146,8 @@ class IOSPresetsPage(QWidget):
         c = self._tm.colors
         self._scroll.setStyleSheet(f"background-color: {c.bg_primary}; border: none;")
         self._intro.setStyleSheet(f"color: {c.text_secondary}; font-size: 13px; background-color: transparent;")
-        self._autosave_label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px; background-color: transparent;")
+        for label in (self._autosave_label, self._catalog_label):
+            label.setStyleSheet(f"color: {c.text_primary}; font-size: 15px; background-color: transparent;")
         for edit in (self.name_edit, self.description_edit):
             edit.setStyleSheet(f"""
                 QLineEdit {{ background-color: {c.bg_input};
@@ -235,6 +247,17 @@ class IOSPresetsPage(QWidget):
         from src.gui.dialogs.share_preset import import_code_flow
         if import_code_flow(self, self.preset_manager, self.window):
             self.refresh()
+
+    def _browse_catalog(self):
+        from src.gui.dialogs.preset_catalog import browse_catalog_flow
+        if browse_catalog_flow(self, self.preset_manager, self.window):
+            self.refresh()
+
+    def _submit_to_catalog(self):
+        name = self._require_selection("Submit to Catalog")
+        if name:
+            from src.gui.dialogs.preset_catalog import submit_preset_flow
+            submit_preset_flow(self, self.preset_manager, name, self.window)
 
     def _preview(self):
         name = self._require_selection("Preview")
