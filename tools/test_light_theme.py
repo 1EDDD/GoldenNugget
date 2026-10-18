@@ -39,6 +39,10 @@ class Themes(unittest.TestCase):
         self.patch_settings = patch('src.gui.theme.theme_manager.QSettings', return_value=self.settings)
         self.patch_settings.start()
         self.addCleanup(self.patch_settings.stop)
+        # These tests cover the light theme itself, so it is made available here.
+        self.patch_light = patch('src.gui.theme.theme_manager.LIGHT_MODE_AVAILABLE', True)
+        self.patch_light.start()
+        self.addCleanup(self.patch_light.stop)
         self.manager = ColorThemeManager()
         ColorThemeManager._inst = self.manager
         self.addCleanup(self.restore)
@@ -59,6 +63,14 @@ class Themes(unittest.TestCase):
         restored.set_mode('dark')
         self.assertEqual(restored.accent_name, 'yellow')
         self.assertEqual(restored.colors.bg_primary, DARK.bg_primary)
+
+    def test_dark_on_every_start_while_light_is_unavailable(self):
+        self.manager.set_mode('light')
+        with patch('src.gui.theme.theme_manager.LIGHT_MODE_AVAILABLE', False):
+            restored = ColorThemeManager()
+        self.assertEqual(restored.mode, 'dark')
+        self.assertEqual(restored.colors.bg_primary, DARK.bg_primary)
+        self.assertEqual(self.settings.value('color_mode'), 'light', 'the saved choice is kept')
 
     def test_os_colour_scheme_never_overrides_the_saved_mode(self):
         from PySide6.QtCore import QObject, Qt, Signal

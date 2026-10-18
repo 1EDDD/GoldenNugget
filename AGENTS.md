@@ -131,7 +131,10 @@ This document describes the background threads, async backup/restore operations,
   (Classic vs iOS-style chrome) and stays untouched side-by-side.
 - Theme UI lives in Settings → **Appearance** (`src/gui/ios/settings.py`):
   "Accent Color" selects the accent via `set_accent(...)`. The light/dark
-  selector was removed from the page; the saved `color_mode` still applies at startup.
+  selector was removed from the page. **TEMP:** `LIGHT_MODE_AVAILABLE = False`
+  in `theme_manager.py` makes every start dark (a saved `color_mode` is kept but
+  ignored), so nobody stays stuck in light mode without a switch. Set it to
+  True when the selector comes back.
 - The app does **not** follow the OS colour scheme: `main_app.py` calls
   `ColorThemeManager.apply_to_app(app)`, which applies the persisted palette and
   pins the Qt colour scheme to it; mode/accent changes re-run it.

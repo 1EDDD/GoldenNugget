@@ -4,6 +4,12 @@ from PySide6.QtGui import QColor, QPalette, QGuiApplication
 from src.gui.theme.colors import ThemeColors, DARK, LIGHT, ACCENT_PRESETS, LIGHT_ACCENT_PRESETS
 
 
+# TEMP: the light/dark selector is hidden in Settings, so nobody could leave a
+# light mode saved earlier. Until it comes back, every start uses dark; the saved
+# choice is kept untouched. Set to True when the selector is restored.
+LIGHT_MODE_AVAILABLE = False
+
+
 class ColorThemeManager(QObject):
     """Manages the persisted light/dark theme and independent accent choice.
 
@@ -20,7 +26,7 @@ class ColorThemeManager(QObject):
         super().__init__(parent)
         self._settings = QSettings("GoldenNugget", "GoldenNugget")
         self._mode = self._settings.value("color_mode", "dark")
-        if self._mode not in ('dark', 'light'):
+        if self._mode not in ('dark', 'light') or not LIGHT_MODE_AVAILABLE:
             self._mode = 'dark'
         self._accent_name = self._settings.value("accent_color", "blue")
         if self._accent_name not in ACCENT_PRESETS:
