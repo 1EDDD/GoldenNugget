@@ -33,36 +33,10 @@ permissions:
 jobs:
   build-macos-qt:
     if: ${{ github.event_name == 'push' || inputs.build_for_macos }}
-    name: Qt 6.12 / Python 3.15 (cross-compile Universal2)
-    runs-on: macos-26
-    timeout-minutes: 180
-    env:
-      MACOSX_DEPLOYMENT_TARGET: '14.4'
-    steps:
-      - uses: actions/checkout@v5
-      # python.org ships both slices; setup-python's interpreter is host-specific.
-      - name: Install universal Python 3.15
-        run: |
-          curl --fail --location --retry 3 --output "$RUNNER_TEMP/python.pkg" \
-            https://www.python.org/ftp/python/3.15.0/python-3.15.0-macos11.pkg
-          pkgutil --check-signature "$RUNNER_TEMP/python.pkg"
-          sudo installer -pkg "$RUNNER_TEMP/python.pkg" -target /
-          /Library/Frameworks/Python.framework/Versions/3.15/bin/python3.15 -m venv .qt-env
-          echo "$GITHUB_WORKSPACE/.qt-env/bin" >> "$GITHUB_PATH"
-      - uses: actions/cache@v4
-        id: qt-cache
-        with:
-          path: .macos-qt-wheels
-          key: qt-universal2-macos26-v1-6.12.0-python-3.15.0-macos14.4-${{ hashFiles('tools/build_macos_qt.sh') }}
-      - name: Cross-compile Universal2 Qt and Python bindings for Sonoma
-        if: steps.qt-cache.outputs.cache-hit != 'true'
-        run: bash tools/build_macos_qt.sh
-      - uses: actions/upload-artifact@v6
-        with:
-          name: macOS-Qt-universal2
-          include-hidden-files: true
-          path: .macos-qt-wheels/*.whl
-          if-no-files-found: error
+    name: Shared Qt 6.12 / Python 3.15 (Universal2)
+    uses: GoldenNugget-Team/QTBuildMacOS/.github/workflows/download.yml@0d9e4ff6893e66c5b98a85ded2186a79c83e7199
+    with:
+      release: qt-6.12.0-python-3.15-macos-14.4-v1
 
   build-macos-cryptography:
     if: ${{ github.event_name == 'push' || inputs.build_for_macos }}
@@ -138,7 +112,6 @@ jobs:
       - name: Install compatible dependencies
         run: |
           python -m pip install --upgrade pip setuptools wheel
-          python tools/normalize_macos_wheels.py .macos-qt-wheels/*.whl
           python -m pip install --no-deps .macos-qt-wheels/*.whl .macos-cryptography-wheels/*.whl
           python -m pip install -r requirements.txt -c requirements-macos.txt
           python tools/prepare_macos_universal.py .macos-qt-wheels

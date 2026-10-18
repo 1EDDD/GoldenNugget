@@ -263,6 +263,13 @@ python compile.py
 
 Build output is written to `dist/`.
 
+The macOS CI build downloads Qt/PySide6 6.12.0 Universal2 wheels for Python
+3.15 from [QTBuildMacOS](https://github.com/GoldenNugget-Team/QTBuildMacOS).
+Qt compilation, wheel normalization, and shared releases are maintained there;
+this repository builds the application using the published wheels. The current
+runtime requires macOS 14.4 or newer. See the shared repository for local Qt
+build instructions and reuse in other GoldenNugget-Team projects.
+
 ## Contributing and forking
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contributions and [FORKING.md](FORKING.md) for forks.
