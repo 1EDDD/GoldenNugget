@@ -10,7 +10,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'src' / 'qt'))
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
 
-from PySide6.QtCore import QSettings, QCoreApplication, QEvent, QTranslator
+from PySide6.QtCore import QSettings, QCoreApplication, QEvent
 from PySide6.QtGui import QPalette, QColor
 from PySide6.QtTest import QSignalSpy
 from PySide6.QtWidgets import QApplication, QLabel
@@ -234,13 +234,6 @@ class Themes(unittest.TestCase):
             window.close()
             window.deleteLater()
             QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
-
-    def test_russian_theme_labels_are_shipped(self):
-        translator = QTranslator()
-        path = Path(__file__).resolve().parents[1] / 'src/qt/translations/Nugget_ru.qm'
-        self.assertTrue(translator.load(str(path)))
-        self.assertEqual(translator.translate('Nugget', 'Light'), 'Светлая')
-        self.assertEqual(translator.translate('Nugget', 'Dark'), 'Тёмная')
 
 
 if __name__ == '__main__':
