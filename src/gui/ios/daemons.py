@@ -6,7 +6,9 @@ from PySide6.QtWidgets import (
     QGraphicsOpacityEffect, QSizePolicy,
 )
 
-from src.gui.ios.components import IOSCard, IOSSectionHeader, IOSSwitch, IOSSearchField, IOSSearchEmpty, IOSSettingsAction
+from src.gui.widgets import (
+    IOSCard, IOSSectionHeader, IOSSwitch, IOSSearchField, IOSSearchEmpty, IOSSettingsAction,
+)
 from src.gui.theme import ColorThemeManager
 from src.tweaks.tweaks import tweaks, TweakID
 from src.tweaks.tweak_loader import load_daemons
@@ -577,7 +579,7 @@ class IOSDaemonsContent(QWidget):
         continue_btn = box.addButton(
             QCoreApplication.translate("Nugget", "Continue Anyway"),
             QW.QMessageBox.ButtonRole.AcceptRole)
-        stop_btn = box.addButton(
+        box.addButton(
             QCoreApplication.translate("Nugget", "Stop"),
             QW.QMessageBox.ButtonRole.RejectRole)
         box.setDefaultButton(continue_btn)

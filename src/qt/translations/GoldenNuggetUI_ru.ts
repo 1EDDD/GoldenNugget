@@ -4,6 +4,14 @@
     <context>
         <name>Nugget</name>
         <message>
+            <source>Community Catalog</source>
+            <translation>Каталог сообщества</translation>
+        </message>
+        <message>
+            <source>Presets &amp; templates from the community</source>
+            <translation>Пресеты и шаблоны от сообщества</translation>
+        </message>
+        <message>
             <source>  ·  {0}/{1} enabled</source>
             <translation>  ·  включено {0}/{1}</translation>
         </message>
@@ -3148,6 +3156,22 @@ They will NOT be loaded, so applying may not match the preset's intended state.<
     <context>
         <name>QCoreApplication</name>
         <message>
+            <source>Templates with tweaks need &quot;format_version&quot;: &quot;3&quot;.</source>
+            <translation>Шаблонам с твиками нужен &quot;format_version&quot;: &quot;3&quot;.</translation>
+        </message>
+        <message>
+            <source>Missing file in template: {0}</source>
+            <translation>В шаблоне нет файла: {0}</translation>
+        </message>
+        <message>
+            <source>Template files are too large.</source>
+            <translation>Файлы шаблона слишком большие.</translation>
+        </message>
+        <message>
+            <source>A template tries to replace {0}, which GoldenNugget already writes.</source>
+            <translation>Шаблон пытается заменить {0}, который GoldenNugget уже записывает.</translation>
+        </message>
+        <message>
             <source>Background device operation</source>
             <translation>Фоновая операция с устройством</translation>
         </message>
@@ -3928,12 +3952,80 @@ Password:</source>
     <context>
         <name>PresetCatalog</name>
         <message>
+            <source>Presets and templates shared by the community and reviewed by the GoldenNugget team. Nothing reaches your iPhone until you apply.</source>
+            <translation>Пресеты и шаблоны от сообщества, проверенные командой GoldenNugget. На iPhone ничего не попадёт, пока вы не нажмёте «Применить».</translation>
+        </message>
+        <message>
+            <source>Presets</source>
+            <translation>Пресеты</translation>
+        </message>
+        <message>
+            <source>Templates</source>
+            <translation>Шаблоны</translation>
+        </message>
+        <message>
+            <source>{0} preset(s) and {1} template(s) in the catalog.</source>
+            <translation>В каталоге пресетов: {0}, шаблонов: {1}.</translation>
+        </message>
+        <message>
+            <source>No templates found</source>
+            <translation>Шаблоны не найдены</translation>
+        </message>
+        <message>
+            <source>Download and Add</source>
+            <translation>Скачать и добавить</translation>
+        </message>
+        <message>
+            <source>{0} MB</source>
+            <translation>{0} МБ</translation>
+        </message>
+        <message>
+            <source>{0} KB</source>
+            <translation>{0} КБ</translation>
+        </message>
+        <message>
+            <source>Restores its own files to {0}.</source>
+            <translation>Восстанавливает свои файлы в {0}.</translation>
+        </message>
+        <message>
+            <source>What its tweaks write on the iPhone:</source>
+            <translation>Что его твики записывают на iPhone:</translation>
+        </message>
+        <message>
+            <source>Downloading “{0}”…</source>
+            <translation>Скачивание «{0}»…</translation>
+        </message>
+        <message>
+            <source>Could not download the template: {0}</source>
+            <translation>Не удалось скачать шаблон: {0}</translation>
+        </message>
+        <message>
+            <source>The template could not be added: {0}</source>
+            <translation>Не удалось добавить шаблон: {0}</translation>
+        </message>
+        <message>
+            <source>“{0}” was added to PosterBoard → Templates. Turn on the tweaks you want there, then apply.</source>
+            <translation>«{0}» добавлен в PosterBoard → Шаблоны. Включите там нужные твики и примените.</translation>
+        </message>
+        <message>
+            <source>The template entry is damaged.</source>
+            <translation>Запись шаблона повреждена.</translation>
+        </message>
+        <message>
+            <source>The template is larger than 25 MB.</source>
+            <translation>Шаблон больше 25 МБ.</translation>
+        </message>
+        <message>
+            <source>The downloaded template does not match the catalog. Try again later.</source>
+            <translation>Скачанный шаблон не совпадает с каталогом. Попробуйте позже.</translation>
+        </message>
+        <message>
             <source>In the browser, click “Propose changes”, then “Create pull request”.</source>
             <translation>В браузере нажмите «Propose changes», затем «Create pull request».</translation>
         </message>
         <message>
-            <source>Preset Catalog</source>
-            <translation>Каталог пресетов</translation>
+            <source>Community Catalog</source>
+            <translation>Каталог сообщества</translation>
         </message>
         <message>
             <source>Presets shared by the community and reviewed by the GoldenNugget team. Importing saves a preset; nothing reaches your iPhone until you load it and apply.</source>
@@ -4133,6 +4225,129 @@ Password:</source>
         <message>
             <source>Submit to Catalog</source>
             <translation>Отправить в каталог</translation>
+        </message>
+    </context>
+    <context>
+        <name>CommunityTweaks</name>
+        <message>
+            <source>Paths must be absolute and start with /var/.</source>
+            <translation>Пути должны быть абсолютными и начинаться с /var/.</translation>
+        </message>
+        <message>
+            <source>Paths may not contain &apos;..&apos;, &apos;//&apos; or a trailing slash.</source>
+            <translation>Пути не могут содержать «..», «//» или косую черту в конце.</translation>
+        </message>
+        <message>
+            <source>GoldenNugget cannot write to this location.</source>
+            <translation>GoldenNugget не может записывать в это место.</translation>
+        </message>
+        <message>
+            <source>This file is protected and cannot be changed by a template.</source>
+            <translation>Этот файл защищён, шаблон не может его изменить.</translation>
+        </message>
+        <message>
+            <source>Plist values are nested too deeply.</source>
+            <translation>Значения plist вложены слишком глубоко.</translation>
+        </message>
+        <message>
+            <source>Plist keys must be text.</source>
+            <translation>Ключи plist должны быть текстом.</translation>
+        </message>
+        <message>
+            <source>Plist values cannot be null.</source>
+            <translation>Значения plist не могут быть null.</translation>
+        </message>
+        <message>
+            <source>Every tweak needs a label, and text fields must be short text.</source>
+            <translation>У каждого твика должно быть название, а текстовые поля должны быть коротким текстом.</translation>
+        </message>
+        <message>
+            <source>iOS versions look like 18 or 18.4.</source>
+            <translation>Версии iOS записываются как 18 или 18.4.</translation>
+        </message>
+        <message>
+            <source>Slider limits must be numbers.</source>
+            <translation>Границы ползунка должны быть числами.</translation>
+        </message>
+        <message>
+            <source>Controls are slider, text or choice.</source>
+            <translation>Элемент управления: slider, text или choice.</translation>
+        </message>
+        <message>
+            <source>A slider needs min below max and a positive step.</source>
+            <translation>У ползунка min должен быть меньше max, а шаг — больше нуля.</translation>
+        </message>
+        <message>
+            <source>max_length must be between 1 and 1000.</source>
+            <translation>max_length должен быть от 1 до 1000.</translation>
+        </message>
+        <message>
+            <source>A text default must be text.</source>
+            <translation>Значение по умолчанию для текста должно быть текстом.</translation>
+        </message>
+        <message>
+            <source>A choice needs between 1 and 50 choices.</source>
+            <translation>В выборе должно быть от 1 до 50 вариантов.</translation>
+        </message>
+        <message>
+            <source>Each choice needs a label and a value.</source>
+            <translation>У каждого варианта должны быть label и value.</translation>
+        </message>
+        <message>
+            <source>A choice default is the index of a choice.</source>
+            <translation>default для выбора — это номер варианта.</translation>
+        </message>
+        <message>
+            <source>Writes are plist, file or empty.</source>
+            <translation>Тип записи: plist, file или empty.</translation>
+        </message>
+        <message>
+            <source>The owner is 501 (mobile) or 0 (root).</source>
+            <translation>Владелец — 501 (mobile) или 0 (root).</translation>
+        </message>
+        <message>
+            <source>A plist write needs a values object.</source>
+            <translation>Для записи plist нужен объект values.</translation>
+        </message>
+        <message>
+            <source>A file write needs a source inside the template.</source>
+            <translation>Для записи файла нужен source внутри шаблона.</translation>
+        </message>
+        <message>
+            <source>tweaks must be a list of at most 64 tweaks.</source>
+            <translation>tweaks должен быть списком не более чем из 64 твиков.</translation>
+        </message>
+        <message>
+            <source>Each tweak must be an object.</source>
+            <translation>Каждый твик должен быть объектом.</translation>
+        </message>
+        <message>
+            <source>Each tweak needs a unique id of letters, digits, &apos;.&apos;, &apos;_&apos; or &apos;-&apos;.</source>
+            <translation>У каждого твика должен быть уникальный id из букв, цифр, «.», «_» или «-».</translation>
+        </message>
+        <message>
+            <source>default must be true or false.</source>
+            <translation>default должен быть true или false.</translation>
+        </message>
+        <message>
+            <source>A tweak needs between 1 and 32 writes.</source>
+            <translation>У твика должно быть от 1 до 32 записей.</translation>
+        </message>
+        <message>
+            <source>{0} and {1} both replace {2}.</source>
+            <translation>{0} и {1} оба заменяют {2}.</translation>
+        </message>
+        <message>
+            <source>Tweaks</source>
+            <translation>Твики</translation>
+        </message>
+        <message>
+            <source>Not applied on iOS {0}.</source>
+            <translation>Не применяется на iOS {0}.</translation>
+        </message>
+        <message>
+            <source>Writes: {0}</source>
+            <translation>Записывает: {0}</translation>
         </message>
     </context>
 </TS>

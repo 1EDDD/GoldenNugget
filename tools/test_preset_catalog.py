@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import zipfile
 from unittest import mock
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -28,6 +29,19 @@ TOOL = Path(__file__).resolve().parent / 'preset_catalog.py'
 
 def code(**tweaks):
     return share_code.encode(tweaks or {'NoLiquidDock': ON})
+
+
+SPRINGBOARD = '/var/Managed Preferences/mobile/com.apple.springboard.plist'
+TEMPLATE_CONFIG = {'title': 'Dock Tweaks', 'author': 'Someone', 'description': 'Dock things.',
+                   'format_version': '3', 'min_version': '26.0', 'tags': ['dock'], 'tweaks': [
+                       {'id': 'hide', 'label': 'Hide Dock', 'writes': [
+                           {'type': 'plist', 'path': SPRINGBOARD, 'values': {'SBHideDock': True}}]}]}
+
+
+def batter(path, config=None):
+    with zipfile.ZipFile(path, 'w') as archive:
+        archive.writestr('Dock/config.json', json.dumps(config or TEMPLATE_CONFIG))
+    return path
 
 
 def raw(**fields):
@@ -100,6 +114,45 @@ class Index(unittest.TestCase):
         data, saved_at = preset_catalog.read_cache()
         self.assertEqual(data, b'{"format": 1}')
         self.assertGreater(saved_at, 0)
+
+
+class Templates(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.path = batter(Path(self.tmp.name) / 'dock-tweaks.batter')
+
+    def test_entry_round_trips_through_the_index(self):
+        entry = preset_catalog.template_entry(self.path, 'dock-tweaks')
+        self.assertEqual((entry.name, entry.ios_min, entry.tags, entry.writes),
+                         ('Dock Tweaks', '26.0', ['dock'], [('Hide Dock', [SPRINGBOARD])]))
+        index = json.dumps(preset_catalog.build_index([], 1, templates=[entry])).encode()
+        presets, templates, rejected = preset_catalog.parse_catalog(index)
+        self.assertEqual((presets, rejected), ([], 0))
+        self.assertEqual(templates[0], entry)
+        self.assertTrue(templates[0].url.endswith('/GoldenNugget-Presets/templates/dock-tweaks.batter'))
+        self.assertEqual(preset_catalog.parse_index(index), ([], 0), 'old callers ignore templates')
+
+    def test_damaged_rows_are_skipped(self):
+        good = preset_catalog.template_entry(self.path, 'dock-tweaks').to_row()
+        rows = [dict(good, sha256='x'), dict(good, size=0), dict(good, id='../x'),
+                dict(good, tweaks=[{'label': 1}]), good, good]
+        _, templates, rejected = preset_catalog.parse_catalog(
+            json.dumps({'format': 1, 'presets': [], 'templates': rows}).encode())
+        self.assertEqual((len(templates), rejected), (1, 5))
+
+    def test_save_checks_size_and_hash(self):
+        entry = preset_catalog.template_entry(self.path, 'dock-tweaks')
+        data = self.path.read_bytes()
+        with mock.patch.object(preset_catalog, 'templates_dir', return_value=self.tmp.name + '/store'):
+            os.makedirs(self.tmp.name + '/store')
+            with self.assertRaises(CatalogError):
+                preset_catalog.save_template(entry, data + b'x')
+            with self.assertRaises(CatalogError):
+                preset_catalog.save_template(entry, b'y' * len(data))
+            saved = preset_catalog.save_template(entry, data)
+        self.assertEqual(Path(saved).read_bytes(), data)
+        self.assertEqual(Path(saved).name, 'dock-tweaks.batter')
 
 
 class Submitting(unittest.TestCase):
@@ -177,13 +230,36 @@ class Tool(unittest.TestCase):
             self.assertIn(text, result.stdout)
         self.assertEqual(self.run_tool('build', str(self.root), str(self.root / 'i.json')).returncode, 1)
 
+    def test_templates_are_checked_and_published(self):
+        self.git('checkout', '-qb', 'pr')
+        (self.root / 'templates').mkdir()
+        batter(self.root / 'templates' / 'dock-tweaks.batter')
+        bad = dict(TEMPLATE_CONFIG, tweaks=[{'id': 'x', 'label': 'X', 'writes': [
+            {'type': 'plist', 'path': '/System/Library/x.plist', 'values': {'a': 1}}]}])
+        batter(self.root / 'templates' / 'bad-one.batter', bad)
+        self.git('add', '-A')
+        self.git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'pr')
+        summary = self.root / 'summary.md'
+        result = self.run_tool('check', str(self.root), '--changed-since', 'main', '--summary', str(summary))
+        self.assertEqual(result.returncode, 1)
+        self.assertIn('templates/bad-one.batter::', result.stdout)
+        self.assertNotIn('Community pull requests', result.stdout)
+        self.assertIn(f'| Hide Dock | `{SPRINGBOARD}` |', summary.read_text())
+        (self.root / 'templates' / 'bad-one.batter').unlink()
+        out = self.root / 'site' / 'index.json'
+        self.assertEqual(self.run_tool('build', str(self.root), str(out)).returncode, 0)
+        _, templates, _ = preset_catalog.parse_catalog(out.read_bytes(), VALID)
+        self.assertEqual([entry.id for entry in templates], ['dock-tweaks'])
+        self.assertEqual((self.root / 'site' / 'templates' / 'dock-tweaks.batter').read_bytes(),
+                         (self.root / 'templates' / 'dock-tweaks.batter').read_bytes())
+
     def test_deleting_is_for_maintainers(self):
         self.git('checkout', '-qb', 'pr')
         self.git('rm', '-q', 'presets/solid-glass.json')
         self.git('-c', 'user.name=t', '-c', 'user.email=t@t', 'commit', '-qm', 'rm')
         result = self.run_tool('check', str(self.root), '--changed-since', 'main')
         self.assertEqual(result.returncode, 1)
-        self.assertIn('Only maintainers remove presets', result.stdout)
+        self.assertIn('Only maintainers remove presets and templates', result.stdout)
 
 
 class Dialogs(unittest.TestCase):
@@ -192,6 +268,9 @@ class Dialogs(unittest.TestCase):
         tweak_loader.load_plist_tweaks()
         tweak_loader.load_daemons()
         self.pm = PresetManager()
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.pm.presets_dir = self.tmp.name
         old = dict(raw(name='Old Phones', ios_max='18', code=code(RTL=ON)), id='old-phones')
         new = dict(raw(tags=['glass']), id='solid-glass')
         self.index = json.dumps({'format': 1, 'presets': [old, new]}).encode()
@@ -238,6 +317,65 @@ class Dialogs(unittest.TestCase):
         url = opened.call_args.args[0].toString(opened.call_args.args[0].ComponentFormattingOption.FullyEncoded)
         self.assertIn('/new/main/presets?filename=mine.json&value=', url)
         self.assertEqual(dialog.submitted, ('mine.json', True))
+
+
+    def test_templates_tab_downloads_and_adds(self):
+        from src.gui.dialogs.preset_catalog import CatalogDialog
+        path = batter(Path(self.tmp.name) / 'dock-tweaks.batter')
+        entry = preset_catalog.template_entry(path, 'dock-tweaks')
+        index = json.dumps(preset_catalog.build_index([], 1, templates=[entry])).encode()
+        with mock.patch.object(preset_catalog, 'read_cache', return_value=(None, 0)):
+            dialog = CatalogDialog(self.pm, '26.1', 'iPhone15,3', None, fetch=False)
+        self.addCleanup(dialog.deleteLater)
+        self.assertTrue(dialog.load_data(index))
+        self.assertEqual(dialog.list.count(), 0, 'presets are shown first')
+        dialog.kind.setCurrentIndex(1)
+        self.assertEqual(dialog.selected_entry().id, 'dock-tweaks')
+        self.assertIn(SPRINGBOARD, dialog.writes.text())
+        self.assertTrue(dialog.preview_button.isHidden())
+        self.assertIsNone(dialog.risk_panel)
+        added = []
+        dialog.add_template = lambda saved, version: added.append((Path(saved).name, version))
+        store = Path(self.tmp.name) / 'store'
+        store.mkdir()
+        with mock.patch.object(preset_catalog, 'templates_dir', return_value=str(store)), \
+                mock.patch('src.gui.dialogs.preset_catalog.QMessageBox.information'), \
+                mock.patch('src.gui.dialogs.preset_catalog.QMessageBox.critical') as critical:
+            self.assertFalse(dialog.install_template(entry, b'tampered'))
+            critical.assert_called_once()
+            self.assertTrue(dialog.install_template(entry, path.read_bytes()))
+        self.assertEqual(added, [('dock-tweaks.batter', '26.1')])
+        self.assertEqual(dialog.added_templates, [str(store / 'dock-tweaks.batter')])
+
+    def test_embedded_page_mode(self):
+        from PySide6.QtWidgets import QPushButton
+        from src.gui.dialogs.preset_catalog import CatalogDialog
+        from PySide6.QtWidgets import QWidget
+        host = QWidget()
+        self.addCleanup(host.deleteLater)
+        with mock.patch.object(preset_catalog, 'read_cache', return_value=(None, 0)):
+            panel = CatalogDialog(self.pm, '26.1', 'iPhone15,3', None, host, fetch=False, embedded=True)
+        self.assertFalse(panel.isWindow())
+        self.assertNotIn(preset_catalog.QT_TRANSLATE_NOOP('PresetCatalog', 'Close'),
+                         [button.text() for button in panel.findChildren(QPushButton)])
+        changes = []
+        panel.on_change = lambda: changes.append(1)
+        panel.load_data(self.index)
+        panel.compatible_only.setChecked(False)
+        with mock.patch('src.gui.dialogs.preset_catalog.QMessageBox.information'):
+            panel._import()
+        self.assertEqual(changes, [1])
+
+    def test_add_template_replaces_an_older_copy(self):
+        from src.gui.dialogs.preset_catalog import add_template
+        from src.tweaks.tweaks import TweakID, tweaks
+        path = str(batter(Path(self.tmp.name) / 'dock-tweaks.batter'))
+        holder = tweaks[TweakID.Templates]
+        before = list(holder.templates)
+        self.addCleanup(setattr, holder, 'templates', before)
+        add_template(path, '26.1')
+        add_template(path, '26.1')
+        self.assertEqual([item.path for item in holder.templates if item.path == path], [path])
 
 
 if __name__ == '__main__':

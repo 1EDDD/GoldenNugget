@@ -49,9 +49,6 @@ def _resolve_pages(args, dm) -> list:
     if explicit:
         return explicit
     pages = get_resettable_pages(dm)
-    last = ""
-    if pages:
-        last = pages[-1].getPageName()
     print(f"Resetting all resettable sections "
           f"({', '.join(p.getPageName() for p in pages)}).")
     return pages

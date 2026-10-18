@@ -177,7 +177,6 @@ def build_archive(
     # first, then the payload objects, then every class definition, and the
     # NSSet instance last. Object order carries no meaning to the unarchiver,
     # but matching it keeps our bytes diffable against a real device dump.
-    data_class = {}
     data_obj = {"$class": None}
     root_obj = {
         "$class": None,

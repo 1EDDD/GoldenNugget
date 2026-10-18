@@ -1,6 +1,6 @@
-from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QToolButton, QSizePolicy
-from PySide6.QtGui import QFont, QIcon, QPixmap
-from PySide6.QtCore import QCoreApplication, QSize
+from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QToolButton, QSizePolicy, QScrollArea, QFrame
+from PySide6.QtGui import QFont, QIcon, QPixmap, QDesktopServices
+from PySide6.QtCore import QCoreApplication, QSize, Qt, QUrl
 
 from webbrowser import open_new_tab
 
@@ -40,14 +40,6 @@ class PBHelpDialog(QDialog):
         layout.addWidget(self.buttonBox)
         self.setLayout(layout)
 
-
-from PySide6.QtWidgets import QDialog, QDialogButtonBox, QLabel, QVBoxLayout, QHBoxLayout, QWidget, QToolButton, QSizePolicy, QScrollArea, QFrame
-from PySide6.QtGui import QFont, QIcon, QPixmap, QDesktopServices
-from PySide6.QtCore import QSize, Qt, QUrl
-
-from webbrowser import open_new_tab
-
-from src.controllers.web_request_handler import Nugget_Repo, get_latest_version
 
 # App version
 from src.gui.version import App_Version, App_Build

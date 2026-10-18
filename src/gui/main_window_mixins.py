@@ -14,7 +14,6 @@ from PySide6.QtCore import QCoreApplication
 
 from src.controllers.video_handler import set_ignore_frame_limit
 from src.devicemanagement.constants import Version
-from src.gui.dialogs import AboutProgramDialog
 from src.gui.dialogs.reset_dialog import ResetDialog
 from src.gui.logger import get_logger
 from src.gui.theme import ColorThemeManager, theme_icon
@@ -497,16 +496,29 @@ class SettingsMixin:
             pass  # Silent fail - autosave is best-effort
 
 
+    def sidebar_enabled(self) -> bool:
+        return self.settings.value("ui/show_sidebar", False, type=bool)
+
+    def set_sidebar_enabled(self, enabled: bool):
+        self.settings.setValue("ui/show_sidebar", bool(enabled))
+        self._sync_settings()
+        show_sidebar = self.theme_manager.current_theme == ThemeManager.CLASSIC or bool(enabled)
+        self.ui.sidebar.setVisible(show_sidebar)
+        self.ios_home.cards_grid.setVisible(not show_sidebar)
+        self._sync_sidebar_selection()
+
     def apply_theme(self, theme: int):
         """Apply the UI mode WITHOUT navigating away.
 
         CLASSIC: sidebar + classic home; iOS-style pages open as actions.
-        IOS: full-screen iOS UI with the shared header providing back
-        navigation. Only the chrome changes — the current page stays put.
+        IOS: iOS UI with an optional sidebar and the shared header providing
+        back navigation. Only the chrome changes — the current page stays put.
         """
         self.theme_manager.save_theme(theme)
         is_ios = theme == ThemeManager.IOS
-        self.ui.sidebar.setVisible(not is_ios)
+        show_sidebar = not is_ios or self.sidebar_enabled()
+        self.ui.sidebar.setVisible(show_sidebar)
+        self.ios_home.cards_grid.setVisible(not show_sidebar)
         self.ui.deviceBar.setVisible(not is_ios)
         if is_ios:
             # iOS mode: full-screen, no padding
@@ -600,7 +612,7 @@ class NavigationMixin:
 
 
     def _page_section_targets(self, page):
-        from src.gui.ios.components import IOSCollapsibleSection, IOSSectionHeader
+        from src.gui.widgets import IOSCollapsibleSection, IOSSectionHeader
         scrolls = page.findChildren(QtWidgets.QScrollArea)
         for widget in page.findChildren(QtWidgets.QWidget):
             if not widget.isVisibleTo(page):
@@ -614,7 +626,7 @@ class NavigationMixin:
                 yield widget.property("navigationTitle") or widget.text(), widget
 
     def _jump_to_page_section(self, page, name):
-        from src.gui.ios.components import IOSCollapsibleSection
+        from src.gui.widgets import IOSCollapsibleSection
         for label, target in self._page_section_targets(page):
             if label != name:
                 continue
@@ -881,12 +893,6 @@ class NavigationMixin:
     def on_presetsPageBtn_clicked(self):
         self.show_ios_page(12)
         self._sync_sidebar_selection()
-
-
-    def show_about_dialog(self):
-        dialog = AboutProgramDialog(self)
-        dialog.exec()
-
 
 
 class ApplyMixin:
@@ -1349,7 +1355,7 @@ class ApplyMixin:
         # GitHub + Open Log), instead of a raw QMessageBox.
         if (icon == QtWidgets.QMessageBox.Critical
                 and alert.exc_type is not None and alert.detailed_txt):
-            from src.exceptions.crash_handler import show_error_dialog, _classify
+            from src.exceptions.crash_handler import _classify
             info = _classify(alert.exc_type, alert.exc_value)
             self._embedded_alert_error(alert, info)
             return
@@ -1533,23 +1539,6 @@ class ApplyMixin:
         self._operation_result_visible = False
         self.ios_home.result_card.hide()
         self.ios_apply.result_card.hide()
-
-    def prompt_star_on_github(self):
-        if self.settings.value("star_prompt_done", False, type=bool):
-            return
-        self.settings.setValue("star_prompt_done", True)
-        self._sync_settings()
-        box = QtWidgets.QMessageBox(self)
-        box.setIcon(QtWidgets.QMessageBox.Question)
-        box.setWindowTitle(self.tr("Enjoying GoldenNugget?"))
-        box.setText(self.tr("If you like GoldenNugget, please consider giving it a star on GitHub!"))
-        star_btn = box.addButton(self.tr("Star on GitHub"), QtWidgets.QMessageBox.AcceptRole)
-        box.addButton(self.tr("Not now"), QtWidgets.QMessageBox.RejectRole)
-        box.exec()
-        if box.clickedButton() == star_btn:
-            from PySide6.QtGui import QDesktopServices
-            QDesktopServices.openUrl(QtCore.QUrl("https://github.com/awesomenull-dev/GoldenNugget"))
-
 
     def prompt_first_launch_backup(self) -> bool:
         box = QtWidgets.QMessageBox(self)

@@ -11,11 +11,19 @@ The app only ever reads that index. Every entry is validated again here and
 its share code is decoded locally, so a bad or tampered index can at worst
 show fewer presets. Importing an entry stores a preset; it never applies it.
 Submitting opens GitHub in the browser with the file already filled in.
+
+The catalog also holds ``.batter`` templates (``templates/<id>.batter``).
+``build`` copies each one next to index.json and lists its title, the files
+its tweaks write and its SHA-256. The app downloads a template only from
+TEMPLATES_URL by id, checks its size and hash, then loads it like any other
+template file; adding it never applies anything either.
 """
+import hashlib
 import json
 import os
 import re
 import time
+import zipfile
 from dataclasses import dataclass, field
 from urllib.parse import quote
 
@@ -26,6 +34,10 @@ from src.controllers import share_code
 CATALOG_REPO = "GoldenNugget-Team/GoldenNugget-Presets"
 INDEX_URL = "https://goldennugget-team.github.io/GoldenNugget-Presets/index.json"
 REPO_URL = f"https://github.com/{CATALOG_REPO}"
+TEMPLATES_URL = INDEX_URL.rsplit("/", 1)[0] + "/templates/"
+TEMPLATES_DIR_NAME = "catalog_templates"
+MAX_TEMPLATE_BYTES = 25 * 1024 * 1024
+MAX_TEMPLATE_WRITES = 64
 FORMAT_VERSION = 1
 MAX_INDEX_BYTES = 4 * 1024 * 1024
 MAX_PRESETS = 2000
@@ -104,6 +116,30 @@ class CatalogEntry:
         return {key: value for key, value in data.items() if value or key in ("format", "code")}
 
 
+@dataclass
+class TemplateEntry(CatalogEntry):
+    """A .batter template in the catalog; ``code`` is unused."""
+    size: int = 0
+    sha256: str = ""
+    domain: str = ""
+    writes: list = field(default_factory=list)   # (tweak label, [paths])
+
+    @property
+    def url(self) -> str:
+        return f"{TEMPLATES_URL}{self.id}.batter"
+
+    @property
+    def filename(self) -> str:
+        return f"{self.id}.batter"
+
+    def to_row(self) -> dict:
+        row = {"id": self.id, "name": self.name, "author": self.author, "description": self.description,
+               "ios_min": self.ios_min, "ios_max": self.ios_max, "tags": list(self.tags),
+               "size": self.size, "sha256": self.sha256, "domain": self.domain,
+               "tweaks": [{"label": label, "writes": list(paths)} for label, paths in self.writes]}
+        return {key: value for key, value in row.items() if value or key in ("id", "size", "sha256")}
+
+
 def _text(raw, key, required=False):
     value = raw.get(key, "")
     if not isinstance(value, str):
@@ -154,8 +190,52 @@ def validate_entry(raw, entry_id: str, validate=None) -> CatalogEntry:
     return entry
 
 
+def validate_template_row(raw) -> TemplateEntry:
+    """Check one ``templates`` row of index.json (display data only: the
+    downloaded file is checked by hash and loaded with the full rules)."""
+    if not isinstance(raw, dict):
+        raise CatalogError(QT_TRANSLATE_NOOP("PresetCatalog", "Unsupported catalog entry format."))
+    entry_id = raw.get("id")
+    if not isinstance(entry_id, str) or not ID_PATTERN.match(entry_id):
+        raise CatalogError(QT_TRANSLATE_NOOP(
+            "PresetCatalog", "File names use lowercase letters, digits and dashes (2–48 characters)."))
+    tags = raw.get("tags", [])
+    if not isinstance(tags, list) or len(tags) > MAX_TAGS or not all(
+            isinstance(tag, str) and 0 < len(tag.strip()) <= MAX_TAG_CHARS for tag in tags):
+        raise CatalogError(QT_TRANSLATE_NOOP("PresetCatalog", "Up to 8 tags of at most 24 characters."))
+    size, digest, domain = raw.get("size"), raw.get("sha256"), raw.get("domain", "")
+    if isinstance(size, bool) or not isinstance(size, int) or not 0 < size <= MAX_TEMPLATE_BYTES \
+            or not isinstance(digest, str) or not re.fullmatch(r"[0-9a-f]{64}", digest) \
+            or not isinstance(domain, str) or len(domain) > 200:
+        raise CatalogError(QT_TRANSLATE_NOOP("PresetCatalog", "The template entry is damaged."))
+    writes, count = [], 0
+    for tweak in raw.get("tweaks", []) if isinstance(raw.get("tweaks", []), list) else [None]:
+        paths = tweak.get("writes") if isinstance(tweak, dict) else None
+        label = tweak.get("label") if isinstance(tweak, dict) else None
+        if not isinstance(label, str) or not isinstance(paths, list) \
+                or not all(isinstance(path, str) and len(path) <= 1024 for path in paths):
+            raise CatalogError(QT_TRANSLATE_NOOP("PresetCatalog", "The template entry is damaged."))
+        count += len(paths)
+        writes.append((label[:80], paths))
+    if count > MAX_TEMPLATE_WRITES:
+        raise CatalogError(QT_TRANSLATE_NOOP("PresetCatalog", "The template entry is damaged."))
+    entry = TemplateEntry(
+        id=entry_id, name=_text(raw, "name", True), author=_text(raw, "author", True),
+        description=_text(raw, "description"), code="",
+        ios_min=_version(raw, "ios_min"), ios_max=_version(raw, "ios_max"),
+        tags=[tag.strip().lower() for tag in tags], size=size, sha256=digest, domain=domain, writes=writes)
+    entry.tweak_count = len(writes)
+    return entry
+
+
 def parse_index(data: bytes, validate=None) -> tuple[list, int]:
     """Return (valid entries, number of rejected rows) from index.json bytes."""
+    entries, _templates, rejected = parse_catalog(data, validate)
+    return entries, rejected
+
+
+def parse_catalog(data: bytes, validate=None) -> tuple[list, list, int]:
+    """Return (presets, templates, number of rejected rows) from index.json bytes."""
     if len(data) > MAX_INDEX_BYTES:
         raise CatalogError(QT_TRANSLATE_NOOP("PresetCatalog", "The catalog is too large."))
     try:
@@ -178,17 +258,86 @@ def parse_index(data: bytes, validate=None) -> tuple[list, int]:
             continue
         seen.add(entry.id)
         entries.append(entry)
-    return entries, rejected
+    templates, seen = [], set()
+    rows = payload.get("templates", [])
+    for row in rows[:MAX_PRESETS] if isinstance(rows, list) else []:
+        try:
+            entry = validate_template_row(row)
+        except CatalogError:
+            rejected += 1
+            continue
+        if entry.id in seen:
+            rejected += 1
+            continue
+        seen.add(entry.id)
+        templates.append(entry)
+    return entries, templates, rejected
 
 
-def build_index(entries, generated=None) -> dict:
+def build_index(entries, generated=None, templates=()) -> dict:
     rows = []
     for entry in sorted(entries, key=lambda item: item.name.casefold()):
         row = entry.to_file()
         row["id"] = entry.id
         rows.append(row)
-    return {"format": FORMAT_VERSION, "generated": int(generated if generated is not None else time.time()),
-            "presets": rows}
+    index = {"format": FORMAT_VERSION, "generated": int(generated if generated is not None else time.time()),
+             "presets": rows}
+    if templates:
+        index["templates"] = [entry.to_row() for entry in sorted(templates, key=lambda item: item.name.casefold())]
+    return index
+
+
+def template_entry(path, entry_id: str, data: bytes = None) -> TemplateEntry:
+    """Catalog entry for a .batter file; loads it with the app's template rules.
+
+    Raises CatalogError (or the template's own error) when it is unusable."""
+    from src.tweaks.posterboard.template_file import TemplateFile
+    if not isinstance(entry_id, str) or not ID_PATTERN.match(entry_id):
+        raise CatalogError(QT_TRANSLATE_NOOP(
+            "PresetCatalog", "File names use lowercase letters, digits and dashes (2–48 characters)."))
+    if data is None:
+        with open(path, "rb") as file:
+            data = file.read(MAX_TEMPLATE_BYTES + 1)
+    if len(data) > MAX_TEMPLATE_BYTES:
+        raise CatalogError(QT_TRANSLATE_NOOP("PresetCatalog", "The template is larger than 25 MB."))
+    template = TemplateFile(str(path))
+    try:
+        with zipfile.ZipFile(str(path)) as archive:
+            config = json.loads(archive.read(template.json_path))
+        raw = {"name": template.name or "", "author": template.author or "",
+               "description": template.description or "", "ios_min": template.min_version or "",
+               "ios_max": template.max_version or "", "tags": config.get("tags", [])}
+        for key in ("name", "author", "description", "ios_min", "ios_max"):
+            if not isinstance(raw[key], str):
+                raw[key] = ""
+        row = dict(raw, id=entry_id, size=len(data), sha256=hashlib.sha256(data).hexdigest(),
+                   domain=template.domain or "",
+                   tweaks=[{"label": tweak.label, "writes": tweak.paths()} for tweak in template.tweaks])
+        return validate_template_row(row)
+    finally:
+        template.clean_files()
+
+
+# --- downloaded templates -------------------------------------------------
+
+def templates_dir() -> str:
+    base = QStandardPaths.writableLocation(QStandardPaths.AppDataLocation)
+    path = os.path.join(base, TEMPLATES_DIR_NAME)
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def save_template(entry: TemplateEntry, data: bytes) -> str:
+    """Check downloaded bytes against the index and store them; returns the path."""
+    if len(data) != entry.size or hashlib.sha256(data).hexdigest() != entry.sha256:
+        raise CatalogError(QT_TRANSLATE_NOOP(
+            "PresetCatalog", "The downloaded template does not match the catalog. Try again later."))
+    path = os.path.join(templates_dir(), entry.filename)
+    temporary = path + ".part"
+    with open(temporary, "wb") as file:
+        file.write(data)
+    os.replace(temporary, path)
+    return path
 
 
 # --- local cache ----------------------------------------------------------

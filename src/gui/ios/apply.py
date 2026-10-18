@@ -3,8 +3,9 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QScrollArea, QPushButton
 )
 
-from src.gui.ios.components import (
-    IOSSectionHeader, IOSCard, IOSPrimaryButton, IOSDangerButton)
+from src.gui.widgets import (
+    IOSSectionHeader, IOSCard, IOSPrimaryButton, IOSDangerButton,
+)
 from src.gui.theme import ColorThemeManager, t
 
 

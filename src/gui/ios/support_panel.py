@@ -6,7 +6,9 @@ from PySide6.QtWidgets import (
 )
 
 from src.gui.credits import CREDITS
-from src.gui.ios.components import IOSCard, IOSCollapsibleSection
+from src.gui.widgets import (
+    IOSCard, IOSCollapsibleSection,
+)
 from src.gui.theme import ColorThemeManager, theme_pixmap, t
 
 
@@ -44,8 +46,8 @@ class SupportPanel(IOSCard):
         team = QHBoxLayout()
         team.setSpacing(12)
         portraits = (
-            ":/credits/awesomenull.webp",
-            ":/credits/windows11aero.webp",
+            ":/credits/awesomenull.png",
+            ":/credits/windows11aero.png",
             ":/credits/kik4311.png",
             ":/credits/LeminLimez.png",
         )

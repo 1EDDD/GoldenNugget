@@ -8,7 +8,9 @@ from src.controllers.hotload import HotLoad
 from src.gui.ios.compat import compatibility_reasons
 from src.devicemanagement.passcode_support import current_passcode_theme_reason
 from src.gui.theme import ColorThemeManager, t
-from src.gui.ios.components import IOSCard, IOSCollapsibleSection
+from src.gui.widgets import (
+    IOSCard, IOSCollapsibleSection,
+)
 from src.tweaks.registry import SPECS
 from src.tweaks.tweak_names import TweakID
 
