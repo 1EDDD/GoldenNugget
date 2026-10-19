@@ -6,7 +6,7 @@ from PySide6.QtWidgets import (
     QPushButton, QScrollArea, QToolButton, QStackedWidget,
     QCheckBox, QComboBox
 )
-from PySide6.QtGui import QPixmap, QIcon, QImageReader
+from PySide6.QtGui import QPixmap, QIcon, QImageReader, QDesktopServices
 from PySide6.QtNetwork import QNetworkAccessManager, QNetworkRequest, QNetworkReply
 
 from src.gui.widgets import (
@@ -14,6 +14,9 @@ from src.gui.widgets import (
 )
 from src.gui.theme import ColorThemeManager, t, theme_pixmap
 from src.tweaks.tweaks import tweaks, TweakID
+
+# Batter Builder: the visual editor for .batter templates with community tweaks.
+BATTER_BUILDER_URL = "https://github.com/GoldenNugget-Team/GoldenNugget-TemplateBuilder/releases/latest"
 
 
 class TendieRow(IOSCard):
@@ -326,6 +329,22 @@ class IOSPosterboardPage(QWidget):
             self.templates_placeholder.setStyleSheet(
                 f"font-size: 15px; color: {c.text_secondary}; background-color: transparent;"
             )
+        if hasattr(self, '_builder_icon'):
+            self._builder_icon.setStyleSheet(
+                f"QLabel {{ background-color: {c.accent}; border-radius: 12px; font-size: 24px; color: {c.text_inverse}; }}"
+            )
+        if hasattr(self, '_builder_title'):
+            self._builder_title.setStyleSheet(
+                f"font-size: 16px; font-weight: 600; color: {c.text_primary}; background-color: transparent;"
+            )
+        if hasattr(self, '_builder_subtitle'):
+            self._builder_subtitle.setStyleSheet(
+                f"font-size: 12px; color: {c.text_secondary}; background-color: transparent;"
+            )
+        if hasattr(self, '_builder_chevron'):
+            self._builder_chevron.setStyleSheet(
+                f"font-size: 26px; color: {c.text_secondary}; background-color: transparent;"
+            )
 
     def _retheme_video_tab(self):
         c = ColorThemeManager.instance().colors
@@ -494,6 +513,9 @@ class IOSPosterboardPage(QWidget):
         self.templates_import_btn = import_btn
         self.templates_layout.addWidget(import_btn)
 
+        self.templates_builder_card = self._create_builder_card()
+        self.templates_layout.addWidget(self.templates_builder_card)
+
         self.templates_placeholder = QLabel(QCoreApplication.translate("Nugget", "No templates added yet"))
         self.templates_placeholder.setAlignment(Qt.AlignCenter)
         self.templates_layout.addWidget(self.templates_placeholder)
@@ -501,6 +523,42 @@ class IOSPosterboardPage(QWidget):
         self._load_templates_list()
 
         return self._templates_scroll
+
+    def _create_builder_card(self) -> QWidget:
+        """A row that opens Batter Builder's download page, for people who
+        want to make a template of their own instead of writing JSON."""
+        card = IOSCard()
+        card.setCursor(Qt.PointingHandCursor)
+        card.setMinimumHeight(88)
+        card.mousePressEvent = lambda e: self.open_batter_builder()
+
+        inner = QHBoxLayout(card)
+        inner.setContentsMargins(16, 12, 16, 12)
+        inner.setSpacing(12)
+
+        self._builder_icon = QLabel()
+        self._builder_icon.setFixedSize(48, 48)
+        self._builder_icon.setAlignment(Qt.AlignCenter)
+        self._builder_icon.setText("\u270E")
+        inner.addWidget(self._builder_icon)
+
+        text_col = QVBoxLayout()
+        text_col.setSpacing(2)
+        self._builder_title = QLabel(QCoreApplication.translate("Nugget", "Create Your Own Template"))
+        text_col.addWidget(self._builder_title)
+        self._builder_subtitle = QLabel(QCoreApplication.translate(
+            "Nugget", "Batter Builder makes switches, sliders and lists without writing JSON"))
+        self._builder_subtitle.setWordWrap(True)
+        text_col.addWidget(self._builder_subtitle)
+        inner.addLayout(text_col, 1)
+
+        self._builder_chevron = QLabel("\u203A")
+        inner.addWidget(self._builder_chevron)
+
+        return card
+
+    def open_batter_builder(self):
+        QDesktopServices.openUrl(QUrl(BATTER_BUILDER_URL))
 
     def show_add_templates_dialog(self):
         from PySide6.QtWidgets import QFileDialog, QMessageBox
@@ -530,7 +588,8 @@ class IOSPosterboardPage(QWidget):
 
         for i in reversed(range(self.templates_layout.count())):
             widget = self.templates_layout.itemAt(i).widget()
-            if widget is not None and widget not in (self.templates_placeholder, self.templates_import_btn):
+            if widget is not None and widget not in (self.templates_placeholder, self.templates_import_btn,
+                                                     self.templates_builder_card):
                 widget.deleteLater()
 
         widgets = {}

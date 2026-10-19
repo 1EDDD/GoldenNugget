@@ -266,6 +266,9 @@ An example format of `config.json` looks like this:
 }
 ```
 # Community Tweaks (format 3)
+> **Don't write this JSON by hand: use [Batter Builder](https://github.com/GoldenNugget-Team/GoldenNugget-TemplateBuilder/releases/latest).**
+> It builds the switches, sliders, text boxes and choice lists below in a window, checks every rule on this page as you type, shows the template on a virtual iPhone and submits it to the catalog. GoldenNugget links to it from PosterBoard → Templates → Create Your Own Template. The format is described below for reference.
+
 A batter file can also carry ready-made tweaks that show up as switches, just like GoldenNugget's built-in tweaks. They can write to the same places the built-in tweaks do: any path under a backup domain GoldenNugget knows (`/var/Managed Preferences/`, `/var/mobile/`, `/var/preferences/`, `/var/db/`, `/var/root/`, `/var/MobileDevice/` and the system group containers).
 
 Set `"format_version": "3"` and add a `tweaks` list. A template that only has tweaks does not need `domain` or `options`.

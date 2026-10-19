@@ -2791,6 +2791,14 @@ They will NOT be loaded, so applying may not match the preset's intended state.<
             <source>Install USB dependencies…</source>
             <translation>Установить USB-зависимости…</translation>
         </message>
+        <message>
+            <source>Create Your Own Template</source>
+            <translation>Создать свой шаблон</translation>
+        </message>
+        <message>
+            <source>Batter Builder makes switches, sliders and lists without writing JSON</source>
+            <translation>Batter Builder создаёт переключатели, слайдеры и списки без ручного JSON</translation>
+        </message>
     </context>
     <context>
         <name>ApplyPreview</name>

@@ -30,6 +30,7 @@ sys.path.insert(0, str(ROOT / "src" / "qt"))
 MAX_FILE_BYTES = 64 * 1024
 PRESET_PATH = re.compile(r"^presets/[^/]+\.json$")
 TEMPLATE_PATH = re.compile(r"^templates/[^/]+\.batter$")
+BATTER_BUILDER_URL = "https://github.com/GoldenNugget-Team/GoldenNugget-TemplateBuilder/releases/latest"
 
 
 def load_entries(catalog: Path, changed=frozenset()):
@@ -131,6 +132,10 @@ def summary_markdown(rows, errors, only=None, templates=()):
     lines = ["## Preset check", ""]
     if errors:
         lines += ["**Problems:**", ""] + [f"- `{path}`: {_cell(message)}" for path, message in errors] + [""]
+        if any(TEMPLATE_PATH.match(path) for path, _message in errors):
+            lines += [f"> To fix a template, open it in [Batter Builder]({BATTER_BUILDER_URL}): its Check "
+                      "page lists every problem with the tweak it belongs to, and Save writes the fixed file.",
+                      ""]
     shown = [row for row in rows if only is None or row[0] in only]
     if shown:
         lines += ["| File | Name | Author | iOS | Tweaks | Risk | Why |", "|---|---|---|---|---|---|---|"]

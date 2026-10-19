@@ -69,6 +69,7 @@ Need support? Join our [Discord Server][server].
   - Device-Specific wallpapers in MercuryPoster can be installed
   - See documentation on the structure of tendies and batter files in [documentation.md](documentation.md)
 - Templates: Custom Operations and file editing
+  - Make your own with [Batter Builder](https://github.com/GoldenNugget-Team/GoldenNugget-TemplateBuilder/releases/latest), a visual editor for templates with community tweaks
   - See documentation on the structure of batter files in [documentation.md](documentation.md)
 - Status Bar
   - Live preview of the Lock Screen and Home Screen status bar before applying

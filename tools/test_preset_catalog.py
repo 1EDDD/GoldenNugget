@@ -229,6 +229,9 @@ class Tool(unittest.TestCase):
                      'presets/copy.json::The same share code', 'README.md::Community pull requests'):
             self.assertIn(text, result.stdout)
         self.assertEqual(self.run_tool('build', str(self.root), str(self.root / 'i.json')).returncode, 1)
+        summary = self.root / 'summary.md'
+        self.run_tool('check', str(self.root), '--summary', str(summary))
+        self.assertNotIn('Batter Builder', summary.read_text())     # only templates get the hint
 
     def test_templates_are_checked_and_published(self):
         self.git('checkout', '-qb', 'pr')
@@ -245,6 +248,8 @@ class Tool(unittest.TestCase):
         self.assertIn('templates/bad-one.batter::', result.stdout)
         self.assertNotIn('Community pull requests', result.stdout)
         self.assertIn(f'| Hide Dock | `{SPRINGBOARD}` |', summary.read_text())
+        self.assertIn('open it in [Batter Builder](https://github.com/GoldenNugget-Team/GoldenNugget-TemplateBuilder',
+                      summary.read_text())
         (self.root / 'templates' / 'bad-one.batter').unlink()
         out = self.root / 'site' / 'index.json'
         self.assertEqual(self.run_tool('build', str(self.root), str(out)).returncode, 0)
@@ -346,6 +351,20 @@ class Dialogs(unittest.TestCase):
             self.assertTrue(dialog.install_template(entry, path.read_bytes()))
         self.assertEqual(added, [('dock-tweaks.batter', '26.1')])
         self.assertEqual(dialog.added_templates, [str(store / 'dock-tweaks.batter')])
+
+    def test_templates_tab_links_to_batter_builder(self):
+        from types import SimpleNamespace
+        from src.gui.ios import posterboard
+        page = posterboard.IOSPosterboardPage(SimpleNamespace(settings=None, device_manager=None))
+        self.addCleanup(page.deleteLater)
+        card = page.templates_builder_card
+        self.assertEqual(page._builder_title.text(), 'Create Your Own Template')
+        self.assertEqual(page.templates_layout.indexOf(card), 1, 'right under the import button')
+        with mock.patch.object(posterboard.QDesktopServices, 'openUrl') as open_url:
+            card.mousePressEvent(None)
+        self.assertIn('GoldenNugget-TemplateBuilder/releases', open_url.call_args[0][0].toString())
+        page._load_templates_list()
+        self.assertEqual(page.templates_layout.indexOf(card), 1, 'refreshing the list keeps the card')
 
     def test_embedded_page_mode(self):
         from PySide6.QtWidgets import QPushButton
