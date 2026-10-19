@@ -404,14 +404,26 @@ def _pict_files(p):
 
 
 def _pict_phone(p):
-    # handset: a quarter arc, thicker at the ear and mouth ends
-    rect = QRectF(0.3, 0.06, 0.64, 0.64)
-    for start, span, width in ((180, 90, 0.11), (180, 22, 0.19), (248, 22, 0.19)):
-        arc = QPainterPath()
-        arc.arcMoveTo(rect, start)
-        arc.arcTo(rect, start, span)
-        _stroke(p, "#FFFFFF", width)
-        p.drawPath(arc)
+    # handset drawn level (handle up, cups down), then turned so the earpiece
+    # sits top-left and the mouthpiece bottom-right
+    handset = QPainterPath(QPointF(-0.34, 0.13))
+    handset.lineTo(-0.34, 0.0)
+    handset.cubicTo(-0.34, -0.22, 0.34, -0.22, 0.34, 0.0)
+    handset.lineTo(0.34, 0.13)
+    handset.lineTo(0.15, 0.13)
+    handset.lineTo(0.15, 0.04)
+    handset.cubicTo(0.15, -0.07, -0.15, -0.07, -0.15, 0.04)
+    handset.lineTo(-0.15, 0.13)
+    handset.closeSubpath()
+    p.save()
+    p.translate(0.5, 0.5)
+    p.rotate(225)
+    p.translate(0, 0.02)
+    p.setPen(QPen(QColor("#FFFFFF"), 0.06, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap,
+                  Qt.PenJoinStyle.RoundJoin))
+    p.setBrush(QColor("#FFFFFF"))
+    p.drawPath(handset)
+    p.restore()
 
 
 def _pict_safari(p):
@@ -436,13 +448,13 @@ def _pict_safari(p):
 
 
 def _pict_messages(p):
-    bubble = QPainterPath()
-    bubble.addEllipse(QPointF(0.5, 0.47), 0.33, 0.27)
-    bubble.addPath(_poly((0.27, 0.6), (0.2, 0.77), (0.42, 0.68)))
-    bubble.setFillRule(Qt.FillRule.WindingFill)
-    p.setPen(Qt.PenStyle.NoPen)
-    p.setBrush(QColor("#FFFFFF"))
-    p.drawPath(bubble)
+    _fill(p, "#FFFFFF")
+    p.drawEllipse(QPointF(0.5, 0.47), 0.33, 0.27)
+    tail = QPainterPath(QPointF(0.28, 0.6))
+    tail.quadTo(0.27, 0.72, 0.18, 0.78)
+    tail.quadTo(0.35, 0.78, 0.45, 0.69)
+    tail.closeSubpath()
+    p.drawPath(tail)
 
 
 _PICTOGRAMS = {
