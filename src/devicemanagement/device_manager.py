@@ -86,6 +86,11 @@ def get_files_list_str(files_list: list[FileToRestore] = None) -> str:
 def show_apply_error(e: Exception, update_label=lambda x: None, files_list: list[FileToRestore] = None):
     traceback_text = "".join(traceback.format_exception(type(e), e, e.__traceback__))
     print(traceback_text)
+    # _restore_ios27 attaches the path as an exception note, which only the
+    # formatted traceback carries (str(e) does not)
+    backup_match = re.search(
+        r"Protective backup kept at:\s*(.+)", traceback_text)
+    backup_path = backup_match.group(1).strip() if backup_match else None
     update_label("Failed to restore")
     if is_find_my_error(e):
         return ApplyAlertMessage(QCoreApplication.tr("Find My must be disabled in order to use this tool."),
@@ -101,9 +106,6 @@ def show_apply_error(e: Exception, update_label=lambda x: None, files_list: list
     elif isinstance(e, ConnectionTerminatedError):
         files_str = get_files_list_str(files_list)
         is_setup_config = "skip_setup27.py" in traceback_text
-        backup_match = re.search(
-            r"Protective backup kept at:\s*(.+)", traceback_text)
-        backup_path = backup_match.group(1).strip() if backup_match else None
         if is_setup_config:
             return ApplyAlertMessage(
                 QCoreApplication.tr("The restore finished, but the device disconnected while configuring Setup Assistant."),
@@ -119,20 +121,14 @@ def show_apply_error(e: Exception, update_label=lambda x: None, files_list: list
         return ApplyAlertMessage(QCoreApplication.tr("You must enable developer mode on your device. You can do it in the Settings app."),
                                  detailed_txt=QCoreApplication.tr("Applying tweaks requires developer mode.\n\nYou can enable this at the bottom of Settings > Privacy & Security > Developer Mode on your iPhone or iPad."))
     elif isinstance(e, NuggetException):
-        return ApplyAlertMessage(str(e), detailed_txt=e.detailed_text)
+        return ApplyAlertMessage(str(e), detailed_txt=e.detailed_text,
+                                 backup_path=backup_path)
     else:
         files_str: str = get_files_list_str(files_list)
         error_msg = type(e).__name__ + ": " + repr(e)
-        # Check if this is a protective backup failure with a backup path
-        backup_path = None
-        error_str = str(e)
-        if "protective backup kept at:" in error_str:
-            match = re.search(r'protective backup kept at:\s*(\S+)', error_str)
-            if match:
-                backup_path = match.group(1)
         return ApplyAlertMessage(
-            error_msg, 
-            detailed_txt=files_str + "TRACEBACK:\n\n" + str(traceback.format_exc()),
+            error_msg,
+            detailed_txt=files_str + "TRACEBACK:\n\n" + traceback_text,
             backup_path=backup_path
         )
 
@@ -241,8 +237,8 @@ class DeviceManager:
                                         "Tip: Option 1 is simpler if you don't know your backup password."
                                     )
                                 ))
-                                self.set_current_device(index=None)
-                                return
+                                # skip only this device; the others stay usable
+                                continue
                         except Exception:
                             pass  # If we can't check, continue anyway
                     vals = ld.all_values

@@ -5,6 +5,12 @@ from io import BytesIO
 # stays the single definition site; anything here is already heavy anyway)
 from src.utils.file_to_restore import _FileMode
 
+def _write_string(d: BytesIO, value: str) -> None:
+    # the length prefix counts encoded bytes, not characters
+    data = value.encode("utf-8")
+    d.write(len(data).to_bytes(2, "big"))
+    d.write(data)
+
 @dataclass
 class MbdbRecord:
     domain: str
@@ -26,14 +32,11 @@ class MbdbRecord:
     def to_bytes(self) -> bytes:
         d = BytesIO()
 
-        d.write(len(self.domain).to_bytes(2, "big"))
-        d.write(self.domain.encode("utf-8"))
+        _write_string(d, self.domain)
 
-        d.write(len(self.filename).to_bytes(2, "big"))
-        d.write(self.filename.encode("utf-8"))
+        _write_string(d, self.filename)
 
-        d.write(len(self.link).to_bytes(2, "big"))
-        d.write(self.link.encode("utf-8"))
+        _write_string(d, self.link)
 
         d.write(len(self.hash).to_bytes(2, "big"))
         d.write(self.hash)
@@ -56,11 +59,8 @@ class MbdbRecord:
         d.write(len(self.properties).to_bytes(1, "big"))
 
         for name, value in self.properties:
-            d.write(len(name).to_bytes(2, "big"))
-            d.write(name.encode("utf-8"))
-
-            d.write(len(value).to_bytes(2, "big"))
-            d.write(value.encode("utf-8"))
+            _write_string(d, name)
+            _write_string(d, value)
 
         return d.getvalue()
     

@@ -92,7 +92,7 @@ shipping a broken release.
 |---|---|---|
 | `tweaks` | `src/tweaks/tweaks.py` | **The only true module-level singleton**: `dict[TweakID → Tweak instance]`; the single source of runtime tweak state both UIs read and write |
 | `DeviceManager` | `src/devicemanagement/device_manager.py` | device discovery, apply/reset orchestration (one instance, created in `main_app.py`) |
-| `DataSingleton` | `src/devicemanagement/data_singleton.py` | **not a real singleton** — a plain 6-line class holding `current_device` + `device_available`. Each `DeviceManager` owns its own instance (`device_manager.py:115`); there is no global accessor. Treat its per-manager value as the source (e.g. read `window.device_manager.data_singleton`). Note: `ios/daemons.py:151-152` constructs a **fresh** instance, so `current_device` is always `None` there — the iPhone-14 location warning guard is effectively dead. |
+| `DataSingleton` | `src/devicemanagement/data_singleton.py` | **not a real singleton** — a plain 6-line class holding `current_device` + `device_available`. Each `DeviceManager` owns its own instance (`device_manager.py:115`); there is no global accessor. Treat its per-manager value as the source (e.g. read `window.device_manager.data_singleton`). |
 
 ---
 

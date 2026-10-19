@@ -75,7 +75,11 @@ def concat_regular_file(file: FileToRestore, files_list: list[FileToRestore], la
         if full_path != "":
             full_path += "/"
         full_path += path_item
-        if not last_path.startswith(full_path):
+        if full_path == "":
+            continue
+        # compare whole components: "Library/Preferences-x" sorts before
+        # "Library/Preferences/..." but does not contain it
+        if last_path != full_path and not last_path.startswith(full_path + "/"):
             files_list.append(backup.Directory(
                 full_path,
                 file.domain,
@@ -86,7 +90,7 @@ def concat_regular_file(file: FileToRestore, files_list: list[FileToRestore], la
             last_path = full_path
     # finally, append the file
     files_list.append(backup.ConcreteFile(
-        f"{full_path}/{name}",
+        f"{full_path}/{name}" if full_path else name,
         file.domain,
         owner=file.owner,
         group=file.group,
@@ -689,7 +693,7 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                         # delivery the PosterBoard-only path already uses).
                         backup=back, reboot=not merge_phases,
                         lockdown_client=lockdown_client if sparse_attempt == 0 else None,
-                        progress_callback=_tracking_callback)
+                        progress_callback=_tracking_callback, udid=udid)
                     log_info(f"Phase 2: sparse restore completed cleanly "
                              f"({sparse_progress['calls']} progress events)")
                     break

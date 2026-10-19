@@ -12,6 +12,7 @@ Requires:
 """
 
 import argparse
+import asyncio
 import sys
 from pathlib import Path
 
@@ -20,10 +21,10 @@ from pymobiledevice3.services.afc import AfcService
 from pymobiledevice3.exceptions import MuxException
 
 
-def connect_device(udid=None):
+async def connect_device(udid=None):
     """Connect to iOS device via USB."""
     try:
-        ld = create_using_usbmux(udid=udid)
+        ld = await create_using_usbmux(serial=udid)
         info = ld.all_values
         print(f"Connected to: {info.get('DeviceName', 'Unknown')} "
               f"(iOS {info.get('ProductVersion', '?')}, UDID: {info.get('UniqueDeviceID', '?')})")
@@ -33,22 +34,22 @@ def connect_device(udid=None):
         sys.exit(1)
 
 
-def afc_read_file(afc, device_path):
+async def afc_read_file(afc, device_path):
     """Read a file from device via AFC. Returns bytes or None if failed."""
     try:
-        return afc.get_file_contents(device_path)
+        return await afc.get_file_contents(device_path)
     except Exception:
         return None
 
 
-def afc_walk(afc, device_path):
+async def afc_walk(afc, device_path):
     """
     Walk the device filesystem starting at device_path using AFC.
     Yields (current_dir, subdirs, files) tuples similar to os.walk().
     Only works for AFC-accessible paths (typically under /var/mobile/Media/).
     """
     try:
-        entries = afc.listdir(device_path)
+        entries = await afc.listdir(device_path)
     except Exception:
         return
 
@@ -61,7 +62,7 @@ def afc_walk(afc, device_path):
         entry_path = device_path.rstrip("/") + "/" + entry
         try:
             # Try to listdir to check if it's a directory
-            afc.listdir(entry_path)
+            await afc.listdir(entry_path)
             dirs.append(entry)
         except Exception:
             files.append(entry)
@@ -70,17 +71,21 @@ def afc_walk(afc, device_path):
 
     for d in dirs:
         subdir_path = device_path.rstrip("/") + "/" + d
-        yield from afc_walk(afc, subdir_path)
+        async for item in afc_walk(afc, subdir_path):
+            yield item
 
 
-def try_afc_backup(ld, output_dir):
+async def try_afc_backup(ld, output_dir):
     """
     Attempt to backup via AFC service.
     Note: AFC root service typically only accesses /var/mobile/Media/
     """
     print("\n--- Trying AFC backup (limited to /var/mobile/Media/) ---")
-    afc = AfcService(lockdown=ld)
+    async with AfcService(lockdown=ld) as afc:
+        return await _afc_backup(afc, output_dir)
 
+
+async def _afc_backup(afc, output_dir):
     # AFC typically maps root to /var/mobile/Media/
     # Let's try to walk from root
     media_path = "/"
@@ -90,7 +95,7 @@ def try_afc_backup(ld, output_dir):
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    for current_dir, dirs, files in afc_walk(afc, media_path):
+    async for current_dir, dirs, files in afc_walk(afc, media_path):
         # Create local directory
         rel_path = current_dir.lstrip("/")
         local_dir = output_dir / rel_path
@@ -100,7 +105,7 @@ def try_afc_backup(ld, output_dir):
             device_file_path = current_dir.rstrip("/") + "/" + fname
             local_file_path = local_dir / fname
 
-            contents = afc_read_file(afc, device_file_path)
+            contents = await afc_read_file(afc, device_file_path)
             if contents is not None:
                 try:
                     local_file_path.write_bytes(contents)
@@ -123,17 +128,19 @@ def main():
                         help="Output directory (default: ./homedomain_backup)")
     parser.add_argument("--udid", default=None,
                         help="Device UDID (default: first connected device)")
-    args = parser.parse_args()
+    asyncio.run(run(parser.parse_args()))
 
+
+async def run(args):
     print("=== Nugget HomeDomain Backup ===")
     print(f"Output directory: {args.output}")
 
     # Connect to device
-    ld = connect_device(udid=args.udid)
+    ld = await connect_device(udid=args.udid)
 
     try:
         # Try AFC backup (limited scope)
-        success = try_afc_backup(ld, args.output)
+        success = await try_afc_backup(ld, args.output)
 
         if not success:
             print("\nNote: AFC backup only accesses /var/mobile/Media/.")
@@ -144,7 +151,7 @@ def main():
 
     finally:
         try:
-            ld.service.close()
+            await ld.close()
         except Exception:
             pass
 

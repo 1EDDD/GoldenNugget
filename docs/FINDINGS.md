@@ -158,13 +158,8 @@ The notion that GoldenNugget keys on three global objects is **partly true**:
    `DeviceManager` owns its own instance at `device_manager.py:115`. The name is
    aspirational; the value is per-`DeviceManager`, not process-wide.
 
-Notable consequence: `IOSDaemonsContent._warn_location_daemon`
-(`src/gui/ios/daemons.py:149-163`) constructs a **fresh** `DataSingleton()` (:151-152)
-instead of reading `window.device_manager.data_singleton`, so `current` is always
-`None` there — the iPhone14 location warning is effectively a dead check
-(guard at :153 returns early). Verified: `current_device` is only ever assigned
-via `DeviceManager.set_current_device` (`device_manager.py:252-265`) and test-mode
-setup (`main_app.py:113-114`).
+`IOSDaemonsContent._warn_location_daemon` (`src/gui/ios/daemons.py`) reads the
+model through `window.device_manager`, so it sees the real current device.
 
 ---
 
