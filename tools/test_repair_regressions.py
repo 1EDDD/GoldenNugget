@@ -83,6 +83,14 @@ class Repairs(unittest.TestCase):
         with self.assertRaises(ValueError):
             PickerOption({**base, 'rename': True, 'names': ['../victim']})
 
+    def test_picker_rename_allows_option_without_files(self):
+        picker = PickerOption(dict(type='picker', label='pick', rename=True, names=['main.caml'],
+                                   options=[dict(label='None'), dict(label='one', files=['one.caml'])]))
+        self.assertEqual(picker.names, ['main.caml'])
+        with self.assertRaises(ValueError):
+            PickerOption(dict(type='picker', label='pick', rename=True, names=['main.caml'],
+                              options=[dict(label='two', files=['a.caml', 'b.caml'])]))
+
     def make_media(self):
         target = self.root / 'DCIM' / 'current.jpg'
         target.parent.mkdir()

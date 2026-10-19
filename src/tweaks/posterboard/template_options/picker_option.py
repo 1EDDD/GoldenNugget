@@ -53,8 +53,10 @@ class PickerOption(TemplateOption):
                     if not isinstance(self.names, list) or any(
                             not isinstance(name, str) or not safe_member(name) for name in self.names):
                         raise ValueError('Unsafe picker destination paths')
-                    if any(len(opt.files) != len(self.names) for opt in self.options):
-                        raise ValueError('Picker rename paths must match each option’s files')
+                    # apply() renames files[i] -> names[i] for the chosen option,
+                    # so an option may carry fewer files (e.g. a "None" choice)
+                    if any(len(opt.files) > len(self.names) for opt in self.options):
+                        raise ValueError('Picker rename needs a name for each option’s files')
         # default value(s)
         if 'default_value' in data:
             self.default_val = data['default_value']
