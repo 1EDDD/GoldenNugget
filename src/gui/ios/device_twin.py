@@ -61,6 +61,7 @@ class TwinState:
     build_label: str = ""
     themed: list = field(default_factory=list)
     wallpaper: Optional[str] = None  # image file
+    stock_icons: dict = field(default_factory=dict)  # app name -> icon PNG from the iPhone
     shown: list = field(default_factory=list)    # translated effect names
     not_shown: int = 0
 
@@ -212,9 +213,9 @@ def _font(px, weight=QFont.Weight.DemiBold):
     return font
 
 
-def _app(entry):
+def _app(entry, icons=None):
     name, top, bottom, kind = entry
-    return TwinApp(name, top, color2=bottom, kind=kind)
+    return TwinApp(name, top, color2=bottom, kind=kind, image=(icons or {}).get(name))
 
 
 # --- pictograms -----------------------------------------------------------
@@ -646,7 +647,7 @@ def paint_home_screen(p, screen, s, state, images):
     if state.build_label:
         status = StatusBarPreviewState(**{**status.__dict__, "time": state.build_label})
     paint_status_bar(p, screen, status, False, cutout=state.cutout)
-    apps = [_app(entry) for entry in _STOCK] + list(state.themed)
+    apps = [_app(entry, state.stock_icons) for entry in _STOCK] + list(state.themed)
     apps = apps[:24]
     icon = 62 * s
     margin = 27 * s
@@ -662,7 +663,7 @@ def paint_home_screen(p, screen, s, state, images):
         if app.show_label:
             p.setPen(QColor(255, 255, 255))
             p.setFont(label_font)
-            name = _tr(app.name) if not app.image else app.name
+            name = _tr(app.name) if app.kind or not app.image else app.name
             p.drawText(QRectF(rect.left() - gap / 2, rect.bottom() + 4 * s, icon + gap, 16 * s),
                        Qt.AlignmentFlag.AlignHCenter,
                        QFontMetricsF(label_font).elidedText(name, Qt.TextElideMode.ElideRight, icon + gap))
@@ -671,18 +672,34 @@ def paint_home_screen(p, screen, s, state, images):
     dock = QRectF(screen.left() + 12 * s, screen.bottom() - dock_h - (20 * s if not state.home_button else 6 * s),
                   screen.width() - 24 * s, dock_h)
     if state.search_button:
-        pill = QRectF(screen.center().x() - 44 * s, dock.top() - 42 * s, 88 * s, 30 * s)
-        _glass(p, pill, 15 * s, s, strong=False)
-        p.setPen(QColor(255, 255, 255, 235))
-        p.setFont(_font(13 * s, QFont.Weight.DemiBold))
-        p.drawText(pill, Qt.AlignmentFlag.AlignCenter, "⌕ " + _tr("Search"))
+        # hugs its label like the iOS pill: magnifier + text, slim padding
+        font = _font(13 * s, QFont.Weight.DemiBold)
+        label = _tr("Search")
+        text_w = QFontMetricsF(font).horizontalAdvance(label)
+        glyph, pad, space = 10 * s, 10 * s, 4 * s
+        width = pad + glyph + space + text_w + pad
+        pill = QRectF(screen.center().x() - width / 2, dock.top() - 36 * s, width, 26 * s)
+        p.setPen(QPen(QColor(255, 255, 255, 60), 0.6 * s))
+        p.setBrush(QColor(255, 255, 255, 40))
+        p.drawRoundedRect(pill, pill.height() / 2, pill.height() / 2)
+        ink = QColor(255, 255, 255, 235)
+        lens = QPointF(pill.left() + pad + glyph * 0.42, pill.center().y() - glyph * 0.08)
+        p.setPen(QPen(ink, 1.5 * s, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap))
+        p.setBrush(Qt.BrushStyle.NoBrush)
+        p.drawEllipse(lens, glyph * 0.34, glyph * 0.34)
+        p.drawLine(QPointF(lens.x() + glyph * 0.25, lens.y() + glyph * 0.25),
+                   QPointF(pill.left() + pad + glyph, lens.y() + glyph * 0.58))
+        p.setPen(ink)
+        p.setFont(font)
+        p.drawText(QRectF(pill.left() + pad + glyph + space, pill.top(), text_w + 1, pill.height()),
+                   Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, label)
     if state.glass_dock:
         _glass(p, dock, 34 * s, s)
     else:
         p.setPen(Qt.PenStyle.NoPen)
         p.setBrush(QColor(0x3A, 0x3A, 0x3C, 215))
         p.drawRoundedRect(dock, 34 * s, 34 * s)
-    dock_apps = [_app(entry) for entry in _DOCK]
+    dock_apps = [_app(entry, state.stock_icons) for entry in _DOCK]
     if state.rtl:
         dock_apps.reverse()
     step = (dock.width() - 4 * icon) / 5
@@ -713,7 +730,7 @@ class DeviceTwinView(QWidget):
     def set_state(self, state: TwinState):
         self.state = state
         self._images = {}
-        for path in [state.wallpaper] + [app.image for app in state.themed]:
+        for path in [state.wallpaper, *state.stock_icons.values()] + [app.image for app in state.themed]:
             if path and path not in self._images:
                 self._images[path] = QImage(path)
         self.update()

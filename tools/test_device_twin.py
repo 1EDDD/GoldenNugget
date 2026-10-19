@@ -105,6 +105,27 @@ class TwinState(unittest.TestCase):
                       for x in range(0, drawn.width(), 7) for y in range(0, drawn.height(), 7))
         self.assertGreater(magenta, 100, 'wallpaper and themed icons are drawn')
 
+    def test_stock_icons_from_the_device_cache(self):
+        from unittest import mock
+        from src.controllers import device_icons
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        with mock.patch.object(device_icons, 'cache_dir', return_value=tmp.name):
+            self.assertEqual(device_icons.cached_icons('UDID', '27.0'), {})
+            image = QImage(60, 60, QImage.Format.Format_ARGB32)
+            image.fill(QColor('#00FFFF'))
+            image.save(str(Path(tmp.name) / 'com.apple.mobilephone.png'))
+            icons = device_icons.cached_icons('UDID', '27.0')
+        self.assertEqual(list(icons), ['Phone'])
+        state = build_state({}, '27.0', 'iPhone17,1')
+        plain = render(state)
+        state.stock_icons = icons
+        drawn = render(state)
+        cyan = sum(drawn.pixelColor(x, y) == QColor('#00FFFF')
+                   for x in range(0, drawn.width(), 3) for y in range(0, drawn.height(), 3))
+        self.assertGreater(cyan, 10, 'the cached Phone icon replaces the drawn one')
+        self.assertNotEqual(plain, drawn)
+
 
 class TwinPainting(unittest.TestCase):
     def test_every_shape_renders_and_flags_change_pixels(self):

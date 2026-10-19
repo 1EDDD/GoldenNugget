@@ -147,19 +147,23 @@ def _paint_bars(p: QPainter, x: float, bottom: float, s: float, filled: int, hei
     return MAX_BARS * bar_w + (MAX_BARS - 1) * gap
 
 
+WIFI_W = 17.0  # pt, the iOS glyph is about 17 x 12
+
+
 def _paint_wifi(p: QPainter, x: float, bottom: float, s: float, filled: int) -> float:
     """Wi-Fi fan of three arcs plus the dot; returns the drawn width."""
-    w = 15.5 * s
+    w = WIFI_W * s
+    big = w / 2 / 0.7071  # a 90-degree fan this wide
     cx = x + w / 2
     for i in range(MAX_WIFI_BARS):
-        radius = w / 2 * (i + 1) / MAX_WIFI_BARS
+        radius = big * (i + 1) / MAX_WIFI_BARS
         path = QPainterPath()
         rect = QRectF(cx - radius, bottom - radius, 2 * radius, 2 * radius)
         path.moveTo(cx, bottom)
         path.arcTo(rect, 45, 90)
         path.closeSubpath()
         if i:
-            inner = (w / 2) * i / MAX_WIFI_BARS + 1.2 * s
+            inner = big * i / MAX_WIFI_BARS + 1.4 * s
             cut = QPainterPath()
             cut.moveTo(cx, bottom)
             cut.arcTo(QRectF(cx - inner, bottom - inner, 2 * inner, 2 * inner), 45, 90)
@@ -239,7 +243,7 @@ def paint_status_bar(p: QPainter, screen: QRectF, state: StatusBarPreviewState, 
     if state.show_cellular:
         pieces.append(("cell", bars_w))
     if state.wifi_bars is not None:
-        pieces.append(("wifi", 15.5 * s))
+        pieces.append(("wifi", WIFI_W * s))
     if state.battery_detail and state.battery is not None:
         pieces.append(("detail", QFontMetricsF(detail_font).horizontalAdvance(state.battery_detail)))
     if state.battery is not None:
@@ -263,7 +267,7 @@ def paint_status_bar(p: QPainter, screen: QRectF, state: StatusBarPreviewState, 
                     bx += badge_w + 2 * s
                 _paint_bars(p, bx, bottom, s, bars, row_h)
         elif kind == "wifi":
-            _paint_wifi(p, x, mid + 5.5 * s, s, state.wifi_bars)
+            _paint_wifi(p, x, mid + 6.0 * s, s, state.wifi_bars)
         elif kind == "detail":
             p.setFont(detail_font)
             p.setPen(_WHITE)
