@@ -162,6 +162,64 @@ def test_startup_load():
 
 
 # =============================================================================
+def test_loaded_preset_survives_the_restart():
+    """Load sets the tweaks without the change callback, and the restart that
+    follows restores AutoSave. Unless Load writes AutoSave itself, the restart
+    brings back the old configuration and the loaded preset is lost."""
+    print("\na loaded preset is still there after the restart")
+    from unittest import mock
+    from src.gui.ios import preset_menu
+
+    class StatefulPresets(FakePresetManager):
+        """Presets hold a tweak state; loading one makes it current."""
+
+        def __init__(self):
+            super().__init__(("AutoSave", "Solid Glass"))
+            self.files = {"AutoSave": "old setup", "Solid Glass": "solid glass"}
+            self.current = None
+
+        def load_preset(self, name):
+            self.loaded.append(name)
+            self.current = self.files[name]
+            return True
+
+        def save_preset(self, name, desc, tags=None, device_model="", ios_version=""):
+            self.saved.append(name)
+            self.files[name] = self.current
+            return True
+
+        def get_preset_metadata(self, name):
+            return {}
+
+        def preset_hidden_feature_names(self, *args, **kwargs):
+            return []
+
+        def preset_has_daemon_changes(self, name):
+            return False
+
+    for autosave in (True, False):
+        pm = StatefulPresets()
+        win = make_window(autosave=autosave)
+        win.preset_manager = pm
+        win._sync_settings = lambda: None
+        with mock.patch.object(preset_menu, "ask_confirmation", return_value=True), \
+                mock.patch.object(preset_menu, "HotLoad"), \
+                mock.patch.object(preset_menu, "daemon_compat_warning", return_value=""), \
+                mock.patch.object(preset_menu, "QMessageBox"), \
+                mock.patch.object(preset_menu, "restart_app") as restart:
+            check(f"Load succeeds (autosave {'on' if autosave else 'off'})",
+                  preset_menu.load_preset_flow(None, win, pm, "Solid Glass"))
+        check("and restarts the app", restart.called)
+
+        after = make_window(autosave=autosave, last_loaded_preset="Solid Glass")
+        after.preset_manager = pm
+        pm.current = None
+        after._load_last_preset()
+        check(f"after the restart the preset's tweaks are current (autosave {'on' if autosave else 'off'})",
+              pm.current == "solid glass", str(pm.current))
+
+
+# =============================================================================
 def test_banner_and_settings_hook():
     print("\nthe UI tells the truth about it")
     from src.gui.preset_widget import PresetBanner
@@ -287,6 +345,7 @@ def main():
     test_option_state()
     test_writes_are_gated()
     test_startup_load()
+    test_loaded_preset_survives_the_restart()
     test_banner_and_settings_hook()
     test_status_bar_survives_the_round_trip()
     print(f"\nALL {PASS} CHECKS PASSED")
