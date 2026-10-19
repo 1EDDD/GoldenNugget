@@ -524,7 +524,7 @@ class DeviceMonitorThread(QThread):
     @staticmethod
     def _device_signature(devices):
         return frozenset(
-            (device.serial, device.connection_type)
+            (device.serial, device.connection_type, getattr(device, 'devid', None))
             for device in devices if device.is_usb
         )
 

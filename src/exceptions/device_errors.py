@@ -35,6 +35,7 @@ def is_connection_error(exc: Exception) -> bool:
     msg = str(exc).lower()
     return isinstance(exc, (
         pm3_exc.ConnectionTerminatedError,
+        pm3_exc.ConnectionFailedError,
         ConnectionError,
         OSError,
         asyncio.TimeoutError,

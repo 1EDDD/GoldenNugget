@@ -8,6 +8,7 @@ NavigationMixin, ApplyMixin)``.
 
 from typing import Optional
 import os
+import time
 
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtCore import QCoreApplication
@@ -34,6 +35,14 @@ from src.tweaks.tweaks import tweaks, TweakID
 
 class DeviceBarMixin:
     """Device refresh, selection and per-device interface updates."""
+
+    def _expect_device_reboot(self):
+        self._reconnecting_udid = self.device_manager.get_current_device_udid()
+        self._device_reconnect_until = time.monotonic() + 90
+        self._device_change_refresh_pending = True
+
+    def _device_reconnect_expected(self):
+        return time.monotonic() < getattr(self, "_device_reconnect_until", 0)
 
     def continue_without_device(self):
         """Allow browsing for this session, without creating a mock device."""
@@ -163,7 +172,7 @@ class DeviceBarMixin:
         if (self.refresh_in_progress or self.apply_in_progress
                 or getattr(self, "_cache_restore_in_progress", False)):
             return
-        self._device_refresh_timer.start(450)
+        self._device_refresh_timer.start(2000 if self._device_reconnect_expected() else 450)
 
 
     @QtCore.Slot()
@@ -180,6 +189,15 @@ class DeviceBarMixin:
         if alert is None:
             return
         import logging
+        from src.exceptions.device_errors import is_connection_error
+        if self._device_reconnect_expected() and is_connection_error(alert.exc_value):
+            logging.getLogger('GoldenNugget.refresh').debug(
+                'Device is reconnecting after reboot: %s', alert.exc_value)
+            self._device_change_refresh_pending = True
+            self.connect_placeholder.set_scan_status(
+                QCoreApplication.translate("Nugget", "Waiting for device after reboot…"), busy=True)
+            return
+        self._device_reconnect_until = 0
         self._last_connection_error = alert.txt
         logging.getLogger('GoldenNugget.refresh').warning('%s\n%s', alert.txt, alert.detailed_txt or '')
         self.connect_placeholder.set_scan_status(alert.txt, busy=True)
@@ -308,6 +326,14 @@ class DeviceBarMixin:
         self.ios_home.update_status()
         # no device -> gate the whole iOS shell behind the connect placeholder
         self._update_device_gate()
+        if self._device_reconnect_expected():
+            target = getattr(self, '_reconnecting_udid', None)
+            if any(device.udid == target for device in self.device_manager.devices):
+                self._device_reconnect_until = 0
+            else:
+                # A USB endpoint can exist before lockdownd is ready. Keep
+                # scanning even when no further USB attach event arrives.
+                self._device_change_refresh_pending = True
         self._schedule_device_event_refresh()
 
 
@@ -1500,6 +1526,8 @@ class ApplyMixin:
 
 
     def finish_apply_thread(self, success: bool = False, error_msg: str = ""):
+        if success and self.device_manager.pref_manager.auto_reboot:
+            self._expect_device_reboot()
         self.apply_in_progress = False
         self._operation_result_visible = True
         self.toggle_thread_btns(disabled=False)

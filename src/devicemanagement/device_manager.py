@@ -287,13 +287,14 @@ class DeviceManager:
             except PasswordRequiredError:
                 show_alert(ApplyAlertMessage(txt=QCoreApplication.tr("Device is password protected! You must trust the computer on your device.\n\nUnlock your device. On the popup, click \"Trust\", enter your password, then try again.")))
             except MuxException as e:
-                # there is probably a cable issue
-                print(f"MUX ERROR with lockdown device with UUID {device.serial}")
+                # The GUI can treat a temporary reboot disconnect separately
+                # from a persistent connection failure when it has the cause.
                 show_alert(ApplyAlertMessage(txt="MuxException: " + repr(e) + "\n\n" + QCoreApplication.tr("If you keep receiving this error, try using a different cable or port."),
-                               detailed_txt=str(traceback.format_exc())))
+                               detailed_txt=str(traceback.format_exc()), exc_type=type(e), exc_value=e))
             except Exception as e:
                 print(f"ERROR with lockdown device with UUID {device.serial}")
-                show_alert(ApplyAlertMessage(txt=f"{type(e).__name__}: {repr(e)}", detailed_txt=str(traceback.format_exc())))
+                show_alert(ApplyAlertMessage(txt=f"{type(e).__name__}: {repr(e)}", detailed_txt=str(traceback.format_exc()),
+                                            exc_type=type(e), exc_value=e))
         
         if len(self.devices) > 0:
             selected_index = next(
