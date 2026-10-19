@@ -1,8 +1,7 @@
 import sys
-from os import path, getcwd
+from pathlib import Path
+
 
 def get_bundle_files(name: str):
-    try:
-        return path.join(sys._MEIPASS, *name.split('/'))
-    except Exception:
-        return path.join(getcwd(), *name.split('/'))
+    root = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[2]))
+    return str(root.joinpath(*name.split('/')))

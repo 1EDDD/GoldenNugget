@@ -817,6 +817,10 @@ async def perform_protective_backup(
     afc_media_task = None
     if include_afc_media:
         media_dir = media_root or afc_media_dir_for(backup_root)
+        if media_root is None:
+            # Keep channel metadata outside the payload tree so recovery still
+            # knows the media was required if that tree is later lost.
+            (Path(backup_root).parent / '.afc_media_required').touch()
         afc_media_task = asyncio.create_task(backup_media_via_afc(
             lockdown_client,
             media_dir,

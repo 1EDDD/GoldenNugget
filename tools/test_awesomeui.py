@@ -96,6 +96,23 @@ class AwesomeUIIntegration(unittest.TestCase):
                     self.assertIn(ColorThemeManager.instance().colors.bg_secondary,
                                   window.ui.sidebar.styleSheet())
                     self.assertEqual(len(window.ui.sidebar._items), len(NavigationSidebar.ITEM_NAMES))
+                    # Construction already saved ui/theme. First-run interface
+                    # selection must still appear and persist the sidebar choice.
+                    settings.setValue('home_widget', 'presets')
+                    settings.setValue('backup_prompt_done', True)
+                    for choice, show_sidebar in (('classic', True), ('ios', False)):
+                        settings.remove('ui/interface_choice_done')
+                        with patch('src.gui.interface_picker.InterfacePickerDialog') as picker, \
+                             patch.object(sys, 'argv', ['GoldenNugget', '--test-mode']):
+                            picker.return_value.choice = choice
+                            window.run_first_launch_prompts()
+                            self.assertEqual(window.sidebar_enabled(), show_sidebar)
+                            self.assertEqual(window.ios_settings.sidebar_switch.isChecked(), show_sidebar)
+                            self.assertEqual(window.ui.sidebar.isHidden(), not show_sidebar)
+                            self.assertEqual(window.ios_home.apply_btn.isHidden(), show_sidebar)
+                            self.assertTrue(settings.value('ui/interface_choice_done', False, type=bool))
+                            window.run_first_launch_prompts()
+                            picker.assert_called_once_with(window)
                     if os.environ.get('GOLDENNUGGET_UI_SCREENSHOT'):
                         window.grab().save(os.environ['GOLDENNUGGET_UI_SCREENSHOT'])
                 finally:

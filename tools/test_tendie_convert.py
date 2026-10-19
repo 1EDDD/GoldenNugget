@@ -13,7 +13,7 @@ import unittest
 import zipfile
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 os.environ.setdefault('QT_QPA_PLATFORM', 'offscreen')
@@ -78,8 +78,9 @@ class ImportDetectionTests(unittest.TestCase):
 
     def test_ios26_stores_the_format_without_prompting(self):
         # iOS 26 cannot use the modern format, so no prompt is raised — but the
-        # card still has to know the package is legacy, and the apply path
-        # defaults to converting (the switch defaults to ON).
+        # card still has to know the package is legacy. The preference stays
+        # available if the user later selects an iOS 27 device; apply must
+        # independently check the current version before converting.
         answers = []
         original = pt.prompt_legacy_convert
         pt.prompt_legacy_convert = lambda name, families: answers.append(name) or True
@@ -107,6 +108,7 @@ class TendieRowTests(unittest.TestCase):
     def setUp(self):
         self.app = QApplication.instance() or QApplication([])
         self.page = Mock()
+        self.page.window.device_manager.get_current_device_version.return_value = '27.0'
 
     def _row(self, **kwargs):
         tendie = SimpleNamespace(name="Windows_11.tendies", path="/dev/null",
@@ -135,6 +137,32 @@ class TendieRowTests(unittest.TestCase):
         self.assertIsNone(row.convert_switch)
         self.assertEqual(row.format_lbl.text(), "Modern format")
 
+    def test_conversion_ui_tracks_the_current_device(self):
+        version = self.page.window.device_manager.get_current_device_version
+        version.return_value = '26.6'
+        tendie, row = self._row()
+        row.show()
+        self.app.processEvents()
+        self.assertTrue(row.convert_switch.isHidden())
+        self.assertTrue(row.convert_lbl.isHidden())
+        self.assertEqual(row.format_lbl.text(), 'Installs as is')
+        self.assertIsNone(tendie.auto_convert)
+
+        row.hide()
+        version.return_value = '27.0'
+        row.show()
+        self.app.processEvents()
+        self.assertFalse(row.convert_switch.isHidden())
+        self.assertIn('Converts', row.format_lbl.text())
+
+        row.hide()
+        version.return_value = '26.2'
+        row.show()
+        self.app.processEvents()
+        self.assertTrue(row.convert_switch.isHidden())
+        self.assertEqual(row.format_lbl.text(), 'Installs as is')
+        row.close()
+
     def test_retheme_restyles_the_caption(self):
         _, row = self._row()
         row.show()
@@ -143,6 +171,37 @@ class TendieRowTests(unittest.TestCase):
         ColorThemeManager.instance().theme_changed.emit()
         self.app.processEvents()
         self.assertTrue(row.format_lbl.styleSheet())
+
+
+class ApplyConversionTests(unittest.TestCase):
+    def test_apply_only_converts_for_ios27_even_with_saved_opt_in(self):
+        for version in ('26.2', '26.6', '26.9', '27.0', '27.1', ''):
+            with self.subTest(version=version), tempfile.TemporaryDirectory() as tmp:
+                tweak = pt.PosterboardTweak()
+                with patch.object(pt, 'prompt_legacy_convert', return_value=True):
+                    self.assertTrue(tweak.add_tendie(_legacy_zip(tmp), '27.0'))
+                # Simulate a wallpaper imported and opted into on iOS 27, then
+                # applied with a different device selected.
+                self.assertTrue(tweak.tendies[0].auto_convert)
+                tweak.config_manager = Mock(structure_version=61)
+                tweak.config_manager.update_sqlite.return_value = str(Path(tmp) / 'staged.sqlite3')
+                template_root = Path(tmp) / 'template'
+                template_root.mkdir()
+                template = SimpleNamespace(domain='com.apple.PosterBoard', name='Legacy template',
+                                           extract=Mock(return_value=str(template_root)))
+                with patch.object(tweak, 'create_live_photo_files'), \
+                     patch.object(tweak, 'create_video_loop_files'), \
+                     patch.object(tweak, 'recursive_add'), \
+                     patch.object(pt.posterboard_converter, 'convert_tree', return_value=[]) as convert, \
+                     patch.object(pt.posterboard_converter, 'rename_descriptors_to_skeleton', return_value=[]) as rename:
+                    tweak.apply_tweak([], tmp, [template], version, False)
+                expected = version.startswith('27.')
+                self.assertEqual(convert.call_count, 2 if expected else 0)
+                self.assertEqual(rename.call_count, 2 if expected else 0)
+                if not expected:
+                    extracted = Path(tmp).rglob('Wallpaper.plist')
+                    self.assertTrue(any(plistlib.loads(path.read_bytes())['family'] == 'Marble'
+                                        for path in extracted))
 
 
 if __name__ == '__main__':

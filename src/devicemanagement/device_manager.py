@@ -1062,7 +1062,6 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
         if templates is None:
             templates = tweaks[TweakID.Templates].templates
         # create the other plists
-        flag_plist: dict = {}
         basic_plists: dict = {}
         basic_plists_ownership: dict = {}
         files_data: dict = {}
@@ -1163,13 +1162,6 @@ Returns (PreparedBackup, posterboard_db_ok). When the PosterBoard
             # Generate backup
             update_label(QCoreApplication.tr("Generating backup..."))
             is_ios27 = Version(self.get_current_device_version()) >= Version("27.0")
-            if len(flag_plist) > 0:
-                self.concat_file(
-                    contents=plistlib.dumps(flag_plist),
-                    path=FileLocation.featureflags.value,
-                    files_to_restore=files_to_restore
-                )
-            
             await self.add_skip_setup(files_to_restore, uses_domains)
             for location, plist in basic_plists.items():
                 if location in basic_plists_ownership:

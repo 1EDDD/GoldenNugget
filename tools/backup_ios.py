@@ -1,131 +1,60 @@
 #!/usr/bin/env python3
-"""
-Backup iOS device using Nugget's pymobiledevice3 (MobileBackup2 protocol).
-This creates a full iTunes-style backup including HomeDomain.
-
-Usage:
-    # Use Nugget's .env Python to run this script:
-    /Users/jason/Nugget/.env/bin/python3 backup_ios.py --output ./my_backup
-
-Requirements:
-    - Device connected via USB and trusted
-    - Device is unlocked (you may need to tap "Trust" on the device)
-    - Enough free space on your Mac
-"""
-
+"""Create a full or incremental iTunes-style backup with the current async API."""
+import argparse
+import asyncio
+from pathlib import Path
 import sys
 import time
-from pathlib import Path
 
-# Use Nugget's .env Python which has pymobiledevice3 installed
-# If running from Nugget's .env, pymobiledevice3 should be available
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-from pymobiledevice3.lockdown import create_using_usbmux
+from src.devicemanagement.session import lockdown_session
 from pymobiledevice3.services.mobilebackup2 import Mobilebackup2Service
 
 
 def progress_callback(message):
-    """Handle backup progress messages."""
     if isinstance(message, (int, float)):
         print(f"\rProgress: {message:.1f}%", end="", flush=True)
     else:
         print(f"\n{message}")
 
 
-def main():
-    import argparse
-    parser = argparse.ArgumentParser(description="Backup iOS device (iTunes-style, includes HomeDomain)")
-    parser.add_argument("--output", "-o", default="./ios_backup",
-                        help="Output directory for backup (default: ./ios_backup)")
-    parser.add_argument("--udid", default=None,
-                        help="Device UDID (default: first connected device)")
-    parser.add_argument("--incremental", action="store_true",
-                        help="Do incremental backup (skip if full backup exists)")
-    args = parser.parse_args()
-
-    output_dir = Path(args.output)
+async def run(args):
+    output_dir = Path(args.output).resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
+    print(f"Output directory: {output_dir}")
+    async with lockdown_session(args.udid) as ld:
+        info, udid = ld.all_values, ld.udid
+        print(f"Connected: {info.get('DeviceName', 'Unknown')} ({udid})")
+        async with Mobilebackup2Service(ld) as mb2:
+            if await mb2.get_will_encrypt():
+                print("WARNING: backup encryption is enabled. Keep the password for recovery.")
+            full = not args.incremental or not (output_dir / udid).exists()
+            print("Starting FULL backup..." if full else "Starting INCREMENTAL backup...")
+            started = time.monotonic()
+            await mb2.backup(full=full, backup_directory=output_dir,
+                             progress_callback=progress_callback)
+    print(f"\nBackup complete in {time.monotonic() - started:.1f}s: {output_dir / udid}")
+    return 0
 
-    print("=== iOS Device Backup (Nugget/pymobiledevice3) ===")
-    print(f"Output directory: {output_dir.absolute()}")
-    print("\nConnecting to device...")
 
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--output', '-o', default='./ios_backup')
+    parser.add_argument('--udid', default=None)
+    parser.add_argument('--incremental', action='store_true')
+    args = parser.parse_args(argv)
     try:
-        ld = create_using_usbmux(identifier=args.udid if args.udid else None)
-    except TypeError:
-        # fallback for older pymobiledevice3 versions
-        ld = create_using_usbmux(serial=args.udid if args.udid else None)
-        print(f"FAILED to connect: {e}")
-        print("\nTroubleshooting:")
-        print("  1. Make sure the device is connected via USB")
-        print("  2. Unlock the device and tap 'Trust' if prompted")
-        print("  3. Make sure the device is not paired with another computer")
-        sys.exit(1)
-
-    info = ld.all_values
-    udid = ld.udid
-    print(f"\nConnected: {info.get('DeviceName', 'Unknown')}")
-    print(f"  Model: {info.get('ProductType', '?')}")
-    print(f"  iOS:   {info.get('ProductVersion', '?')}")
-    print(f"  UDID:  {udid}")
-    print()
-
-    # Check if device will encrypt backup
-    mb2 = Mobilebackup2Service(ld)
-    will_encrypt = mb2.will_encrypt
-    if will_encrypt:
-        print("WARNING: Device has backup encryption enabled.")
-        print("  The backup will be encrypted. To restore, you'll need the password.")
-        print("  (Use pymobiledevice3's change-password or disable in Settings)")
-        print()
-
-    device_backup_dir = output_dir / udid
-    is_full = not args.incremental or not device_backup_dir.exists()
-
-    if is_full:
-        print("Starting FULL backup...")
-    else:
-        print("Starting INCREMENTAL backup...")
-
-    print("Note: You may need to unlock the device and tap 'Allow' if prompted.")
-    print("The device screen may show 'Backing Up'.\n")
-    print("Starting backup... (this may take several minutes)")
-    print("-" * 50)
-
-    start = time.time()
-    try:
-        mb2.backup(
-            full=is_full,
-            backup_directory=output_dir,
-            progress_callback=progress_callback,
-        )
+        return asyncio.run(run(args))
     except KeyboardInterrupt:
-        print("\n\nBackup cancelled by user.")
-        sys.exit(1)
+        print("\nBackup cancelled.", file=sys.stderr)
+        return 1
     except Exception as e:
-        print(f"\n\nBackup failed: {e}")
-        print("\nTroubleshooting:")
-        print("  1. Make sure the device screen is unlocked")
-        print("  2. Try disconnecting and reconnecting the USB cable")
-        print("  3. For encrypted backups, make sure you have the password")
-        sys.exit(1)
-
-    elapsed = time.time() - start
-    print(f"\n\nBackup complete! Took {elapsed:.1f} seconds.")
-    print(f"Backup saved to: {device_backup_dir}")
-    print()
-    print("Backup contains the following domains (including HomeDomain):")
-    print("  - HomeDomain        (/var/mobile/)")
-    print("  - MediaDomain       (/var/mobile/Media/)")
-    print("  - SystemPreferencesDomain")
-    print("  - MobileDeviceDomain")
-    print("  - ... and more")
-    print()
-    print("To extract files from this backup (no device needed):")
-    print(f"  .env/bin/python3 extract_homedomain.py {device_backup_dir.resolve()} ./extracted")
-    print(f"  .env/bin/python3 extract_homedomain.py {device_backup_dir.resolve()} ./extracted HomeDomain")
-    print(f"  .env/bin/python3 extract_homedomain.py {device_backup_dir.resolve()} ./extracted SystemPreferencesDomain")
+        print(f"Backup failed: {e}", file=sys.stderr)
+        return 1
 
 
-if __name__ == "__main__":
-    main()
+if __name__ == '__main__':
+    raise SystemExit(main())

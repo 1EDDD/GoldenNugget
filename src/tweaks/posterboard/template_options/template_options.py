@@ -1,3 +1,4 @@
+from src.controllers.archive_safety import safe_member
 from enum import Enum
 from dataclasses import dataclass
 from typing import Optional
@@ -26,6 +27,9 @@ class TemplateOption:
             self.files = []
         else:
             self.files = data['files']
+            if not isinstance(self.files, list) or any(
+                    not isinstance(name, str) or not safe_member(name) for name in self.files):
+                raise ValueError('Unsafe template file paths')
         if 'associated_preview' in data:
             self.associated_preview = data['associated_preview']
         else:

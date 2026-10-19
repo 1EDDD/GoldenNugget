@@ -122,11 +122,13 @@ This document describes the background threads, async backup/restore operations,
 - **TEMP: Classic UI removed** — `src/qt/mainwindow.ui` is deleted (the
   generated `mainwindow_ui.py` stays committed and keeps working at runtime),
   the Settings "iOS-style Interface" switch is hidden, `ThemeManager.load_theme`
-  always returns `IOS`, and the first-launch `InterfacePickerDialog` is skipped
-  (saves `IOS` instead). Restore all of these when Classic comes back:
+  always returns `IOS`. The first-launch `InterfacePickerDialog` now chooses
+  **Sidebar / Modern** within the modern pages, by setting `ui/show_sidebar`;
+  `ui/interface_choice_done` records completion independently of `ui/theme`
+  (which is saved during window construction). Restore the legacy chrome when Classic comes back:
   recreate `mainwindow.ui`, unhide the switch in `settings.py`, revert
-  `load_theme` to read `ui/theme`, and re-add the picker block in
-  `main_window.run_first_launch_prompts`.
+  `load_theme` to read `ui/theme`. Keep the first-run sidebar choice separate
+  from the legacy chrome mode.
 - Old `src/gui/ios/theme_manager.py` (`CLASSIC`/`IOS`) is layout-only
   (Classic vs iOS-style chrome) and stays untouched side-by-side.
 - Theme UI lives in Settings → **Appearance** (`src/gui/ios/settings.py`):

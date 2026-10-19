@@ -1,3 +1,4 @@
+from src.controllers.archive_safety import package_path, safe_member
 from . import TemplateOption
 
 import os
@@ -17,6 +18,9 @@ class PickerElement:
         self.label = option_data['label']
         if 'files' in option_data:
             self.files = option_data['files']
+            if not isinstance(self.files, list) or any(
+                    not isinstance(name, str) or not safe_member(name) for name in self.files):
+                raise ValueError('Unsafe picker file paths')
         if 'associated_preview' in option_data:
             self.associated_preview = option_data['associated_preview']
 
@@ -46,6 +50,11 @@ class PickerOption(TemplateOption):
                 self.rename = data['rename']
                 if self.rename:
                     self.names = data['names'] # only require if rename is true
+                    if not isinstance(self.names, list) or any(
+                            not isinstance(name, str) or not safe_member(name) for name in self.names):
+                        raise ValueError('Unsafe picker destination paths')
+                    if any(len(opt.files) != len(self.names) for opt in self.options):
+                        raise ValueError('Picker rename paths must match each option’s files')
         # default value(s)
         if 'default_value' in data:
             self.default_val = data['default_value']
@@ -111,7 +120,7 @@ class PickerOption(TemplateOption):
             if not opt in sel_options:
                 for file in opt.files:
                     # delete files or directories
-                    path = os.path.join(container_path, *file.split('/'))
+                    path = package_path(container_path, file)
                     if os.path.isdir(path):
                         rmtree(path=path, ignore_errors=True)
                     else:
@@ -120,8 +129,8 @@ class PickerOption(TemplateOption):
         if self.rename:
             for i in range(len(self.options[self.selection].files)):
                 # rename files or directories
-                old_path = os.path.join(container_path, self.options[self.selection].files[i])
-                new_path = os.path.join(container_path, self.names[i])
+                old_path = package_path(container_path, self.options[self.selection].files[i])
+                new_path = package_path(container_path, self.names[i])
                 if os.path.isdir(old_path):
                     # rename whole directory
                     move(old_path, new_path)

@@ -38,3 +38,29 @@ def checked_members(archive):
         if info.file_size > 16 * 1024 ** 2 and info.file_size > max(info.compress_size, 1) * 1000:
             raise ValueError(f'Excessive archive expansion: {name}')
     return members
+
+
+def package_path(root, relative):
+    """Resolve an untrusted package path, including wildcard patterns."""
+    from pathlib import Path
+    if not isinstance(relative, str) or not safe_member(relative):
+        raise ValueError(f"Unsafe template path: {relative!r}")
+    base = Path(root).resolve()
+    target = base.joinpath(*relative.split('/')).resolve()
+    if not target.is_relative_to(base) or target == base:
+        raise ValueError(f"Template path escapes its package: {relative!r}")
+    return str(target)
+
+
+def package_matches(root, relative):
+    """Validate the pattern and every match before the caller mutates files."""
+    import glob
+    from pathlib import Path
+    pattern = package_path(root, relative)
+    base = Path(root).resolve()
+    matches = glob.glob(pattern, recursive=True)
+    for match in matches:
+        target = Path(match).resolve()
+        if not target.is_relative_to(base) or target == base:
+            raise ValueError(f"Template path escapes its package: {relative!r}")
+    return matches

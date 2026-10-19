@@ -31,6 +31,7 @@ class TendieRow(IOSCard):
 
     def __init__(self, page, tendie, parent=None):
         super().__init__(parent)
+        self._page = page
         self.tendie = tendie
         self.setCursor(Qt.PointingHandCursor)
         self.setMinimumHeight(72)
@@ -98,12 +99,29 @@ class TendieRow(IOSCard):
         # IOSCard.__init__ already connected _retheme to theme_changed; restyle
         # now that the child widgets exist.
         self._retheme()
+        self._update_conversion_ui()
+
+    def _conversion_supported(self) -> bool:
+        version = self._page.window.device_manager.get_current_device_version()
+        return tweaks[TweakID.PosterBoard]._legacy_convert_supported(version)
+
+    def _update_conversion_ui(self):
+        if self.convert_switch is not None:
+            supported = self._conversion_supported()
+            self.convert_switch.setVisible(supported)
+            self.convert_lbl.setVisible(supported)
+        self.format_lbl.setText(self._format_caption())
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        # Rows survive device changes; recheck the currently selected iPhone.
+        self._update_conversion_ui()
 
     def _format_caption(self) -> str:
         posterboard = tweaks[TweakID.PosterBoard]
         if not posterboard.tendie_needs_conversion(self.tendie):
             return QCoreApplication.translate("Nugget", "Modern format")
-        if posterboard.tendie_convert_enabled(self.tendie):
+        if self._conversion_supported() and posterboard.tendie_convert_enabled(self.tendie):
             return QCoreApplication.translate("Nugget", "Converts to the modern format")
         return QCoreApplication.translate("Nugget", "Installs as is")
 

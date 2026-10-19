@@ -1,7 +1,6 @@
+from src.controllers.archive_safety import package_matches
 from . import TemplateOption
 
-import os
-import glob
 from typing import Optional
 from enum import Enum
 from PySide6.QtGui import QColor
@@ -329,8 +328,7 @@ class SetOption(TemplateOption):
                 apply_val = self.toggle_off_value
         # wildcard support
         for file in self.files:
-            path = os.path.join(container_path, *file.split('/'))
-            for full_path in glob.glob(path, recursive=True):
+            for full_path in package_matches(container_path, file):
                 # handle for file types
                 if full_path.endswith(".caml") or full_path.endswith(".xml"):
                     # set opacity if it has that

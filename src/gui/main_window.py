@@ -1,7 +1,7 @@
 import sys
 from typing import TYPE_CHECKING
 
-from PySide6 import QtCore, QtGui, QtWidgets
+from PySide6 import QtCore, QtWidgets
 from PySide6.QtCore import QCoreApplication
 
 try:
@@ -131,7 +131,6 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.device_scan_completed = False
         self._cache_restore_in_progress = False
         self._cache_restore_thread = None
-        self.threadpool = QtCore.QThreadPool()
 
         self.preset_manager = PresetManager()
         self._preset_autosave_pending = False
@@ -342,11 +341,21 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         unmapped parent, which on several platforms renders them transparent
         and stuttering. Called from main_app right after widget.show().
         """
-        # First launch: ask user which interface they prefer.
-        # TEMP: Classic UI removed — skip the picker, stay on iOS-style.
-        if not self.theme_manager.settings.contains("ui/theme"):
-            self.theme_manager.save_theme(ThemeManager.IOS)
-            self.apply_theme(ThemeManager.IOS)
+        # Both choices use the modern pages; Sidebar enables their navigation
+        # panel. ui/theme is saved during construction, so it cannot serve as
+        # the first-run completion marker.
+        if not self.settings.value("ui/interface_choice_done", False, type=bool):
+            from src.gui.interface_picker import InterfacePickerDialog
+            picker = InterfacePickerDialog(self)
+            picker.exec()
+            if picker.choice is not None:
+                show_sidebar = picker.choice == "classic"
+                self.set_sidebar_enabled(show_sidebar)
+                switch = self.ios_settings.sidebar_switch
+                with QtCore.QSignalBlocker(switch):
+                    switch.setChecked(show_sidebar)
+                self.settings.setValue("ui/interface_choice_done", True)
+                self._sync_settings()
 
         # First launch: choose the home top-bar widget (storage vs presets).
         if not self.settings.contains("home_widget"):

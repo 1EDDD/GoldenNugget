@@ -1,21 +1,48 @@
+import ast
+import math
+import operator
 import xml.etree.ElementTree as tree
 
 tree.register_namespace('', "http://www.apple.com/CoreAnimation/1.0")
 
 def parse_equation(eq: str, val: str):
-    eqns = eq.split(',')
-    value = [val]
-    if ' ' in val:
-        # convert to array
-        value = val.split(' ')
-    # map the value to floats
-    value = list(map(lambda x: float(x), value))
-    keys = ['x', 'y', 'z', 'a']
+    """Evaluate numeric template offsets without exposing Python objects."""
+    if len(eq) > 4096:
+        raise ValueError("Template offset is too long")
+    mapped = dict(zip(('x', 'y', 'z', 'a'), map(float, val.split())))
+    binary = {ast.Add: operator.add, ast.Sub: operator.sub,
+              ast.Mult: operator.mul, ast.Div: operator.truediv,
+              ast.FloorDiv: operator.floordiv, ast.Mod: operator.mod,
+              ast.Pow: operator.pow}
+
+    def evaluate(node):
+        if isinstance(node, ast.Constant) and type(node.value) in (int, float):
+            result = float(node.value)
+        elif isinstance(node, ast.Name) and node.id in mapped:
+            result = mapped[node.id]
+        elif isinstance(node, ast.UnaryOp) and isinstance(node.op, (ast.UAdd, ast.USub)):
+            operand = evaluate(node.operand)
+            result = operand if isinstance(node.op, ast.UAdd) else -operand
+        elif isinstance(node, ast.BinOp) and type(node.op) in binary:
+            left, right = evaluate(node.left), evaluate(node.right)
+            if isinstance(node.op, ast.Pow) and abs(right) > 1024:
+                raise ValueError("Template offset exponent is too large")
+            result = binary[type(node.op)](left, right)
+        else:
+            raise ValueError("Template offsets support arithmetic and x/y/z/a only")
+        if not isinstance(result, (int, float)) or not math.isfinite(result):
+            raise ValueError("Template offset must be a finite number")
+        return result
+
     results = []
-    mapped = dict(zip(keys, value))
-    for eqn in eqns:
-        results.append(str(eval(eqn, {"__builtins__": {}}, mapped)))
-    # map back to string
+    for expression in eq.split(','):
+        try:
+            parsed = ast.parse(expression.strip(), mode='eval')
+        except SyntaxError as e:
+            raise ValueError('Invalid template offset arithmetic') from e
+        if sum(1 for _ in ast.walk(parsed)) > 128:
+            raise ValueError("Template offset is too complex")
+        results.append(str(evaluate(parsed.body)))
     return ' '.join(results)
 
 def set_xml_value(file: str, id: str, key: str, val: any, use_ca_id: bool = False):

@@ -37,7 +37,6 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import os
 import sys
 import tempfile
 from pathlib import Path
@@ -60,15 +59,14 @@ from src.restore.protective import (  # noqa: E402
     verify_backup_payloads,
     find_latest_protective_backup,
     protective_persistent_base,
-    log_info, log_warn, log_error,
+    log_info, log_error,
 )
-from src.restore.protective_cache import peek_cache_info  # noqa: E402
 from src.restore.storage import (  # noqa: E402
     cache_base,
     is_custom_backup_dir,
 )
 from src.restore.afc_media import (  # noqa: E402
-    afc_media_dir_for,
+    media_store_verified, recovery_media_dir,
     describe_media_store,
     restore_media_via_afc,
 )
@@ -182,7 +180,7 @@ def _resolve_source(cache_root: str | None, udid: str, source: str) -> tuple:
 
     Returns ``(source_root, media_dir, label)``:
     - a cache master → ``<base>/master`` with its ``media/<udid>`` store
-      (when ``peek_cache_info`` says the media rides AFC);
+      (when the selected cache's metadata says the media rides AFC);
     - the newest live backup run → its ``device_backup`` root with the run's
       ``afc_media`` dir as the media store.
     ``media_dir`` is "" when the source has no AFC media store. Raises
@@ -192,15 +190,13 @@ def _resolve_source(cache_root: str | None, udid: str, source: str) -> tuple:
     if source in ("cache", "auto"):
         base = _pick_base(cache_root, udid)
         if base is not None:
-            info = peek_cache_info(udid)
-            media_dir = (str(Path(base) / "media" / udid)
-                         if info and info.get("media_afc") else "")
+            media_dir = recovery_media_dir(str(Path(base) / "master"), udid, cache_base=base)
             candidates.append((str(Path(base) / "master"), media_dir,
                                f"cache master ({base})"))
     if source in ("live", "auto"):
         live_root = find_latest_protective_backup(udid)
         if live_root is not None:
-            candidates.append((live_root, afc_media_dir_for(live_root),
+            candidates.append((live_root, recovery_media_dir(live_root, udid),
                                "live backup run"))
     if not candidates:
         raise RuntimeError(
@@ -315,17 +311,8 @@ async def run(args) -> int:
         return 1
     print(f"Source: {label}")
     print(f"Backup root: {source_root}")
-    if media_dir and os.path.isdir(media_dir) and os.listdir(media_dir):
-        # deliberately NOT gated on media_store_verified(): pushing a partial
-        # store is exactly what this tool is for when a device already lost its
-        # photos, so the marker is reported but not enforced here
+    if media_dir:
         print(f"AFC media store: {describe_media_store(media_dir)}")
-    elif media_dir:
-        media_dir = ""  # no media store on disk -> media rides mobilebackup2 rows
-        print("WARNING: the AFC media store this backup expects is missing or "
-              "empty, so the photos/videos have to come from the "
-              "mobilebackup2 rows in this backup — if they are not there, they "
-              "are gone. Check the media directory before relying on this.")
 
     # build a restorable (pruned) working copy from the master
     try:
@@ -343,14 +330,15 @@ async def run(args) -> int:
     removed_rows, removed_files = await asyncio.to_thread(
         clean_backup_for_restore, working_root, udid,
         manifest_password=args.password or "",
-        exclude_afc_media_trees=bool(media_dir))
+        exclude_afc_media_trees=media_store_verified(media_dir))
     print(f"Pruned: -{removed_rows} manifest rows, -{removed_files} payload files")
 
     missing = await asyncio.to_thread(
         verify_backup_payloads, working_root, udid, args.password or "")
     if missing:
         log_error(f"{len(missing)} manifest rows lack payloads "
-                  f"(e.g. {missing[:5]}) - Phase 3 will likely fail with MBErrorDomain/205")
+                  f"(e.g. {missing[:5]}) - refusing an incomplete restore")
+        return 1
 
     def progress_cb(value):
         if isinstance(value, str):
@@ -359,9 +347,9 @@ async def run(args) -> int:
             print(f"  {value:.1f}%")
 
     print("Waiting for device (unlock it when prompted)...")
+    lc = None
     try:
         print("Connecting to the device...")
-        lc = None
         try:
             lc = await create_using_usbmux(serial=udid, autopair=False)
         except Exception:
@@ -372,13 +360,11 @@ async def run(args) -> int:
                                  progress_cb)
         if media_dir:
             print("Restoring photos/videos over AFC...")
-            try:
-                await restore_media_via_afc(lc, media_dir,
-                                            progress_callback=progress_cb)
-                print("Photos/videos restored over AFC.")
-            except Exception as e:  # noqa: BLE001
-                log_warn(f"AFC media restore failed (the backup restore itself "
-                         f"succeeded): {type(e).__name__}: {e}")
+            pushed = await restore_media_via_afc(lc, media_dir,
+                                                 progress_callback=progress_cb)
+            if pushed.get('failed') or not pushed.get('files'):
+                raise RuntimeError("AFC photo/video restore is incomplete; backup kept on this computer")
+            print("Photos/videos restored over AFC.")
         print("\nSUCCESS: protective backup restored.")
         # Phase 5 (mirrors _restore_ios27): skip setup panes, then reboot so
         # the restored data + skip-setup actually take effect on iOS 27+.
@@ -410,6 +396,12 @@ async def run(args) -> int:
     except Exception as e:  # noqa: BLE001
         print(f"\nERROR: restore failed: {type(e).__name__}: {e}")
         return 4
+    finally:
+        if lc is not None:
+            try:
+                await lc.close()
+            except Exception:
+                pass  # A reboot can terminate the connection before close.
 
 
 def main(argv: list = None) -> int:

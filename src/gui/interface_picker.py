@@ -1,31 +1,25 @@
-from PySide6.QtCore import Qt, QCoreApplication, QRectF
-from PySide6.QtGui import QPixmap, QImage, QPainter
-from PySide6.QtSvg import QSvgRenderer
+from PySide6.QtCore import Qt, QCoreApplication
+from PySide6.QtGui import QPixmap
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QFrame
 )
 
-import os
-
+from src.controllers.files_handler import get_bundle_files
 from src.gui.theme import ColorThemeManager
 
-_ICON_DIR = os.path.join(os.path.dirname(__file__), "..", "qt", "icon")
 
-
-def _render_svg(path: str, width: int, height: int) -> QPixmap:
-    """Render an SVG file into a monochrome-friendly QPixmap (no QtSvg widget needed)."""
-    renderer = QSvgRenderer(path)
-    image = QImage(width, height, QImage.Format.Format_ARGB32)
-    image.fill(Qt.GlobalColor.transparent)
-    painter = QPainter(image)
-    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
-    renderer.render(painter, QRectF(0, 0, width, height))
-    painter.end()
-    return QPixmap.fromImage(image)
+def _interface_preview(mode: str, dpr: float = 1.0) -> QPixmap:
+    """English screenshots of the app, shipped alongside the other Qt assets."""
+    pixmap = QPixmap(get_bundle_files(f"src/qt/previews/interface_{mode}_en.png"))
+    preview = pixmap.scaled(round(340 * dpr), round(216 * dpr),
+                            Qt.AspectRatioMode.KeepAspectRatio,
+                            Qt.TransformationMode.SmoothTransformation)
+    preview.setDevicePixelRatio(dpr)
+    return preview
 
 
 class InterfacePickerDialog(QDialog):
-    """First-launch dialog: pick Classic or iOS-style interface."""
+    """First-launch dialog: pick Sidebar or Modern interface."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -49,17 +43,16 @@ class InterfacePickerDialog(QDialog):
 
         layout.addSpacing(8)
 
-        # Classic option
+        # Sidebar option
         self._classic_frame = QFrame()
         cf_lay = QVBoxLayout(self._classic_frame)
         cf_lay.setContentsMargins(16, 12, 16, 12)
         classic_art = QLabel()
-        classic_art.setPixmap(_render_svg(
-            os.path.join(_ICON_DIR, "ui_classic.svg"), 340, 160))
+        classic_art.setPixmap(_interface_preview("sidebar", self.devicePixelRatioF()))
         classic_art.setAlignment(Qt.AlignmentFlag.AlignCenter)
         classic_art.setStyleSheet("border: none; background: transparent;")
         cf_lay.addWidget(classic_art)
-        cf_title = QLabel(QCoreApplication.translate("Nugget", "Classic"))
+        cf_title = QLabel(QCoreApplication.translate("Nugget", "Sidebar"))
         cf_title.setStyleSheet("font-size: 16px; font-weight: 600; border: none;")
         self._cf_desc = QLabel(QCoreApplication.translate(
             "Nugget", "Sidebar navigation with familiar layout"))
@@ -70,17 +63,16 @@ class InterfacePickerDialog(QDialog):
         self._classic_frame.mousePressEvent = lambda e: self._pick("classic")
         layout.addWidget(self._classic_frame)
 
-        # iOS-style option
+        # Modern option
         self._ios_frame = QFrame()
         io_lay = QVBoxLayout(self._ios_frame)
         io_lay.setContentsMargins(16, 12, 16, 12)
         ios_art = QLabel()
-        ios_art.setPixmap(_render_svg(
-            os.path.join(_ICON_DIR, "ui_ios.svg"), 340, 160))
+        ios_art.setPixmap(_interface_preview("modern", self.devicePixelRatioF()))
         ios_art.setAlignment(Qt.AlignmentFlag.AlignCenter)
         ios_art.setStyleSheet("border: none; background: transparent;")
         io_lay.addWidget(ios_art)
-        io_title = QLabel(QCoreApplication.translate("Nugget", "iOS-style"))
+        io_title = QLabel(QCoreApplication.translate("Nugget", "Modern"))
         io_title.setStyleSheet("font-size: 16px; font-weight: 600; border: none;")
         self._io_desc = QLabel(QCoreApplication.translate(
             "Nugget", "Full-screen mobile-inspired interface"))

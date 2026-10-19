@@ -1,9 +1,9 @@
+from src.controllers.archive_safety import package_matches
 from . import TemplateOption
 
 from src.exceptions.nugget_exception import NuggetException
 
 import os
-import glob
 from typing import Optional
 from PySide6 import QtWidgets, QtGui, QtCore
 
@@ -103,9 +103,7 @@ class ReplaceOption(TemplateOption):
         with open(in_path, "rb") as in_file:
             contents = in_file.read()
         for file in self.files:
-            out_path = os.path.join(container_path, *file.split('/'))
-            # wildcard support
-            for full_path in glob.glob(out_path, recursive=True):
+            for full_path in package_matches(container_path, file):
                 with open(full_path, "wb") as out_file:
                     out_file.write(contents)
         del contents

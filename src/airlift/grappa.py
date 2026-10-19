@@ -15,6 +15,7 @@ GOLDENNUGGET_ATC_GRAPPA env override (see airlift/__init__.py).
 """
 from __future__ import annotations
 
+import ctypes
 import logging
 import sys
 import threading

@@ -1,7 +1,7 @@
+from src.controllers.archive_safety import package_matches
 from . import TemplateOption
 
 import os
-import glob
 from shutil import rmtree
 from typing import Optional
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QCheckBox
@@ -45,9 +45,7 @@ class RemoveOption(TemplateOption):
     def apply(self, container_path: str):
         if (self.inverted and not self.value) or (not self.inverted and self.value):
             for file in self.files:
-                path = os.path.join(container_path, *file.split('/'))
-                # wildcard support
-                for full_path in glob.glob(path, recursive=True):
+                for full_path in package_matches(container_path, file):
                     if self.identifier != None:
                         # delete properties in xml
                         # TODO: make sure it isn't a directory

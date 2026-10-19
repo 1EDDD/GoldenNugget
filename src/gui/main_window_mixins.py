@@ -505,6 +505,8 @@ class SettingsMixin:
         show_sidebar = self.theme_manager.current_theme == ThemeManager.CLASSIC or bool(enabled)
         self.ui.sidebar.setVisible(show_sidebar)
         self.ios_home.cards_grid.setVisible(not show_sidebar)
+        self.ios_home.apply_btn.setVisible(not show_sidebar)
+        self._update_shared_nav(self.ios_pages.currentIndex())
         self._sync_sidebar_selection()
 
     def apply_theme(self, theme: int):
@@ -519,6 +521,7 @@ class SettingsMixin:
         show_sidebar = not is_ios or self.sidebar_enabled()
         self.ui.sidebar.setVisible(show_sidebar)
         self.ios_home.cards_grid.setVisible(not show_sidebar)
+        self.ios_home.apply_btn.setVisible(not show_sidebar)
         self.ui.deviceBar.setVisible(not is_ios)
         if is_ios:
             # iOS mode: full-screen, no padding
@@ -583,7 +586,9 @@ class NavigationMixin:
             return
         title = self._ios_page_titles.get(index, "")
         self.ios_nav.set_title(title)
-        self.ios_nav.set_back_visible(True)
+        self.ios_nav.set_back_visible(
+            self.theme_manager.current_theme != ThemeManager.CLASSIC
+            and not self.sidebar_enabled())
         icons = {
             1: "toggles", 2: "wallpaper", 3: "hdd", 4: "gear",
             5: "app-indicator", 6: "check-circle", 7: "phone",

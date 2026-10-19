@@ -373,9 +373,9 @@ class IOSHomePage(QWidget):
         actions.setContentsMargins(0, 0, 0, 0)
         actions.setSpacing(12)
 
-        apply_btn = IOSPrimaryButton(QCoreApplication.translate("Nugget", "Apply Tweaks"))
-        apply_btn.clicked.connect(self.open_apply_classic)
-        actions.addWidget(apply_btn, 1)
+        self.apply_btn = IOSPrimaryButton(QCoreApplication.translate("Nugget", "Apply Tweaks"))
+        self.apply_btn.clicked.connect(self.open_apply_classic)
+        actions.addWidget(self.apply_btn, 1)
 
         layout.addLayout(actions)
 

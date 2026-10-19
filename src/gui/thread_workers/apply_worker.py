@@ -266,7 +266,7 @@ class RestoreCacheThread(QThread):
         )
         from src.restore.restore import _restore_protective_backup
         from src.restore.afc_media import (
-            afc_media_dir_for, describe_media_store, media_store_verified,
+            recovery_media_dir, describe_media_store, media_store_verified,
             restore_media_via_afc,
         )
         from src.devicemanagement.session import lockdown_session
@@ -286,8 +286,7 @@ class RestoreCacheThread(QThread):
         if source_root is None:
             raise RuntimeError(
                 "No protective backup found for this device. Live backups are "
-                "kept in the app data folder; cache masters live in a temp "
-                "folder and are lost on reboot.")
+                "kept in the configured backup location or the app data folder.")
         # Pre-flight: refuse a half-written source manifest up front instead of
         # failing mid-device-restore with an opaque MBErrorDomain/205. The
         # restore only ever prunes/injects on a temp working copy, so a corrupt
@@ -317,17 +316,7 @@ class RestoreCacheThread(QThread):
         # finished cleanly is treated as the AFC source — "the folder has files
         # in it" is not enough, because a partial pull would then let the prune
         # below delete the backup's own copy of the photos.
-        media_dir = afc_media_dir_for(source_root)
-        from src.restore.protective_cache import peek_cache_info
-        cache_info = peek_cache_info(udid)
-        if cache_info is not None and cache_info.get("media_afc"):
-            from pathlib import Path as _Path
-            try:
-                base = _Path(source_root).parent.parent  # <base>/master/<udid> -> <base>
-            except Exception:
-                base = None
-            if base is not None:
-                media_dir = str(base / "media" / udid)
+        media_dir = recovery_media_dir(source_root, udid, cache_base=base)
         media_has_content = media_store_verified(media_dir)
         removed_rows, removed_files = await asyncio.to_thread(
             clean_backup_for_restore, working_root, udid,

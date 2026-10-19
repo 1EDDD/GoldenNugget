@@ -167,7 +167,7 @@ class PosterboardTweak(Tweak):
         return bool(getattr(tendie, "legacy_families", None))
 
     def tendie_convert_enabled(self, tendie: TendieFile) -> bool:
-        """True when the tendie is rewritten into the modern format on apply.
+        """Saved preference for rewriting the tendie on an iOS 27 device.
 
         This is the state the tendies card's Convert switch shows; ``False`` is
         only ever the explicit answer to the import prompt.
@@ -556,7 +556,9 @@ class PosterboardTweak(Tweak):
                 extracted.append((template.extract(output_dir=output_dir), True))
         # add the files
         update_label(QCoreApplication.tr("Adding tendies..."))
-        if self.auto_convert_legacy:
+        # Import-time choices can outlive the selected device. Gate both the
+        # rewrite and the skeleton rename on the actual apply target's version.
+        if self.auto_convert_legacy and self._legacy_convert_supported(version):
             try:
                 for root, convert in extracted:
                     if not convert:
