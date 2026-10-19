@@ -59,6 +59,13 @@ Need support? Join our [Discord Server][server].
 ## On-device mobile version
 [GoldenNugget Mobile][mobile] runs on your device without a computer.
 
+## Make your own templates
+[Batter Builder](https://github.com/GoldenNugget-Team/GoldenNugget-TemplateBuilder/releases/latest)
+is a visual editor for `.batter` templates with community tweaks: switches,
+sliders, text boxes and choice lists, no JSON by hand. It checks the template
+with GoldenNugget's rules, previews it on a virtual iPhone and submits it to the
+[community catalog](https://github.com/GoldenNugget-Team/GoldenNugget-Presets).
+
 ## Features
 <details>
 <summary>iOS 26.2 - 27.0+</summary>
