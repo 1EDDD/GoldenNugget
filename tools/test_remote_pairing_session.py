@@ -10,7 +10,10 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
+from pymobiledevice3.exceptions import StartServiceError
+
 from src.devicemanagement import session
+from src.devicemanagement.device_manager import show_apply_error
 from src.gui.thread_workers.wifi_pair_worker import WifiPairThread
 
 
@@ -223,12 +226,12 @@ class RemotePairingSessionTests(unittest.IsolatedAsyncioTestCase):
                 remote_unlock_host_key = ""
 
                 async def _create_remote_unlock(self):
-                    self.remote_unlock_host_key = "base64-encoded-remote-key"
+                    self.remote_unlock_host_key = "cmVtb3RlIHVubG9jayBrZXk="
 
             provider = FakeUnlockProvider()
             self.assertTrue(await session._ensure_remote_unlock_key(provider))
             updated = plistlib.loads(record_path.read_bytes())
-            self.assertEqual(updated["remote_unlock_host_key"], "base64-encoded-remote-key")
+            self.assertEqual(updated["remote_unlock_host_key"], "cmVtb3RlIHVubG9jayBrZXk=")
             self.assertEqual(updated["host_identifier"], "STABLE-HOST-ID")
             self.assertEqual(updated["host_alt_irk"], b"h" * 16)
             self.assertEqual(updated["peer_alt_irk"], b"d" * 16)
@@ -247,6 +250,16 @@ class RemotePairingSessionTests(unittest.IsolatedAsyncioTestCase):
                     raise AssertionError("existing key should be reused")
 
             self.assertTrue(await session._ensure_remote_unlock_key(FakeUnlockProvider()))
+
+    def test_start_service_error_shows_the_device_rejection_reason(self):
+        error = StartServiceError(
+            "com.apple.mobilebackup2.shim.remote",
+            "remote unlock escrow bag rejected",
+        )
+        alert = show_apply_error(error)
+        self.assertIn("com.apple.mobilebackup2.shim.remote", alert.txt)
+        self.assertIn("remote unlock escrow bag rejected", alert.txt)
+        self.assertIn("Device response: remote unlock escrow bag rejected", alert.detailed_txt)
 
     def test_pairing_worker_reuses_host_identity_from_saved_record(self):
         record = {
