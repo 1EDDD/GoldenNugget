@@ -14,6 +14,7 @@ from pymobiledevice3.exceptions import StartServiceError
 
 from src.devicemanagement import session
 from src.devicemanagement.device_manager import show_apply_error
+from src.restore import restore as restore_module
 from src.gui.thread_workers.wifi_pair_worker import WifiPairThread
 
 
@@ -28,12 +29,18 @@ class _FakeRsdTunnel:
         self.entered = False
         self.exited = False
 
-    async def __aenter__(self):
+    async def aopen(self):
         self.entered = True
         return self.provider
 
-    async def __aexit__(self, exc_type, exc, tb):
+    async def aclose(self):
         self.exited = True
+
+    async def __aenter__(self):
+        return await self.aopen()
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.aclose()
         return False
 
 
@@ -78,6 +85,47 @@ class RemotePairingSessionTests(unittest.IsolatedAsyncioTestCase):
 
         factory.assert_called_once_with(udid)
         self.assertTrue(tunnel.exited)
+
+    async def test_owned_remote_provider_keeps_tunnel_until_explicit_close(self):
+        udid = "A1B2-C3D4"
+        session.register_remote_pairing_device(udid)
+        provider = _FakeProvider("a1b2c3d4")
+        tunnel = _FakeRsdTunnel(provider)
+
+        with patch.object(session, "_preferred_rsd_tunnel", return_value=tunnel):
+            actual = await session.open_device_session(udid, autopair=False)
+            self.assertIs(actual, provider)
+            self.assertTrue(tunnel.entered)
+            self.assertFalse(tunnel.exited)
+            self.assertIs(actual._pair_on_device_tunnel_owner, tunnel)
+            await session.close_device_session(actual)
+
+        self.assertTrue(tunnel.exited)
+
+    async def test_reconnect_wait_uses_pair_on_device_when_usbmux_misses(self):
+        from pymobiledevice3.exceptions import DeviceNotFoundError
+
+        udid = "A1B2-C3D4"
+        provider = _FakeProvider("a1b2c3d4")
+        session.register_remote_pairing_device(udid)
+
+        with (
+            patch.object(restore_module, "is_remote_pairing_registered", return_value=True),
+            patch.object(
+                restore_module, "create_using_usbmux",
+                new=AsyncMock(side_effect=DeviceNotFoundError(udid)),
+            ),
+            patch.object(
+                restore_module, "open_remote_pairing_session",
+                new=AsyncMock(return_value=provider),
+            ) as open_remote,
+        ):
+            actual = await restore_module._wait_for_device(
+                udid, lambda _progress: None, timeout=1.0,
+            )
+
+        self.assertIs(actual, provider)
+        open_remote.assert_awaited_once_with(udid)
 
     async def test_explicit_usbmux_still_overrides_remote_pair_registration(self):
         udid = "A1B2-C3D4"
