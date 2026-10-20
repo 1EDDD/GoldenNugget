@@ -12,6 +12,7 @@ from unittest.mock import AsyncMock, patch
 
 from pymobiledevice3.exceptions import StartServiceError
 
+from src.controllers.settings import settings_keys
 from src.devicemanagement import session
 from src.exceptions.device_errors import is_device_lock_required_error, is_transient_restore_error
 from src.devicemanagement.device_manager import show_apply_error
@@ -67,6 +68,23 @@ class RemotePairingSessionTests(unittest.IsolatedAsyncioTestCase):
         session._REMOTE_PAIRING_DEVICES.update(self._remote_before)
         session._NETWORK_ENDPOINTS.clear()
         session._NETWORK_ENDPOINTS.update(self._network_before)
+
+    def test_settings_key_reader_supports_wrappers_without_all_keys(self):
+        class Store:
+            def __init__(self, keys):
+                self._keys = keys
+
+            def allKeys(self):
+                return self._keys
+
+        wrapper = SimpleNamespace(
+            _primary=Store(["remote_pairing/A", "theme"]),
+            _legacy=Store(["remote_pairing/B", "theme"]),
+        )
+        self.assertEqual(
+            settings_keys(wrapper),
+            ["remote_pairing/A", "remote_pairing/B", "theme"],
+        )
 
     async def test_registered_pair_on_device_uses_rsd_tunnel(self):
         udid = "A1B2-C3D4"
