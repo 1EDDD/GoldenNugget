@@ -169,28 +169,32 @@ def build_cloud_config(existing: dict | None, supervised: bool = False,
 async def skip_all_setup27(ld: LockdownClient, udid: str | None = None,
                            supervised: bool = False,
                            organization_name: str = ""):
+    from src.devicemanagement.session import close_device_session, open_device_session
+
     last_error = None
+    active_ld = ld
     for attempt in range(6):
         try:
-            if attempt == 0:
-                async with MobileConfigService(lockdown=ld) as mcs:
-                    cloud_config = build_cloud_config(
-                        await mcs.get_cloud_configuration(),
-                        supervised=supervised,
-                        organization_name=organization_name)
-                    await mcs.set_cloud_configuration(cloud_config)
-            else:
-                async with lockdown_session(udid) as fresh_ld:
-                    async with MobileConfigService(lockdown=fresh_ld) as mcs:
-                        cloud_config = build_cloud_config(
-                            await mcs.get_cloud_configuration(),
-                            supervised=supervised,
-                            organization_name=organization_name)
-                        await mcs.set_cloud_configuration(cloud_config)
-            return
+            if active_ld is None:
+                if not udid:
+                    raise RuntimeError("No UDID is available to reconnect for setup configuration")
+                active_ld = await open_device_session(udid, autopair=True)
+            async with MobileConfigService(lockdown=active_ld) as mcs:
+                cloud_config = build_cloud_config(
+                    await mcs.get_cloud_configuration(),
+                    supervised=supervised,
+                    organization_name=organization_name)
+                await mcs.set_cloud_configuration(cloud_config)
+            return active_ld
         except (ConnectionTerminatedError, ConnectionError, OSError,
                 asyncio.TimeoutError) as error:
             last_error = error
+            try:
+                if active_ld is not None:
+                    await close_device_session(active_ld)
+            except Exception:
+                pass
+            active_ld = None
             if attempt == 5 or not udid:
                 break
             await asyncio.sleep(min(2 + attempt * 3, 15))
