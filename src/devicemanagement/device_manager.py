@@ -318,7 +318,7 @@ class DeviceManager:
                 continue
             try:
                 register_network_endpoint(saved_udid, hostname)
-            async with asyncio.timeout(8.0):
+                async with asyncio.timeout(8.0):
                     async with lockdown_session(
                         saved_udid, autopair=False, pair_timeout=5.0, use_network=True
                     ) as ld:
