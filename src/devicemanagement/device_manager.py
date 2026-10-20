@@ -20,6 +20,7 @@ from typing import Optional
 
 from PySide6.QtWidgets import QMessageBox
 from PySide6.QtCore import QSettings, QCoreApplication
+from src.controllers.settings import settings_keys
 
 from pymobiledevice3 import usbmux
 from pymobiledevice3.services.mobile_config import MobileConfigService
@@ -204,7 +205,7 @@ class DeviceManager:
         # pairing record itself is owned by pymobiledevice3; this setting keeps
         # the UDID discoverable by GoldenNugget after restarting the app.
         remote_pairing_devices: dict[str, str] = {}
-        for key in settings.allKeys():
+        for key in settings_keys(settings):
             if not key.startswith("remote_pairing/"):
                 continue
             saved_udid = key.split("/", 1)[1]
@@ -217,7 +218,7 @@ class DeviceManager:
                 remote_pairing_devices[saved_udid.replace("-", "").casefold()] = saved_udid
 
         # Legacy manually-paired Wi-Fi endpoints use TCP lockdown directly.
-        for key in settings.allKeys():
+        for key in settings_keys(settings):
             if not key.startswith("network_endpoints/"):
                 continue
             saved_udid = key.split("/", 1)[1]
@@ -227,7 +228,7 @@ class DeviceManager:
         # handle errors when failing to get connected devices
         has_saved_network_endpoints = (
             bool(remote_pairing_devices)
-            or any(key.startswith("network_endpoints/") for key in settings.allKeys())
+            or any(key.startswith("network_endpoints/") for key in settings_keys(settings))
         )
         try:
             # Include both USB and network/usbmux devices. The previous is_usb-only
@@ -328,7 +329,7 @@ class DeviceManager:
         
         # Reconnect to hosts explicitly paired by IP. Do not trigger autopair
         # during background refresh; this path should only reuse saved pairing records.
-        for key in settings.allKeys():
+        for key in settings_keys(settings):
             if not key.startswith("network_endpoints/"):
                 continue
             saved_udid = key.split("/", 1)[1]
