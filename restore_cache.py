@@ -237,6 +237,25 @@ def _pick_base(cache_root: str | None, udid: str):
     return None
 
 
+async def _open_restore_session(udid: str):
+    """Open the saved transport, falling back to autopair if a USB record is stale."""
+    try:
+        provider = await open_device_session(serial=udid, autopair=False)
+    except Exception:
+        return await open_device_session(serial=udid, autopair=True)
+
+    # pymobiledevice3 can return a LockdownClient with paired=False instead of
+    # throwing when a local USB record no longer matches the device.
+    if (getattr(provider, "_pair_on_device_tunnel_owner", None) is None
+            and hasattr(provider, "paired") and not provider.paired):
+        try:
+            await close_device_session(provider)
+        except Exception:
+            pass
+        return await open_device_session(serial=udid, autopair=True)
+    return provider
+
+
 async def _restore_with_wait(lc, backup_root: str, udid: str, backup_password: str,
                              unlock_timeout_min: int, progress_callback):
     """Restore, retrying on transient errors and WAITING for the unlock.
@@ -261,9 +280,7 @@ async def _restore_with_wait(lc, backup_root: str, udid: str, backup_password: s
         attempt += 1
         if lc is None:
             try:
-                lc = await open_device_session(serial=udid, autopair=False)
-            except Exception:
-                lc = await open_device_session(serial=udid, autopair=True)
+                lc = await _open_restore_session(udid)
         try:
             await _restore_protective_backup(
                 lc, backup_root, udid, reboot=False,
@@ -362,9 +379,7 @@ async def run(args) -> int:
     try:
         print("Connecting to the device...")
         try:
-            lc = await open_device_session(serial=udid, autopair=False)
-        except Exception:
-            lc = await open_device_session(serial=udid, autopair=True)
+            lc = await _open_restore_session(udid)
         print("Connected. Restoring protective backup...")
         lc = await _restore_with_wait(lc, working_root, udid,
                                       args.password or "", args.timeout,
