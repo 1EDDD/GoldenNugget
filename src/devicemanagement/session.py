@@ -50,10 +50,83 @@ def get_registered_remote_pairing_devices() -> tuple[str, ...]:
 
 
 def _preferred_rsd_tunnel(serial: str):
-    """Return pymobiledevice3's cross-platform, no-root RSD tunnel context."""
-    from pymobiledevice3.remote.rsd_tunnel import PreferredRsdTunnel
+    """Return a no-root RemotePairing RSD tunnel for a device-initiated pairing.
 
-    return PreferredRsdTunnel(serial=serial)
+    pymobiledevice3's generic PreferredRsdTunnel tries USB lockdown first on modern
+    iOS. A device that was paired under iOS 27 Settings > Developer > Paired Macs
+    may only advertise the RemotePairing service over Wi-Fi, so use the same
+    userspace tunnel machinery but select that paired service directly.
+    """
+    from pymobiledevice3.remote.userspace_tunnel import UserspaceRsdTunnel
+
+    class PairOnDeviceRsdTunnel(UserspaceRsdTunnel):
+        async def _aopen_locked(self):
+            import asyncio
+            from contextlib import AsyncExitStack
+            from pymobiledevice3.remote import userspace_tunnel, tunnel_service
+            from pymobiledevice3.remote.remote_service_discovery import RemoteServiceDiscoveryService
+
+            if userspace_tunnel._active_tunnel is not None:
+                raise RuntimeError(
+                    "A RemoteXPC userspace tunnel is already active in this process. "
+                    "Close the active device operation before pairing another device."
+                )
+
+            tunnel_service.USE_USERSPACE_TUNNEL = True
+            stack = AsyncExitStack()
+            try:
+                services = await tunnel_service.get_remote_pairing_tunnel_services(
+                    udid=self.serial,
+                    bonjour_timeout=8.0,
+                )
+                if not services:
+                    raise RuntimeError(
+                        "No RemotePairing service was found for this iOS 27 pairing. "
+                        "Keep the iPhone awake, unlock it, and ensure both devices share Wi-Fi."
+                    )
+                provider = services[0]
+                for unused in services[1:]:
+                    await unused.close()
+                stack.push_async_callback(provider.close)
+
+                tunnel_result = await stack.enter_async_context(provider.start_tcp_tunnel())
+                self.tun = tunnel_result.client.tun
+                self.tun.set_peer(tunnel_result.address)
+
+                dial_plane = await stack.enter_async_context(
+                    userspace_tunnel.UserspaceDialPlane(self.tun, tunnel_result.address)
+                )
+                rsd = RemoteServiceDiscoveryService(
+                    (tunnel_result.address, tunnel_result.port),
+                    open_connection=dial_plane.dial,
+                    auxiliary_metadata=tunnel_result.auxiliary_metadata,
+                )
+                stack.push_async_callback(rsd.close)
+                await rsd.connect()
+
+                if str(getattr(rsd, "udid", "")).replace("-", "").casefold() != str(
+                    self.serial
+                ).replace("-", "").casefold():
+                    raise RuntimeError(
+                        "RemotePairing reached a different device than the saved pairing record."
+                    )
+            except BaseException:
+                await stack.aclose()
+                tunnel_service.USE_USERSPACE_TUNNEL = False
+                self.tun = None
+                raise
+
+            self._exit_stack = stack
+            self.rsd = rsd
+            userspace_tunnel._active_tunnel = self
+            userspace_tunnel.USERSPACE_ACTIVE = True
+            self._transport_watcher = asyncio.create_task(
+                self._watch_transport_closed(tunnel_result.client),
+                name=f"pair-on-device-tunnel-watcher-{tunnel_result.address}",
+            )
+            return rsd
+
+    return PairOnDeviceRsdTunnel(serial=serial, autopair=False, remotepairing_fallback=False)
 
 
 @asynccontextmanager
