@@ -341,7 +341,7 @@ class IOSHomePage(QWidget):
         self._wifi_pair_btn.setText(QCoreApplication.translate("Nugget", "Pair Wi-Fi"))
         self._wifi_pair_btn.setCursor(Qt.PointingHandCursor)
         self._wifi_pair_btn.setToolTip(QCoreApplication.translate(
-            "Nugget", "Pair an iPhone using its Wi-Fi IP address"))
+            "Nugget", "Pair an iPhone through Settings > Developer > Paired Macs"))
         self._style_wifi_pair_button(self._wifi_pair_btn)
         self._apply_icon(self._wifi_pair_btn, ":/icon/wifi.svg")
         self._wifi_pair_btn.clicked.connect(self.window.pair_over_wifi)
