@@ -174,11 +174,18 @@ async def skip_all_setup27(ld: LockdownClient, udid: str | None = None,
     last_error = None
     active_ld = ld
     for attempt in range(6):
-        try:
-            if active_ld is None:
-                if not udid:
-                    raise RuntimeError("No UDID is available to reconnect for setup configuration")
+        if active_ld is None:
+            if not udid:
+                raise RuntimeError("No UDID is available to reconnect for setup configuration")
+            try:
                 active_ld = await open_device_session(udid, autopair=True)
+            except Exception as error:
+                last_error = error
+                if attempt == 5:
+                    break
+                await asyncio.sleep(min(2 + attempt * 3, 15))
+                continue
+        try:
             async with MobileConfigService(lockdown=active_ld) as mcs:
                 cloud_config = build_cloud_config(
                     await mcs.get_cloud_configuration(),
@@ -190,8 +197,7 @@ async def skip_all_setup27(ld: LockdownClient, udid: str | None = None,
                 asyncio.TimeoutError) as error:
             last_error = error
             try:
-                if active_ld is not None:
-                    await close_device_session(active_ld)
+                await close_device_session(active_ld)
             except Exception:
                 pass
             active_ld = None
