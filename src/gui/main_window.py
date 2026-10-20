@@ -110,6 +110,19 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.settings = self.translator.settings
         self.ui = Ui_Nugget()
         self.ui.setupUi(self)
+
+        # Add Wi-Fi pairing alongside the existing device refresh control.
+        self.wifiPairBtn = QtWidgets.QToolButton(self.ui.horizontalWidget_2)
+        self.wifiPairBtn.setObjectName("wifiPairBtn")
+        self.wifiPairBtn.setText("Pair Wi-Fi")
+        self.wifiPairBtn.setCursor(QtCore.Qt.CursorShape.PointingHandCursor)
+        self.wifiPairBtn.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextOnly)
+        self.wifiPairBtn.setProperty("cls", "btn")
+        self.wifiPairBtn.setToolTip(
+            QCoreApplication.translate("Nugget", "Pair an iPhone by Wi-Fi IP address"))
+        self.ui.horizontalLayout_19.insertWidget(
+            self.ui.horizontalLayout_19.indexOf(self.ui.refreshBtn), self.wifiPairBtn)
+
         from src.gui.widgets import NavigationSidebar
         self.ui.sidebar.hide()
         self.ui.sidebar = NavigationSidebar(self.ui, self)
@@ -305,6 +318,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         ## DEVICE BAR
         self.ui.refreshBtn.clicked.connect(self.refresh_devices)
         self.ui.refreshBtn.setToolTip(QCoreApplication.translate("Nugget", "Refresh connected devices"))
+        self.wifiPairBtn.clicked.connect(self.pair_over_wifi)
         self.ui.devicePicker.currentIndexChanged.connect(self.change_selected_device)
         self._device_monitor_thread = DeviceMonitorThread(self)
         self._device_monitor_thread.devices_changed.connect(self.on_device_connection_changed)
