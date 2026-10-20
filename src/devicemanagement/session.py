@@ -48,7 +48,8 @@ async def lockdown_session(serial: Optional[str] = None, *,
 
     if hostname:
         ld = await create_using_tcp(
-            hostname=hostname, autopair=autopair, pair_timeout=pair_timeout
+            hostname=hostname, autopair=autopair, pair_timeout=pair_timeout,
+            keep_alive=True,
         )
     else:
         ld = await create_using_usbmux(
