@@ -1,59 +1,53 @@
-"""Worker for pairing an iPhone over its local Wi-Fi IP address."""
+"""Worker for iOS 27 device-initiated Pair on Device pairing."""
 import asyncio
+import platform
 
 from PySide6.QtCore import QThread, Signal
 
 
 class WifiPairThread(QThread):
+    pin_ready = Signal(str)
+    status = Signal(str)
     succeeded = Signal(object)
     failed = Signal(str)
 
-    def __init__(self, hostname: str, parent=None):
-        super().__init__(parent)
-        self.hostname = hostname
-
     def run(self):
         try:
-            result = asyncio.run(self._pair())
+            result = asyncio.run(self._pair_host())
         except Exception as exc:
             self.failed.emit(f"{type(exc).__name__}: {exc}")
             return
         self.succeeded.emit(result)
 
-    async def _pair(self):
-        from pymobiledevice3.lockdown import create_using_tcp
-
-        client = await asyncio.wait_for(
-            create_using_tcp(
-                hostname=self.hostname,
-                autopair=True,
-                pair_timeout=120.0,
-                keep_alive=True,
-            ),
-            timeout=135.0,
+    async def _pair_host(self):
+        from pymobiledevice3.remote.tunnel_service import (
+            PairableHostInfo,
+            serve_pairable_host,
         )
-        try:
-            if not getattr(client, "paired", False):
-                raise RuntimeError(
-                    "The iPhone did not confirm pairing. Unlock it and accept Trust on the iPhone."
-                )
-            values = client.all_values
-            udid = values.get("UniqueDeviceID") or values.get("UDID")
-            if not udid:
-                raise RuntimeError("The device did not provide its UDID after pairing.")
-            return {
-                "hostname": self.hostname,
-                "udid": str(udid),
-                "name": str(values.get("DeviceName") or "iPhone"),
-                "version": str(values.get("ProductVersion") or ""),
-                "build": str(values.get("BuildVersion") or ""),
-                "model": str(values.get("ProductType") or ""),
-                "hardware": str(values.get("HardwareModel") or ""),
-                "cpu": str(values.get("HardwarePlatform") or ""),
-                "locale": await client.get_locale(),
-            }
-        finally:
-            try:
-                await client.close()
-            except Exception:
-                pass
+
+        host_info = PairableHostInfo(name=platform.node() or "GoldenNugget PC")
+
+        def pin_callback(pin: str):
+            self.pin_ready.emit(str(pin))
+
+        def waiting_callback(elapsed: float):
+            self.status.emit(f"Waiting for iPhone… ({int(elapsed)}s)")
+
+        self.status.emit(
+            "Open Settings > Developer > Paired Macs on your iPhone, "
+            "then tap this computer under Other Devices."
+        )
+        result = await serve_pairable_host(
+            host_info,
+            pin_callback=pin_callback,
+            timeout=300,
+            waiting_callback=waiting_callback,
+        )
+        peer = result.peer_device
+        return {
+            "udid": str(peer.udid),
+            "device_name": str(peer.name),
+            "device_model": str(peer.model),
+            "record_path": str(result.record_path),
+            "host_name": host_info.name,
+        }
