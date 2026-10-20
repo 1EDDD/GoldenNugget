@@ -221,8 +221,9 @@ class DeviceManager:
             if saved_udid and saved_host:
                 register_network_endpoint(saved_udid, saved_host)
         # handle errors when failing to get connected devices
-        has_saved_network_endpoints = any(
-            key.startswith("network_endpoints/") for key in settings.allKeys()
+        has_saved_network_endpoints = (
+            bool(remote_pairing_devices)
+            or any(key.startswith("network_endpoints/") for key in settings.allKeys())
         )
         try:
             # Include both USB and network/usbmux devices. The previous is_usb-only
