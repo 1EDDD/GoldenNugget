@@ -160,15 +160,21 @@ class RemotePairingSessionTests(unittest.IsolatedAsyncioTestCase):
                 self.auxiliary_metadata = auxiliary_metadata
                 self.udid = None
                 self.closed = False
+                self.start_service_calls = []
 
             async def connect(self):
                 self.udid = udid
+
+            async def start_lockdown_service(self, name, include_escrow_bag=False):
+                self.start_service_calls.append((name, include_escrow_bag))
+                return "started"
 
             async def close(self):
                 self.closed = True
 
         from pymobiledevice3.remote import userspace_tunnel, tunnel_service
         from pymobiledevice3.remote import remote_service_discovery
+        from pymobiledevice3 import pair_records
 
         provider = FakePairingProvider()
         with (
@@ -182,14 +188,65 @@ class RemotePairingSessionTests(unittest.IsolatedAsyncioTestCase):
             ) as discover,
             patch.object(userspace_tunnel, "UserspaceDialPlane", FakeDialPlane),
             patch.object(remote_service_discovery, "RemoteServiceDiscoveryService", FakeRsd),
+            patch.object(pair_records, "get_local_pairing_record", return_value={"remote_unlock_host_key": ""}),
         ):
             tunnel = session._preferred_rsd_tunnel(udid)
             async with tunnel as rsd:
                 self.assertEqual(rsd.udid, udid)
                 self.assertEqual(rsd.address, ("fd00::1", 58743))
                 self.assertEqual(provider.client.tun.peer, "fd00::1")
+                await rsd.start_lockdown_service(
+                    "com.apple.mobilebackup2.shim.remote", include_escrow_bag=True
+                )
+                self.assertEqual(
+                    rsd.start_service_calls,
+                    [("com.apple.mobilebackup2.shim.remote", False)],
+                )
             discover.assert_awaited_once_with(udid=udid, bonjour_timeout=8.0)
         self.assertTrue(provider.closed)
+
+    async def test_remote_unlock_key_is_persisted_without_dropping_pairable_host_identity(self):
+        record = {
+            "private_key": b"p" * 32,
+            "host_identifier": "STABLE-HOST-ID",
+            "host_alt_irk": b"h" * 16,
+            "peer_alt_irk": b"d" * 16,
+            "remote_unlock_host_key": "",
+        }
+        with tempfile.TemporaryDirectory() as temp:
+            record_path = Path(temp) / "remote_A1B2-C3D4.plist"
+            record_path.write_bytes(plistlib.dumps(record))
+
+            class FakeUnlockProvider:
+                pair_record_path = record_path
+                remote_identifier = "A1B2-C3D4"
+                remote_unlock_host_key = ""
+
+                async def _create_remote_unlock(self):
+                    self.remote_unlock_host_key = "base64-encoded-remote-key"
+
+            provider = FakeUnlockProvider()
+            self.assertTrue(await session._ensure_remote_unlock_key(provider))
+            updated = plistlib.loads(record_path.read_bytes())
+            self.assertEqual(updated["remote_unlock_host_key"], "base64-encoded-remote-key")
+            self.assertEqual(updated["host_identifier"], "STABLE-HOST-ID")
+            self.assertEqual(updated["host_alt_irk"], b"h" * 16)
+            self.assertEqual(updated["peer_alt_irk"], b"d" * 16)
+
+    async def test_remote_unlock_key_helper_does_not_request_a_key_twice(self):
+        record = {"remote_unlock_host_key": "already-present"}
+        with tempfile.TemporaryDirectory() as temp:
+            record_path = Path(temp) / "remote_A1B2-C3D4.plist"
+            record_path.write_bytes(plistlib.dumps(record))
+
+            class FakeUnlockProvider:
+                pair_record_path = record_path
+                remote_identifier = "A1B2-C3D4"
+
+                async def _create_remote_unlock(self):
+                    raise AssertionError("existing key should be reused")
+
+            self.assertTrue(await session._ensure_remote_unlock_key(FakeUnlockProvider()))
 
     def test_pairing_worker_reuses_host_identity_from_saved_record(self):
         record = {
