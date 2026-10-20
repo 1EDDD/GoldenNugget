@@ -30,6 +30,7 @@ import pymobiledevice3.service_connection as _sc
 
 from src.devicemanagement.session import (
     lockdown_session, register_network_endpoint, register_remote_pairing_device,
+    unregister_remote_pairing_device,
 )
 from src.exceptions.device_errors import (
     is_device_locked_error as _is_device_locked_error,
@@ -209,7 +210,10 @@ class DeviceManager:
             saved_udid = key.split("/", 1)[1]
             record_path = str(settings.value(key, "", type=str) or "").strip()
             if saved_udid and record_path:
-                register_remote_pairing_device(saved_udid)
+                # Re-evaluate the preferred transport on every scan. If this
+                # device is currently reachable through usbmux, keep that route
+                # preferred; only activate RemoteXPC for devices absent there.
+                unregister_remote_pairing_device(saved_udid)
                 remote_pairing_devices[saved_udid.replace("-", "").casefold()] = saved_udid
 
         # Legacy manually-paired Wi-Fi endpoints use TCP lockdown directly.
@@ -367,6 +371,7 @@ class DeviceManager:
         for normalized_udid, saved_udid in remote_pairing_devices.items():
             if normalized_udid in seen_udids:
                 continue
+            register_remote_pairing_device(saved_udid)
             try:
                 async with asyncio.timeout(15.0):
                     async with lockdown_session(
