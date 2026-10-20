@@ -85,9 +85,12 @@ def _preferred_rsd_tunnel(serial: str):
                         "Keep the iPhone awake, unlock it, and ensure both devices share Wi-Fi."
                     )
                 provider = services[0]
-                for unused in services[1:]:
-                    await unused.close()
                 stack.push_async_callback(provider.close)
+                for unused in services[1:]:
+                    try:
+                        await unused.close()
+                    except Exception:
+                        pass
 
                 tunnel_result = await stack.enter_async_context(provider.start_tcp_tunnel())
                 self.tun = tunnel_result.client.tun
