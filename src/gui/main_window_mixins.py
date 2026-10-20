@@ -14,6 +14,7 @@ import time
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtCore import QCoreApplication
 
+from src.controllers.settings import settings_keys
 from src.controllers.video_handler import set_ignore_frame_limit
 from src.devicemanagement.constants import Version
 from src.gui.dialogs.reset_dialog import ResetDialog
@@ -175,7 +176,7 @@ class DeviceBarMixin:
             tooltip="Open Settings > Developer > Paired Macs on your iPhone",
         )
         existing_record_paths = []
-        for key in self.settings.allKeys():
+        for key in settings_keys(self.settings):
             if not key.startswith("remote_pairing/"):
                 continue
             saved_udid = key.split("/", 1)[1]
