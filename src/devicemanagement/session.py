@@ -38,6 +38,12 @@ def register_remote_pairing_device(udid: str) -> None:
     _REMOTE_PAIRING_DEVICES[_normalise_udid(udid)] = str(udid)
 
 
+def unregister_remote_pairing_device(udid: str) -> None:
+    """Remove a device's active RemoteXPC preference without deleting its saved record."""
+    if udid:
+        _REMOTE_PAIRING_DEVICES.pop(_normalise_udid(udid), None)
+
+
 def get_registered_remote_pairing_devices() -> tuple[str, ...]:
     """Return the original UDIDs registered for RemoteXPC pairing."""
     return tuple(_REMOTE_PAIRING_DEVICES.values())
