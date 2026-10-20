@@ -49,6 +49,56 @@ def get_registered_remote_pairing_devices() -> tuple[str, ...]:
     return tuple(_REMOTE_PAIRING_DEVICES.values())
 
 
+async def _ensure_remote_unlock_key(provider) -> bool:
+    """Populate a Pair-on-Device record's remote-unlock key when the peer supports it.
+
+    PairableHost's initial record deliberately contains an empty key. Some RSD
+    services, including mobilebackup2's remote shim, need this key in the RSD
+    check-in EscrowBag. The paired RemotePairing control connection can request
+    the key after pair-verify has established its encrypted session.
+    """
+    import logging
+    import plistlib
+
+    logger = logging.getLogger(__name__)
+    try:
+        record_path = provider.pair_record_path
+        record = plistlib.loads(record_path.read_bytes())
+    except Exception as exc:
+        logger.warning("Could not read Pair-on-Device record for remote unlock: %s", exc)
+        return False
+
+    if not isinstance(record, dict):
+        logger.warning("Pair-on-Device record is not a dictionary; skipping remote unlock setup")
+        return False
+    if record.get("remote_unlock_host_key"):
+        return True
+
+    try:
+        await provider._create_remote_unlock()
+    except Exception as exc:
+        logger.warning("The paired device could not provide a remote-unlock key: %s", exc)
+        return False
+
+    remote_unlock_key = getattr(provider, "remote_unlock_host_key", None)
+    if not remote_unlock_key:
+        logger.info("The paired device does not expose a remote-unlock key")
+        return False
+
+    # Preserve the PairableHost identity fields. RemotePairingProtocol.save_pair_record()
+    # would rewrite this file in the host-initiated record format and drop
+    # host_identifier/host_alt_irk, which Pair-on-Device needs for future verify.
+    record["remote_unlock_host_key"] = remote_unlock_key
+    try:
+        record_path.write_bytes(plistlib.dumps(record))
+    except OSError as exc:
+        logger.warning("Could not persist remote-unlock key to pairing record: %s", exc)
+        return False
+
+    logger.info("Stored remote-unlock key in Pair-on-Device record for %s", provider.remote_identifier)
+    return True
+
+
 def _preferred_rsd_tunnel(serial: str):
     """Return a no-root RemotePairing RSD tunnel for a device-initiated pairing.
 
@@ -65,6 +115,8 @@ def _preferred_rsd_tunnel(serial: str):
             from contextlib import AsyncExitStack
             from pymobiledevice3.remote import userspace_tunnel, tunnel_service
             from pymobiledevice3.remote.remote_service_discovery import RemoteServiceDiscoveryService
+            from pymobiledevice3.common import get_home_folder
+            from pymobiledevice3.pair_records import get_local_pairing_record, get_remote_pairing_record_filename
 
             if userspace_tunnel._active_tunnel is not None:
                 raise RuntimeError(
@@ -92,6 +144,11 @@ def _preferred_rsd_tunnel(serial: str):
                     except Exception:
                         pass
 
+                # PairableHost initially persists an empty remote_unlock_host_key.
+                # Ask for it over the already-verified RemotePairing control connection
+                # before starting services that need an escrow bag.
+                await _ensure_remote_unlock_key(provider)
+
                 tunnel_result = await stack.enter_async_context(provider.start_tcp_tunnel())
                 self.tun = tunnel_result.client.tun
                 self.tun.set_peer(tunnel_result.address)
@@ -99,7 +156,26 @@ def _preferred_rsd_tunnel(serial: str):
                 dial_plane = await stack.enter_async_context(
                     userspace_tunnel.UserspaceDialPlane(self.tun, tunnel_result.address)
                 )
-                rsd = RemoteServiceDiscoveryService(
+                class PairOnDeviceRemoteServiceDiscoveryService(RemoteServiceDiscoveryService):
+                    async def start_lockdown_service(self, name: str, include_escrow_bag: bool = False):
+                        # PairableHost records initially have an empty key. Never
+                        # send an empty EscrowBag; it can cause RSD to reject the
+                        # StartService request instead of reporting a useful error.
+                        if include_escrow_bag:
+                            try:
+                                record = get_local_pairing_record(
+                                    get_remote_pairing_record_filename(self.udid),
+                                    get_home_folder(),
+                                )
+                            except Exception:
+                                record = None
+                            if not record or not record.get("remote_unlock_host_key"):
+                                include_escrow_bag = False
+                        return await super().start_lockdown_service(
+                            name, include_escrow_bag=include_escrow_bag
+                        )
+
+                rsd = PairOnDeviceRemoteServiceDiscoveryService(
                     (tunnel_result.address, tunnel_result.port),
                     open_connection=dial_plane.dial,
                     auxiliary_metadata=tunnel_result.auxiliary_metadata,
