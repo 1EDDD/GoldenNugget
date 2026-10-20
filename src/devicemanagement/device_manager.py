@@ -35,6 +35,7 @@ from src.devicemanagement.session import (
 )
 from src.exceptions.device_errors import (
     is_device_locked_error as _is_device_locked_error,
+    is_device_lock_required_error as _is_device_lock_required_error,
     is_find_my_error,
 )
 from src.controllers.hotload import HotLoad
@@ -107,6 +108,14 @@ def show_apply_error(e: Exception, update_label=lambda x: None, files_list: list
     elif "PasswordRequiredError" in str(e):
         return ApplyAlertMessage(QCoreApplication.tr("Device is password protected! You must trust the computer on your device."),
                        detailed_txt=QCoreApplication.tr("Unlock your device. On the popup, click \"Trust\", enter your password, then try again."))
+    elif _is_device_lock_required_error(e):
+        return ApplyAlertMessage(
+            QCoreApplication.tr("Unlock your iPhone to continue."),
+            detailed_txt=QCoreApplication.tr(
+                "The device rejected a service request because it is locked. "
+                "Unlock it, keep the screen on, and refresh the device list before retrying."
+            ),
+        )
     elif isinstance(e, ConnectionTerminatedError):
         files_str = get_files_list_str(files_list)
         is_setup_config = "skip_setup27.py" in traceback_text
