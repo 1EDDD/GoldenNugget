@@ -318,24 +318,26 @@ class DeviceManager:
                 continue
             try:
                 register_network_endpoint(saved_udid, hostname)
-                async with lockdown_session(
-                    saved_udid, autopair=False, pair_timeout=5.0, use_network=True
-                ) as ld:
-                    vals = ld.all_values
-                    locale = await ld.get_locale()
-                    dev = Device(
-                        udid=saved_udid,
-                        usb=False,
-                        name=vals.get("DeviceName", "iPhone"),
-                        version=vals.get("ProductVersion", ""),
-                        build=vals.get("BuildVersion", ""),
-                        model=vals.get("ProductType", ""),
-                        hardware=vals.get("HardwareModel", ""),
-                        cpu=vals.get("HardwarePlatform", ""),
-                        locale=locale,
-                    )
-                    self.devices.append(dev)
-                    seen_udids.add(normalized_udid)
+            async with asyncio.timeout(8.0):
+                    async with lockdown_session(
+                        saved_udid, autopair=False, pair_timeout=5.0, use_network=True
+                    ) as ld:
+                        vals = ld.all_values
+                        locale = await ld.get_locale()
+                        dev = Device(
+                            udid=saved_udid,
+                            usb=False,
+                            name=vals.get("DeviceName", "iPhone"),
+                            version=vals.get("ProductVersion", ""),
+                            build=vals.get("BuildVersion", ""),
+                            model=vals.get("ProductType", ""),
+                            hardware=vals.get("HardwareModel", ""),
+                            cpu=vals.get("HardwarePlatform", ""),
+                            locale=locale,
+                        )
+                        self.devices.append(dev)
+                        seen_udids.add(normalized_udid)
+    
             except Exception as e:
                 # A stale IP, sleeping phone, or unavailable local network should
                 # not prevent USB devices from being usable.
