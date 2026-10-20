@@ -65,7 +65,10 @@ def is_device_lock_required_error(exc: Exception) -> bool:
     if isinstance(exc, (pm3_exc.PasswordRequiredError, pm3_exc.PasscodeRequiredError)):
         return True
     msg = _exception_text(exc).casefold()
-    return "passwordprotected" in msg or "passcoderequired" in msg or "password protected" in msg
+    return any(marker in msg for marker in (
+        "passwordprotected", "passcoderequired", "password protected",
+        "device is locked", "device locked",
+    ))
 
 
 def is_transient_restore_error(error) -> bool:
