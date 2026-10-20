@@ -281,7 +281,26 @@ async def _wait_for_device(udid: str, progress_callback,
         if prompt_choice is None:
             raise err
         title = QCoreApplication.tr("Device took too long to unlock")
-        if saw_password_required:
+        if remote_pairing_available:
+            if saw_password_required:
+                text = QCoreApplication.tr(
+                    "The iPhone has not been unlocked for too long after the "
+                    "security recovery. Unlock it and enter its passcode. Keep "
+                    "both devices on the same Wi-Fi network and the iPhone awake, "
+                    "then choose:\n\n"
+                    "  \u2022 Resume \u2014 keep waiting for Pair on Device Wi-Fi.\n"
+                    "  \u2022 Abort \u2014 stop now. Tweaks may not be applied and "
+                    "data protection stays incomplete.")
+            else:
+                text = QCoreApplication.tr(
+                    "The iPhone has not reappeared over Pair on Device after the "
+                    "security recovery. Unlock it, open Settings > Developer > "
+                    "Paired Macs, and keep both devices on the same Wi-Fi network, "
+                    "then choose:\n\n"
+                    "  \u2022 Resume \u2014 keep waiting for Pair on Device Wi-Fi.\n"
+                    "  \u2022 Abort \u2014 stop now. Tweaks may not be applied and "
+                    "data protection stays incomplete.")
+        elif saw_password_required:
             text = QCoreApplication.tr(
                 "The device has not been unlocked for too long after the "
                 "security recovery \u2014 it keeps asking for your passcode.\n\n"
