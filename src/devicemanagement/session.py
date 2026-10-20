@@ -89,9 +89,15 @@ async def _ensure_remote_unlock_key(provider) -> bool:
     # would rewrite this file in the host-initiated record format and drop
     # host_identifier/host_alt_irk, which Pair-on-Device needs for future verify.
     record["remote_unlock_host_key"] = remote_unlock_key
+    temporary_path = record_path.with_name(record_path.name + ".tmp")
     try:
-        record_path.write_bytes(plistlib.dumps(record))
+        temporary_path.write_bytes(plistlib.dumps(record))
+        temporary_path.replace(record_path)
     except OSError as exc:
+        try:
+            temporary_path.unlink(missing_ok=True)
+        except OSError:
+            pass
         logger.warning("Could not persist remote-unlock key to pairing record: %s", exc)
         return False
 
