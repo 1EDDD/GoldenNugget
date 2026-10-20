@@ -935,8 +935,8 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                 progress_callback("Skipping setup panes...")
                 log_info("Phase 5: Skipping setup panes via MobileConfigService")
                 try:
-                    await skip_all_setup27(lc, udid, supervised=supervised,
-                                           organization_name=organization_name)
+                    lc = await skip_all_setup27(lc, udid, supervised=supervised,
+                                                organization_name=organization_name)
                 except CloudConfigurationAlreadyPresentError:
                     log_info("Phase 5: device already has a cloud configuration "
                              "— setup already handled, nothing to skip")
@@ -1209,10 +1209,17 @@ async def restore_files(files: list[FileToRestore], reboot: bool = False, lockdo
                                             progress_callback,
                                             prompt_choice=prompt_choice)
                 log_info("Raw sparse: skipping setup panes via MobileConfigService")
-                await skip_all_setup27(lc, lockdown_client.udid,
-                                       supervised=supervised,
-                                       organization_name=organization_name)
-                progress_callback(95)
+                try:
+                    lc = await skip_all_setup27(
+                        lc, lockdown_client.udid,
+                        supervised=supervised,
+                        organization_name=organization_name)
+                    progress_callback(95)
+                finally:
+                    try:
+                        await close_device_session(lc)
+                    except Exception:
+                        pass
         else:
             # iOS 27 era: three-phase protective backup + restore
             await _restore_ios27(back, reboot, lockdown_client, progress_callback,
