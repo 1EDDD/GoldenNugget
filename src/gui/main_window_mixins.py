@@ -187,6 +187,7 @@ class DeviceBarMixin:
         self._wifi_pair_worker.succeeded.connect(self._wifi_pair_succeeded)
         self._wifi_pair_worker.failed.connect(self._wifi_pair_failed)
         self._wifi_pair_worker.finished.connect(self._wifi_pair_worker_finished)
+        self._wifi_pair_worker.finished.connect(self._wifi_pair_worker.deleteLater)
         self._wifi_pair_worker.start()
 
     @QtCore.Slot(object)
