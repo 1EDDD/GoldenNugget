@@ -46,3 +46,48 @@ class Settings:
     def sync(self):
         self._primary.sync()
         self._legacy.sync()
+
+
+
+def settings_keys(settings) -> list[str]:
+    """Return persisted setting keys across current and legacy settings stores.
+
+    Older Settings wrappers used by existing checkouts may not expose the
+    QSettings-compatible allKeys method. Keep callers resilient to those
+    versions rather than letting a device refresh or pairing action crash.
+    """
+    getter = getattr(settings, "allKeys", None)
+    if callable(getter):
+        try:
+            return sorted({str(key) for key in getter()})
+        except (AttributeError, RuntimeError, TypeError):
+            # Fall back to the wrapped QSettings stores below.
+            pass
+
+    keys: set[str] = set()
+    for attribute in ("_primary", "_legacy"):
+        store = getattr(settings, attribute, None)
+        if store is None:
+            continue
+        for method_name in ("allKeys", "all_keys", "keys"):
+            store_getter = getattr(store, method_name, None)
+            if not callable(store_getter):
+                continue
+            try:
+                keys.update(str(key) for key in store_getter())
+                break
+            except (AttributeError, RuntimeError, TypeError):
+                continue
+
+    # Support other QSettings-like wrappers as a final compatibility fallback.
+    for method_name in ("all_keys", "keys"):
+        fallback = getattr(settings, method_name, None)
+        if not callable(fallback):
+            continue
+        try:
+            keys.update(str(key) for key in fallback())
+            break
+        except (AttributeError, RuntimeError, TypeError):
+            continue
+
+    return sorted(keys)
