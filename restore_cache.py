@@ -300,6 +300,10 @@ async def _restore_with_wait(lc, backup_root: str, udid: str, backup_password: s
         except PasswordRequiredError:
             remaining = int(deadline - time.monotonic())
             if remaining <= 0:
+                try:
+                    await close_device_session(lc)
+                except Exception:
+                    pass
                 raise
             progress_callback(
                 f"iPhone is LOCKED - unlock it to continue "
@@ -316,9 +320,17 @@ async def _restore_with_wait(lc, backup_root: str, udid: str, backup_password: s
         except transmit as e:
             if not is_transient_restore_error(e):
                 progress_callback(f"Restore error ({type(e).__name__}): {e}")
+                try:
+                    await close_device_session(lc)
+                except Exception:
+                    pass
                 raise
             remaining = int(deadline - time.monotonic())
             if remaining <= 0:
+                try:
+                    await close_device_session(lc)
+                except Exception:
+                    pass
                 raise
             progress_callback(
                 f"Device not ready, reconnecting... ({attempt}) "
@@ -329,6 +341,15 @@ async def _restore_with_wait(lc, backup_root: str, udid: str, backup_password: s
                 pass
             lc = None
             await asyncio.sleep(3)
+        except Exception:
+            # The caller only receives ownership of a provider on success.
+            # Do not leak an RSD userspace tunnel on an unclassified failure.
+            try:
+                if lc is not None:
+                    await close_device_session(lc)
+            except Exception:
+                pass
+            raise
 
 
 async def run(args) -> int:
@@ -386,10 +407,8 @@ async def run(args) -> int:
     print("Waiting for device (unlock it when prompted)...")
     lc = None
     try:
-        print("Connecting to the device...")
-        lc = await _open_restore_session(udid)
-        print("Connected. Restoring protective backup...")
-        lc = await _restore_with_wait(lc, working_root, udid,
+        print("Connecting to the device and restoring the protective backup...")
+        lc = await _restore_with_wait(None, working_root, udid,
                                       args.password or "", args.timeout,
                                       progress_cb)
         if media_dir:
