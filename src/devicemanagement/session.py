@@ -205,6 +205,8 @@ def _preferred_rsd_tunnel(serial: str):
 
             self._exit_stack = stack
             self.rsd = rsd
+            # Keep ownership explicit if recovery must retain RSD beyond its context.
+            rsd._pair_on_device_tunnel_owner = self
             userspace_tunnel._active_tunnel = self
             userspace_tunnel.USERSPACE_ACTIVE = True
             self._transport_watcher = asyncio.create_task(
@@ -214,6 +216,34 @@ def _preferred_rsd_tunnel(serial: str):
             return rsd
 
     return PairOnDeviceRsdTunnel(serial=serial, autopair=False, remotepairing_fallback=False)
+
+
+def is_remote_pairing_registered(serial: Optional[str]) -> bool:
+    """Whether the given UDID was registered through iOS 27 Pair on Device."""
+    return _normalise_udid(serial) in _REMOTE_PAIRING_DEVICES
+
+
+async def open_remote_pairing_session(serial: str):
+    """Open an RSD provider whose userspace tunnel remains alive for the caller.
+
+    Unlike lockdown_session, this returns an explicitly owned live session.
+    Call close_device_session when finished to close the RSD and tunnel.
+    """
+    tunnel = _preferred_rsd_tunnel(str(serial))
+    rsd = await tunnel.aopen()
+    rsd._pair_on_device_tunnel_owner = tunnel
+    return rsd
+
+
+async def close_device_session(provider) -> None:
+    """Close a USB provider or both halves of a Pair-on-Device RSD session."""
+    tunnel = getattr(provider, "_pair_on_device_tunnel_owner", None)
+    if tunnel is not None:
+        await tunnel.aclose()
+        return
+    close = getattr(provider, "close", None)
+    if callable(close):
+        await close()
 
 
 @asynccontextmanager
