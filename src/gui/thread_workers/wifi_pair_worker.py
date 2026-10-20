@@ -28,7 +28,8 @@ class WifiPairThread(QThread):
         for record_path in self.existing_record_paths:
             try:
                 record = plistlib.loads(Path(record_path).read_bytes())
-            except (OSError, ValueError, plistlib.InvalidFileException):
+            except Exception:
+                # Ignore stale/corrupt old records and try the next saved device.
                 continue
 
             identifier = record.get("host_identifier")
@@ -96,6 +97,11 @@ class WifiPairThread(QThread):
             **kwargs,
         )
         peer = result.peer_device
+        if not peer.udid:
+            raise RuntimeError(
+                "The iPhone completed the pairing handshake but did not provide a device UDID. "
+                "GoldenNugget cannot safely register the device without it."
+            )
         return {
             "udid": str(peer.udid),
             "device_name": str(peer.name),
