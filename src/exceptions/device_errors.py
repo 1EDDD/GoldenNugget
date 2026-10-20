@@ -5,6 +5,16 @@ import plistlib
 import pymobiledevice3.exceptions as pm3_exc
 
 
+def _exception_text(exc: BaseException) -> str:
+    """Return useful text even for pymobiledevice3 errors with empty __str__."""
+    parts = [str(exc)]
+    for attribute in ("message", "reason", "description"):
+        value = getattr(exc, attribute, None)
+        if value not in (None, ""):
+            parts.append(str(value))
+    return " ".join(part for part in parts if part)
+
+
 def is_find_my_error(exc: BaseException) -> bool:
     """Recognize explicit Find My restore errors, including wrapped causes."""
     pending = [exc]
@@ -14,7 +24,7 @@ def is_find_my_error(exc: BaseException) -> bool:
         if id(current) in inspected:
             continue
         inspected.add(id(current))
-        if "find my" in str(current).casefold():
+        if "find my" in _exception_text(current).casefold():
             return True
         pending.extend(cause for cause in
                        (current.__cause__, current.__context__)
@@ -26,13 +36,13 @@ def is_find_my_error(exc: BaseException) -> bool:
 
 def is_device_locked_error(exc: Exception) -> bool:
     """Check if an exception indicates the device is locked (ErrorCode 208)."""
-    msg = str(exc)
-    return "ErrorCode" in msg and ("208" in msg or "Device locked" in msg or "MBErrorDomain" in msg)
+    msg = _exception_text(exc).casefold()
+    return "errorcode" in msg and ("208" in msg or "device locked" in msg or "mberrordomain" in msg)
 
 
 def is_connection_error(exc: Exception) -> bool:
     """Check if an exception is a transient connection failure worth retrying."""
-    msg = str(exc).lower()
+    msg = _exception_text(exc).lower()
     return isinstance(exc, (
         pm3_exc.ConnectionTerminatedError,
         pm3_exc.ConnectionFailedError,
@@ -54,8 +64,8 @@ def is_device_lock_required_error(exc: Exception) -> bool:
     """
     if isinstance(exc, (pm3_exc.PasswordRequiredError, pm3_exc.PasscodeRequiredError)):
         return True
-    msg = str(exc)
-    return "PasswordProtected" in msg or "PasscodeRequired" in msg
+    msg = _exception_text(exc).casefold()
+    return "passwordprotected" in msg or "passcoderequired" in msg or "password protected" in msg
 
 
 def is_transient_restore_error(error) -> bool:
@@ -63,10 +73,22 @@ def is_transient_restore_error(error) -> bool:
     if is_find_my_error(error):
         return False
     name = type(error).__name__
-    msg = str(error)
+    msg = _exception_text(error)
     # ssl.SSLError subclasses OSError, so this covers SSL drops too.
     if isinstance(error, (pm3_exc.ConnectionTerminatedError, OSError)):
         return True
+    if isinstance(error, pm3_exc.StartServiceError):
+        detail = _exception_text(error).casefold()
+        # RSD StartServiceError stores the device response in .message; some
+        # responses mean the service is still booting, while policy/protocol
+        # rejections should be surfaced immediately instead of blindly retried.
+        return any(marker in detail for marker in (
+            "failed to start service", "service is not ready",
+            "service not ready", "temporarily unavailable",
+            "device is locked", "device locked",
+            "passwordprotected", "passcoderequired",
+            "connection terminated", "connection closed",
+        ))
     if "InvalidService" in name:
         return True
     if "NotEnoughDiskSpace" in str(error):
