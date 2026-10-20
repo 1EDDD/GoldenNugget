@@ -545,18 +545,23 @@ class IOSHomePage(QWidget):
         usb_devices = []
         try:
             devices = self.window.device_manager.devices
-            usb_devices = [
-                (index, device) for index, device in enumerate(devices)
-                if device.connected_via_usb
-            ]
-            if usb_devices:
-                for device_index, device in usb_devices:
+            available_devices = list(enumerate(devices))
+            if available_devices:
+                for device_index, device in available_devices:
                     self.device_combo.addItem(
                         theme_icon(":/icon/phone.svg", self._c.text_primary), device.name)
+                    combo_index = self.device_combo.count() - 1
+                    self.device_combo.setItemData(combo_index, device_index, Qt.UserRole)
                     self.device_combo.setItemData(
-                        self.device_combo.count() - 1, device_index, Qt.UserRole)
+                        combo_index,
+                        QCoreApplication.translate(
+                            "Nugget",
+                            "Connected over USB" if device.connected_via_usb
+                            else "Connected over Wi-Fi / network"),
+                        Qt.ToolTipRole,
+                    )
                 selected = next(
-                    (position for position, (device_index, _) in enumerate(usb_devices)
+                    (position for position, (device_index, _) in enumerate(available_devices)
                      if device_index == self.window.device_manager.current_device_index),
                     0)
                 self.device_combo.setCurrentIndex(selected)
@@ -564,7 +569,7 @@ class IOSHomePage(QWidget):
                 self.device_combo.addItem(QCoreApplication.translate("QCoreApplication", "No Device"))
         except Exception:
             self.device_combo.addItem(QCoreApplication.translate("QCoreApplication", "No Device"))
-            usb_devices = []
+            available_devices = []
         self.device_combo.blockSignals(False)
         self.device_combo.view().setMinimumWidth(max(
             self.device_combo.width(), self.device_combo.view().sizeHintForColumn(0) + 64))
