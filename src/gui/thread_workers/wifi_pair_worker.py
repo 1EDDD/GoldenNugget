@@ -1,6 +1,9 @@
 """Worker for iOS 27 device-initiated Pair on Device pairing."""
+
 import asyncio
 import platform
+import plistlib
+from pathlib import Path
 
 from PySide6.QtCore import QThread, Signal
 
@@ -11,6 +14,41 @@ class WifiPairThread(QThread):
     succeeded = Signal(object)
     failed = Signal(str)
 
+    def __init__(self, parent=None, existing_record_paths=None):
+        super().__init__(parent)
+        self.existing_record_paths = tuple(existing_record_paths or ())
+
+    def _load_host_identity(self):
+        """Reuse the computer identity from an earlier Pair on Device record.
+
+        An iPhone remembers the host identifier and IRK. Generating a new IRK
+        with the same identifier can make later pair-setup attempts fail or
+        cause the host to disappear from the phone's known-peer list.
+        """
+        for record_path in self.existing_record_paths:
+            try:
+                record = plistlib.loads(Path(record_path).read_bytes())
+            except (OSError, ValueError, plistlib.InvalidFileException):
+                continue
+
+            identifier = record.get("host_identifier")
+            host_alt_irk = record.get("host_alt_irk")
+            private_key = record.get("private_key")
+            if (
+                isinstance(identifier, str)
+                and identifier
+                and isinstance(host_alt_irk, bytes)
+                and len(host_alt_irk) == 16
+                and isinstance(private_key, bytes)
+                and len(private_key) == 32
+            ):
+                return {
+                    "identifier": identifier,
+                    "alt_irk": host_alt_irk,
+                    "private_key": private_key,
+                }
+        return None
+
     def run(self):
         try:
             result = asyncio.run(self._pair_host())
@@ -20,12 +58,25 @@ class WifiPairThread(QThread):
         self.succeeded.emit(result)
 
     async def _pair_host(self):
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
         from pymobiledevice3.remote.tunnel_service import (
             PairableHostInfo,
             serve_pairable_host,
         )
 
-        host_info = PairableHostInfo(name=platform.node() or "GoldenNugget PC")
+        identity = self._load_host_identity()
+        kwargs = {}
+        if identity:
+            host_info = PairableHostInfo(
+                name=platform.node() or "GoldenNugget PC",
+                identifier=identity["identifier"],
+                alt_irk=identity["alt_irk"],
+            )
+            kwargs["ed25519_private_key"] = Ed25519PrivateKey.from_private_bytes(
+                identity["private_key"]
+            )
+        else:
+            host_info = PairableHostInfo(name=platform.node() or "GoldenNugget PC")
 
         def pin_callback(pin: str):
             self.pin_ready.emit(str(pin))
@@ -42,6 +93,7 @@ class WifiPairThread(QThread):
             pin_callback=pin_callback,
             timeout=300,
             waiting_callback=waiting_callback,
+            **kwargs,
         )
         peer = result.peer_device
         return {
