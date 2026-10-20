@@ -162,6 +162,8 @@ def _preferred_rsd_tunnel(serial: str):
                 dial_plane = await stack.enter_async_context(
                     userspace_tunnel.UserspaceDialPlane(self.tun, tunnel_result.address)
                 )
+                pairing_udid = self.serial
+
                 class PairOnDeviceRemoteServiceDiscoveryService(RemoteServiceDiscoveryService):
                     async def start_lockdown_service(self, name: str, include_escrow_bag: bool = False):
                         # PairableHost records initially have an empty key. Never
@@ -170,7 +172,7 @@ def _preferred_rsd_tunnel(serial: str):
                         if include_escrow_bag:
                             try:
                                 record = get_local_pairing_record(
-                                    get_remote_pairing_record_filename(self.udid),
+                                    get_remote_pairing_record_filename(pairing_udid),
                                     get_home_folder(),
                                 )
                             except Exception:
