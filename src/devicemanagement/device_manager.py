@@ -28,7 +28,7 @@ from pymobiledevice3.services.mobilebackup2 import Mobilebackup2Service
 import pymobiledevice3.service_connection as _sc
 
 
-from src.devicemanagement.session import lockdown_session
+from src.devicemanagement.session import lockdown_session, register_network_endpoint
 from src.exceptions.device_errors import (
     is_device_locked_error as _is_device_locked_error,
     is_find_my_error,
@@ -196,6 +196,15 @@ class DeviceManager:
         # same UDID is present in the newly enumerated device list.
         selected_udid = self.get_current_device_udid()
         self.devices.clear()
+        # Restore manually-paired Wi-Fi endpoints saved by the Pair over Wi-Fi flow.
+        # These use TCP lockdown directly and are separate from usbmux discovery.
+        for key in settings.allKeys():
+            if not key.startswith("network_endpoints/"):
+                continue
+            saved_udid = key.split("/", 1)[1]
+            saved_host = str(settings.value(key, "", type=str) or "").strip()
+            if saved_udid and saved_host:
+                register_network_endpoint(saved_udid, saved_host)
         # handle errors when failing to get connected devices
         try:
             # Include both USB and network/usbmux devices. The previous is_usb-only
@@ -217,7 +226,7 @@ class DeviceManager:
             if normalized_udid in seen_udids:
                 continue
             try:
-                async with lockdown_session(device.serial) as ld:
+                async with lockdown_session(device.serial, use_network=False) as ld:
                     # Check backup encryption status if experimental option not enabled
                     if not self.pref_manager.use_encrypted_backup:
                         try:
@@ -292,6 +301,41 @@ class DeviceManager:
                 show_alert(ApplyAlertMessage(txt=f"{type(e).__name__}: {repr(e)}", detailed_txt=str(traceback.format_exc()),
                                             exc_type=type(e), exc_value=e))
         
+        # Reconnect to hosts explicitly paired by IP. Do not trigger autopair
+        # during background refresh; this path should only reuse saved pairing records.
+        for key in settings.allKeys():
+            if not key.startswith("network_endpoints/"):
+                continue
+            saved_udid = key.split("/", 1)[1]
+            hostname = str(settings.value(key, "", type=str) or "").strip()
+            normalized_udid = saved_udid.replace("-", "").casefold()
+            if not saved_udid or not hostname or normalized_udid in seen_udids:
+                continue
+            try:
+                register_network_endpoint(saved_udid, hostname)
+                async with lockdown_session(
+                    saved_udid, autopair=False, pair_timeout=5.0, use_network=True
+                ) as ld:
+                    vals = ld.all_values
+                    locale = await ld.get_locale()
+                    dev = Device(
+                        udid=saved_udid,
+                        usb=False,
+                        name=vals.get("DeviceName", "iPhone"),
+                        version=vals.get("ProductVersion", ""),
+                        build=vals.get("BuildVersion", ""),
+                        model=vals.get("ProductType", ""),
+                        hardware=vals.get("HardwareModel", ""),
+                        cpu=vals.get("HardwarePlatform", ""),
+                        locale=locale,
+                    )
+                    self.devices.append(dev)
+                    seen_udids.add(normalized_udid)
+            except Exception as e:
+                # A stale IP, sleeping phone, or unavailable local network should
+                # not prevent USB devices from being usable.
+                print(f"Wi-Fi device {saved_udid} at {hostname} is currently unavailable: {e}")
+
         if len(self.devices) > 0:
             selected_index = next(
                 (index for index, device in enumerate(self.devices)
