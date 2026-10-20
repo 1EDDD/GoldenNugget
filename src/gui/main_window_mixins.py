@@ -169,9 +169,11 @@ class DeviceBarMixin:
         if answer != QtWidgets.QMessageBox.StandardButton.Ok:
             return
 
-        self.wifiPairBtn.setEnabled(False)
-        self.wifiPairBtn.setText("Waiting for iPhone…")
-        self.wifiPairBtn.setToolTip("Open Settings > Developer > Paired Macs on your iPhone")
+        self._set_wifi_pair_button_state(
+            enabled=False,
+            text="Waiting for iPhone…",
+            tooltip="Open Settings > Developer > Paired Macs on your iPhone",
+        )
         existing_record_paths = []
         for key in self.settings.allKeys():
             if not key.startswith("remote_pairing/"):
@@ -199,9 +201,25 @@ class DeviceBarMixin:
             + str(pin)
         )
 
+    def _set_wifi_pair_button_state(self, *, enabled, text, tooltip):
+        buttons = [getattr(self, "wifiPairBtn", None)]
+        ios_home = getattr(self, "ios_home", None)
+        if ios_home is not None:
+            buttons.append(getattr(ios_home, "_wifi_pair_btn", None))
+        for button in buttons:
+            if button is None:
+                continue
+            button.setEnabled(enabled)
+            button.setText(text)
+            button.setToolTip(tooltip)
+
     @QtCore.Slot(str)
     def _wifi_pair_status(self, status):
-        self.wifiPairBtn.setToolTip(status)
+        self._set_wifi_pair_button_state(
+            enabled=False,
+            text="Waiting for iPhone…",
+            tooltip=status,
+        )
 
     @QtCore.Slot(object)
     def _wifi_pair_succeeded(self, result):
@@ -235,9 +253,11 @@ class DeviceBarMixin:
 
     @QtCore.Slot()
     def _wifi_pair_worker_finished(self):
-        self.wifiPairBtn.setEnabled(True)
-        self.wifiPairBtn.setText("Pair Wi-Fi")
-        self.wifiPairBtn.setToolTip("Start iOS 27 Pair on Device")
+        self._set_wifi_pair_button_state(
+            enabled=True,
+            text="Pair Wi-Fi",
+            tooltip="Start iOS 27 Pair on Device",
+        )
         self._wifi_pair_worker = None
 
     @QtCore.Slot()
