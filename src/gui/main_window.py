@@ -321,7 +321,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.wifiPairBtn.clicked.connect(self.pair_over_wifi)
         self.ui.devicePicker.currentIndexChanged.connect(self.change_selected_device)
         self._device_monitor_thread = DeviceMonitorThread(self)
-        self._device_monitor_thread.devices_changed.connect(self.on_device_connection_changed)
+        self._device_monitor_thread.devices_changed.connect(self._handle_device_connection_changed)
         self._device_monitor_thread.start()
         self.refresh_devices()
         # The refresh above runs on a worker thread, so the device list is still
