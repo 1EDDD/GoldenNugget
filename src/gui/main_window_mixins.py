@@ -146,7 +146,7 @@ class DeviceBarMixin:
 
     @QtCore.Slot()
     def pair_over_wifi(self):
-        """Ask for an iPhone's local IP and pair with it over TCP lockdown."""
+        """Start iOS 27's device-initiated Pair on Device host."""
         worker = getattr(self, "_wifi_pair_worker", None)
         try:
             if worker is not None and worker.isRunning():
@@ -154,80 +154,77 @@ class DeviceBarMixin:
         except RuntimeError:
             pass
 
-        previous_ip = str(self.settings.value("wifi_last_ip", "", type=str) or "")
-        hostname, accepted = QtWidgets.QInputDialog.getText(
+        answer = QtWidgets.QMessageBox.information(
             self,
-            QCoreApplication.translate("Nugget", "Pair over Wi-Fi"),
-            QCoreApplication.translate(
-                "Nugget",
-                "Enter the iPhone's IP address from Settings > Wi-Fi > (i).\n"
-                "Keep the iPhone unlocked and accept the Trust prompt if it appears."
-            ),
-            text=previous_ip,
+            "iOS 27 Pair on Device",
+            "This computer will appear on your iPhone as a pairable host.\n\n"
+            "1. Keep both devices on the same Wi-Fi network.\n"
+            "2. On iPhone, enable Developer Mode if needed.\n"
+            "3. Open Settings > Developer > Paired Macs.\n"
+            "4. Tap this computer under Other Devices.\n"
+            "5. Enter the 6-digit code shown by GoldenNugget.",
+            QtWidgets.QMessageBox.StandardButton.Ok |
+            QtWidgets.QMessageBox.StandardButton.Cancel,
         )
-        if not accepted:
-            return
-        hostname = hostname.strip()
-        try:
-            # Accept literal IPv4/IPv6 addresses only; this is a local-device
-            # connection feature, not a general-purpose remote host connector.
-            hostname = str(ipaddress.ip_address(hostname))
-        except ValueError:
-            QtWidgets.QMessageBox.warning(
-                self,
-                QCoreApplication.translate("Nugget", "Invalid IP address"),
-                QCoreApplication.translate("Nugget", "Enter a valid IPv4 or IPv6 address.")
-            )
+        if answer != QtWidgets.QMessageBox.StandardButton.Ok:
             return
 
         self.wifiPairBtn.setEnabled(False)
-        self.wifiPairBtn.setToolTip(
-            QCoreApplication.translate("Nugget", "Waiting for the iPhone to accept pairing…"))
-        self._wifi_pair_worker = WifiPairThread(hostname, self)
+        self.wifiPairBtn.setText("Waiting for iPhone…")
+        self.wifiPairBtn.setToolTip("Open Settings > Developer > Paired Macs on your iPhone")
+        self._wifi_pair_worker = WifiPairThread(self)
+        self._wifi_pair_worker.pin_ready.connect(self._wifi_pair_pin_ready)
+        self._wifi_pair_worker.status.connect(self._wifi_pair_status)
         self._wifi_pair_worker.succeeded.connect(self._wifi_pair_succeeded)
         self._wifi_pair_worker.failed.connect(self._wifi_pair_failed)
         self._wifi_pair_worker.finished.connect(self._wifi_pair_worker_finished)
         self._wifi_pair_worker.finished.connect(self._wifi_pair_worker.deleteLater)
         self._wifi_pair_worker.start()
 
+    @QtCore.Slot(str)
+    def _wifi_pair_pin_ready(self, pin):
+        QtWidgets.QMessageBox.information(
+            self,
+            "Enter pairing code on iPhone",
+            "On your iPhone, tap this computer in Settings > Developer > Paired Macs, "
+            "then enter this code:\n\n"
+            + str(pin)
+        )
+
+    @QtCore.Slot(str)
+    def _wifi_pair_status(self, status):
+        self.wifiPairBtn.setToolTip(status)
+
     @QtCore.Slot(object)
     def _wifi_pair_succeeded(self, result):
-        hostname = str(result["hostname"])
         udid = str(result["udid"])
-        from src.devicemanagement.session import register_network_endpoint
-        register_network_endpoint(udid, hostname)
-        self.settings.setValue(f"network_endpoints/{udid}", hostname)
-        self.settings.setValue("wifi_last_ip", hostname)
+        self.settings.setValue(f"remote_pairing/{udid}", str(result["record_path"]))
         self.settings.sync()
         QtWidgets.QMessageBox.information(
             self,
-            QCoreApplication.translate("Nugget", "Wi-Fi pairing complete"),
-            QCoreApplication.translate("Nugget", "Paired with {0}. Refreshing the device list.").format(
-                result.get("name", "iPhone"))
+            "Pair on Device complete",
+            "Paired with {0} ({1}).\n\n"
+            "The iOS 27 pairing record was created successfully. "
+            "Connecting GoldenNugget's existing device operations through the new RemoteXPC tunnel "
+            "is a separate integration step.".format(
+                result.get("device_name", "iPhone"), udid)
         )
-        if not self.refresh_in_progress and not self.apply_in_progress:
-            self.refresh_devices()
-        else:
-            self._device_change_refresh_pending = True
 
     @QtCore.Slot(str)
     def _wifi_pair_failed(self, error):
         QtWidgets.QMessageBox.warning(
             self,
-            QCoreApplication.translate("Nugget", "Wi-Fi pairing failed"),
-            QCoreApplication.translate(
-                "Nugget",
-                "Could not pair with this IP address. Confirm the iPhone and computer are on the same Wi-Fi, "
-                "the IP is current, and the iPhone is unlocked. Some setups require one initial USB trust or "
-                "Wi-Fi sync to be enabled first.\n\nDetails: {0}"
-            ).format(error)
+            "Pair on Device failed",
+            "Could not complete iOS 27 Pair on Device. Ensure Developer Mode is enabled, "
+            "both devices share the same Wi-Fi, and Settings > Developer > Paired Macs is open.\n\n"
+            "Details: {0}".format(error)
         )
 
     @QtCore.Slot()
     def _wifi_pair_worker_finished(self):
         self.wifiPairBtn.setEnabled(True)
-        self.wifiPairBtn.setToolTip(
-            QCoreApplication.translate("Nugget", "Pair an iPhone by Wi-Fi IP address"))
+        self.wifiPairBtn.setText("Pair Wi-Fi")
+        self.wifiPairBtn.setToolTip("Start iOS 27 Pair on Device")
         self._wifi_pair_worker = None
 
     @QtCore.Slot()
