@@ -13,6 +13,7 @@ from unittest.mock import AsyncMock, patch
 from pymobiledevice3.exceptions import StartServiceError
 
 from src.devicemanagement import session
+from src.exceptions.device_errors import is_device_lock_required_error, is_transient_restore_error
 from src.devicemanagement.device_manager import show_apply_error
 from src.restore import restore as restore_module
 from src.gui.thread_workers.wifi_pair_worker import WifiPairThread
@@ -300,6 +301,20 @@ class RemotePairingSessionTests(unittest.IsolatedAsyncioTestCase):
                     raise AssertionError("existing key should be reused")
 
             self.assertTrue(await session._ensure_remote_unlock_key(FakeUnlockProvider()))
+
+    def test_start_service_error_classification_uses_device_message_attribute(self):
+        transient = StartServiceError(
+            "com.apple.mobilebackup2.shim.remote",
+            "Failed to start service because the device is locked",
+        )
+        self.assertTrue(is_transient_restore_error(transient))
+        self.assertTrue(is_device_lock_required_error(transient))
+
+        permanent = StartServiceError(
+            "com.apple.mobilebackup2.shim.remote",
+            "Operation denied by policy",
+        )
+        self.assertFalse(is_transient_restore_error(permanent))
 
     def test_start_service_error_shows_the_device_rejection_reason(self):
         error = StartServiceError(
