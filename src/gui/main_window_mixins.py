@@ -235,7 +235,7 @@ class DeviceBarMixin:
         self.connect_placeholder.set_scan_status(
             QCoreApplication.translate("Nugget", "Device found.") if self.device_manager.devices else
             getattr(self, '_last_connection_error', '') or QCoreApplication.translate(
-                "Nugget", "No device found. Check the cable, unlock the device and confirm Trust on its screen."), busy=False)
+                "Nugget", "No device found. Connect by USB and tap Trust once, or make sure Wi-Fi pairing is enabled and both devices are on the same network."), busy=False)
         # The thread's own ``finished -> deleteLater`` already freed the C++
         # object; drop our reference so closeEvent never probes a dead wrapper.
         try:
@@ -280,13 +280,16 @@ class DeviceBarMixin:
             self.ui.devicePicker.setEnabled(True)
             # populate the ComboBox with device names
             for device in self.device_manager.devices:
-                if not device.connected_via_usb:
-                    continue
                 icon = theme_icon(":/icon/phone.svg", ColorThemeManager.instance().colors.text_primary)
                 self.ui.devicePicker.addItem(icon, device.name)
+                transport_label = (
+                    QCoreApplication.translate("Nugget", "Connected over USB")
+                    if device.connected_via_usb
+                    else QCoreApplication.translate("Nugget", "Connected over Wi-Fi / network")
+                )
                 self.ui.devicePicker.setItemData(
                     self.ui.devicePicker.count() - 1,
-                    QCoreApplication.translate("Nugget", "Connected over USB"),
+                    transport_label,
                     QtCore.Qt.ItemDataRole.ToolTipRole,
                 )
 
