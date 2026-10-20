@@ -23,7 +23,7 @@ from pymobiledevice3.lockdown import LockdownClient
 from src.devicemanagement.session import lockdown_session
 from src.exceptions.nugget_exception import NuggetException
 
-from pymobiledevice3.exceptions import ConnectionTerminatedError
+from pymobiledevice3.exceptions import ConnectionTerminatedError, CloudConfigurationAlreadyPresentError
 from pymobiledevice3.services.mobile_config import MobileConfigService
 
 # Canonical list of setup panes to mark as skipped. This is the single source of
@@ -193,6 +193,11 @@ async def skip_all_setup27(ld: LockdownClient, udid: str | None = None,
                     organization_name=organization_name)
                 await mcs.set_cloud_configuration(cloud_config)
             return active_ld
+        except CloudConfigurationAlreadyPresentError:
+            # The cloud-config operation is complete even though iOS reported
+            # that it was already installed. Return the live provider so callers
+            # do not accidentally keep using a stale session after a retry.
+            return active_ld
         except (ConnectionTerminatedError, ConnectionError, OSError,
                 asyncio.TimeoutError) as error:
             last_error = error
@@ -204,6 +209,16 @@ async def skip_all_setup27(ld: LockdownClient, udid: str | None = None,
             if attempt == 5 or not udid:
                 break
             await asyncio.sleep(min(2 + attempt * 3, 15))
+        except Exception:
+            # If retries replaced the original provider, the caller has not yet
+            # received the replacement because this call is failing. Release it
+            # here so a userspace tunnel is never orphaned on this error path.
+            if active_ld is not None and active_ld is not ld:
+                try:
+                    await close_device_session(active_ld)
+                except Exception:
+                    pass
+            raise
     raise NuggetException(
         "The restore completed, but the device disconnected while GoldenNugget "
         "was configuring Setup Assistant. Keep the device connected and retry "
