@@ -467,6 +467,9 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
             getattr(self, "ios_settings", None), "_reset_pairing_thread", None)
         if _still_running(pairing_worker):
             terminating.append(QCoreApplication.translate("Nugget", "pairing reset"))
+        wifi_pair_worker = getattr(self, "_wifi_pair_worker", None)
+        if _still_running(wifi_pair_worker):
+            terminating.append(QCoreApplication.translate("Nugget", "Wi-Fi pairing"))
         if terminating:
             reply = QtWidgets.QMessageBox.question(
                 self,
@@ -491,6 +494,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
                 getattr(self, "_cache_restore_thread", None),
                 pairing_worker,
                 pt_worker,
+                wifi_pair_worker,
             ):
                 if _still_running(worker):
                     try:
