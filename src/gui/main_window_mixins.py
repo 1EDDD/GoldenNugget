@@ -197,18 +197,23 @@ class DeviceBarMixin:
 
     @QtCore.Slot(object)
     def _wifi_pair_succeeded(self, result):
+        from src.devicemanagement.session import register_remote_pairing_device
+
         udid = str(result["udid"])
-        self.settings.setValue(f"remote_pairing/{udid}", str(result["record_path"]))
+        record_path = str(result["record_path"])
+        register_remote_pairing_device(udid)
+        self.settings.setValue(f"remote_pairing/{udid}", record_path)
         self.settings.sync()
         QtWidgets.QMessageBox.information(
             self,
-            "Pair on Device complete",
+            "Pair on Device accepted",
             "Paired with {0} ({1}).\n\n"
-            "The iOS 27 pairing record was created successfully. "
-            "Connecting GoldenNugget's existing device operations through the new RemoteXPC tunnel "
-            "is a separate integration step.".format(
+            "The pairing record is saved. After you close this message, GoldenNugget "
+            "will refresh the device list and try to open a no-root RemoteXPC tunnel. "
+            "The device will appear in the picker when its services are reachable.".format(
                 result.get("device_name", "iPhone"), udid)
         )
+        QtCore.QTimer.singleShot(0, self.refresh_devices)
 
     @QtCore.Slot(str)
     def _wifi_pair_failed(self, error):
