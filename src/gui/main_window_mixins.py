@@ -7,12 +7,14 @@ NavigationMixin, ApplyMixin)``.
 """
 
 from typing import Optional
+import ipaddress
 import os
 import time
 
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtCore import QCoreApplication
 
+from src.controllers.settings import settings_keys
 from src.controllers.video_handler import set_ignore_frame_limit
 from src.devicemanagement.constants import Version
 from src.gui.dialogs.reset_dialog import ResetDialog
@@ -25,6 +27,7 @@ from src.gui.thread_workers.apply_worker import (
     get_sudo_pwd,
     set_sudo_pwd,
 )
+from src.gui.thread_workers.wifi_pair_worker import WifiPairThread
 from src.gui.version import App_Build, App_Version
 from src.gui.ios.theme_manager import ThemeManager
 from src.gui.ios.tweaks import _hidden_feature_names
@@ -143,6 +146,122 @@ class DeviceBarMixin:
 
 
     @QtCore.Slot()
+    def pair_over_wifi(self):
+        """Start iOS 27's device-initiated Pair on Device host."""
+        worker = getattr(self, "_wifi_pair_worker", None)
+        try:
+            if worker is not None and worker.isRunning():
+                return
+        except RuntimeError:
+            pass
+
+        answer = QtWidgets.QMessageBox.information(
+            self,
+            "iOS 27 Pair on Device",
+            "This computer will appear on your iPhone as a pairable host.\n\n"
+            "1. Keep both devices on the same Wi-Fi network.\n"
+            "2. On iPhone, enable Developer Mode if needed.\n"
+            "3. Open Settings > Developer > Paired Macs.\n"
+            "4. Tap this computer under Other Devices.\n"
+            "5. Enter the 6-digit code shown by GoldenNugget.",
+            QtWidgets.QMessageBox.StandardButton.Ok |
+            QtWidgets.QMessageBox.StandardButton.Cancel,
+        )
+        if answer != QtWidgets.QMessageBox.StandardButton.Ok:
+            return
+
+        self._set_wifi_pair_button_state(
+            enabled=False,
+            text="Waiting for iPhone…",
+            tooltip="Open Settings > Developer > Paired Macs on your iPhone",
+        )
+        existing_record_paths = []
+        for key in settings_keys(self.settings):
+            if not key.startswith("remote_pairing/"):
+                continue
+            saved_udid = key.split("/", 1)[1]
+            saved_path = str(self.settings.value(key, "", type=str) or "").strip()
+            if saved_udid and saved_udid != "host_identity" and saved_path:
+                existing_record_paths.append(saved_path)
+        self._wifi_pair_worker = WifiPairThread(self, existing_record_paths)
+        self._wifi_pair_worker.pin_ready.connect(self._wifi_pair_pin_ready)
+        self._wifi_pair_worker.status.connect(self._wifi_pair_status)
+        self._wifi_pair_worker.succeeded.connect(self._wifi_pair_succeeded)
+        self._wifi_pair_worker.failed.connect(self._wifi_pair_failed)
+        self._wifi_pair_worker.finished.connect(self._wifi_pair_worker_finished)
+        self._wifi_pair_worker.finished.connect(self._wifi_pair_worker.deleteLater)
+        self._wifi_pair_worker.start()
+
+    @QtCore.Slot(str)
+    def _wifi_pair_pin_ready(self, pin):
+        QtWidgets.QMessageBox.information(
+            self,
+            "Enter pairing code on iPhone",
+            "On your iPhone, tap this computer in Settings > Developer > Paired Macs, "
+            "then enter this code:\n\n"
+            + str(pin)
+        )
+
+    def _set_wifi_pair_button_state(self, *, enabled, text, tooltip):
+        buttons = [getattr(self, "wifiPairBtn", None)]
+        ios_home = getattr(self, "ios_home", None)
+        if ios_home is not None:
+            buttons.append(getattr(ios_home, "_wifi_pair_btn", None))
+        for button in buttons:
+            if button is None:
+                continue
+            button.setEnabled(enabled)
+            button.setText(text)
+            button.setToolTip(tooltip)
+
+    @QtCore.Slot(str)
+    def _wifi_pair_status(self, status):
+        self._set_wifi_pair_button_state(
+            enabled=False,
+            text="Waiting for iPhone…",
+            tooltip=status,
+        )
+
+    @QtCore.Slot(object)
+    def _wifi_pair_succeeded(self, result):
+        from src.devicemanagement.session import register_remote_pairing_device
+
+        udid = str(result["udid"])
+        record_path = str(result["record_path"])
+        register_remote_pairing_device(udid)
+        self.settings.setValue(f"remote_pairing/{udid}", record_path)
+        self.settings.sync()
+        QtWidgets.QMessageBox.information(
+            self,
+            "Pair on Device accepted",
+            "Paired with {0} ({1}).\n\n"
+            "The pairing record is saved. After you close this message, GoldenNugget "
+            "will refresh the device list and try to open a no-root RemoteXPC tunnel. "
+            "The device will appear in the picker when its services are reachable.".format(
+                result.get("device_name", "iPhone"), udid)
+        )
+        QtCore.QTimer.singleShot(0, self.refresh_devices)
+
+    @QtCore.Slot(str)
+    def _wifi_pair_failed(self, error):
+        QtWidgets.QMessageBox.warning(
+            self,
+            "Pair on Device failed",
+            "Could not complete iOS 27 Pair on Device. Ensure Developer Mode is enabled, "
+            "both devices share the same Wi-Fi, and Settings > Developer > Paired Macs is open.\n\n"
+            "Details: {0}".format(error)
+        )
+
+    @QtCore.Slot()
+    def _wifi_pair_worker_finished(self):
+        self._set_wifi_pair_button_state(
+            enabled=True,
+            text="Pair Wi-Fi",
+            tooltip="Start iOS 27 Pair on Device",
+        )
+        self._wifi_pair_worker = None
+
+    @QtCore.Slot()
     def refresh_devices(self):
         if not self.refresh_in_progress:
             self.refresh_in_progress = True
@@ -161,7 +280,7 @@ class DeviceBarMixin:
 
 
     @QtCore.Slot()
-    def on_device_connection_changed(self):
+    def _handle_device_connection_changed(self):
         self._device_change_refresh_pending = True
         self._schedule_device_event_refresh()
 
@@ -235,7 +354,7 @@ class DeviceBarMixin:
         self.connect_placeholder.set_scan_status(
             QCoreApplication.translate("Nugget", "Device found.") if self.device_manager.devices else
             getattr(self, '_last_connection_error', '') or QCoreApplication.translate(
-                "Nugget", "No device found. Check the cable, unlock the device and confirm Trust on its screen."), busy=False)
+                "Nugget", "No device found. Connect by USB and tap Trust once, or make sure Wi-Fi pairing is enabled and both devices are on the same network."), busy=False)
         # The thread's own ``finished -> deleteLater`` already freed the C++
         # object; drop our reference so closeEvent never probes a dead wrapper.
         try:
@@ -280,13 +399,16 @@ class DeviceBarMixin:
             self.ui.devicePicker.setEnabled(True)
             # populate the ComboBox with device names
             for device in self.device_manager.devices:
-                if not device.connected_via_usb:
-                    continue
                 icon = theme_icon(":/icon/phone.svg", ColorThemeManager.instance().colors.text_primary)
                 self.ui.devicePicker.addItem(icon, device.name)
+                transport_label = (
+                    QCoreApplication.translate("Nugget", "Connected over USB")
+                    if device.connected_via_usb
+                    else QCoreApplication.translate("Nugget", "Connected over Wi-Fi / network")
+                )
                 self.ui.devicePicker.setItemData(
                     self.ui.devicePicker.count() - 1,
-                    QCoreApplication.translate("Nugget", "Connected over USB"),
+                    transport_label,
                     QtCore.Qt.ItemDataRole.ToolTipRole,
                 )
 

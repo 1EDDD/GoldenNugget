@@ -332,6 +332,20 @@ class IOSHomePage(QWidget):
         utility_layout = QHBoxLayout(utility_corner)
         utility_layout.setContentsMargins(0, 0, 4, 0)
         utility_layout.setSpacing(2)
+        # Prominent Wi-Fi pairing action in the visible iOS-style home header.
+        self._wifi_pair_btn = QToolButton(utility_corner)
+        self._wifi_pair_btn.setObjectName("homeWifiPairBtn")
+        self._wifi_pair_btn.setFixedSize(126, 40)
+        self._wifi_pair_btn.setIconSize(QSize(21, 21))
+        self._wifi_pair_btn.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
+        self._wifi_pair_btn.setText(QCoreApplication.translate("Nugget", "Pair Wi-Fi"))
+        self._wifi_pair_btn.setCursor(Qt.PointingHandCursor)
+        self._wifi_pair_btn.setToolTip(QCoreApplication.translate(
+            "Nugget", "Pair an iPhone through Settings > Developer > Paired Macs"))
+        self._style_wifi_pair_button(self._wifi_pair_btn)
+        self._apply_icon(self._wifi_pair_btn, ":/icon/wifi.svg")
+        self._wifi_pair_btn.clicked.connect(self.window.pair_over_wifi)
+        utility_layout.addWidget(self._wifi_pair_btn)
         utility_layout.addWidget(self._refresh_btn)
         utility_layout.addWidget(self._logs_btn)
         utility_layout.addWidget(self._settings_btn)
@@ -484,6 +498,26 @@ class IOSHomePage(QWidget):
             QToolButton:pressed {{ background: {c.surface_hover}; }}
         """)
 
+    def _style_wifi_pair_button(self, button):
+        c = self._c
+        button.setStyleSheet(f"""
+            QToolButton {{
+                background: {c.accent};
+                color: {c.text_inverse};
+                border: 1px solid {c.accent};
+                border-radius: 12px;
+                font-size: 12px;
+                font-weight: 800;
+                padding: 4px 8px;
+            }}
+            QToolButton:hover {{
+                background: {c.accent_hover};
+                border-color: {c.accent_hover};
+            }}
+            QToolButton:pressed {{ background: {c.accent}; }}
+            QToolButton:disabled {{ opacity: 0.6; }}
+        """)
+
     def _style_manage_presets_button(self):
         c = self._c
         self.manage_presets_btn.setStyleSheet(f"""
@@ -519,6 +553,8 @@ class IOSHomePage(QWidget):
         self._apply_icon(self._logs_btn, ":/icon/file-earmark-text.svg")
         self._style_utility_button(self._settings_btn)
         self._apply_icon(self._settings_btn, ":/icon/gear.svg")
+        self._style_wifi_pair_button(self._wifi_pair_btn)
+        self._apply_icon(self._wifi_pair_btn, ":/icon/wifi.svg")
         self.storage_title.setStyleSheet(t("home_tile_title"))
         self.storage_lbl.setStyleSheet(t("home_tile_subtitle"))
         self.storage_bar.setStyleSheet(f"""
@@ -545,18 +581,23 @@ class IOSHomePage(QWidget):
         usb_devices = []
         try:
             devices = self.window.device_manager.devices
-            usb_devices = [
-                (index, device) for index, device in enumerate(devices)
-                if device.connected_via_usb
-            ]
-            if usb_devices:
-                for device_index, device in usb_devices:
+            available_devices = list(enumerate(devices))
+            if available_devices:
+                for device_index, device in available_devices:
                     self.device_combo.addItem(
                         theme_icon(":/icon/phone.svg", self._c.text_primary), device.name)
+                    combo_index = self.device_combo.count() - 1
+                    self.device_combo.setItemData(combo_index, device_index, Qt.UserRole)
                     self.device_combo.setItemData(
-                        self.device_combo.count() - 1, device_index, Qt.UserRole)
+                        combo_index,
+                        QCoreApplication.translate(
+                            "Nugget",
+                            "Connected over USB" if device.connected_via_usb
+                            else "Connected over Wi-Fi / network"),
+                        Qt.ToolTipRole,
+                    )
                 selected = next(
-                    (position for position, (device_index, _) in enumerate(usb_devices)
+                    (position for position, (device_index, _) in enumerate(available_devices)
                      if device_index == self.window.device_manager.current_device_index),
                     0)
                 self.device_combo.setCurrentIndex(selected)
@@ -564,7 +605,7 @@ class IOSHomePage(QWidget):
                 self.device_combo.addItem(QCoreApplication.translate("QCoreApplication", "No Device"))
         except Exception:
             self.device_combo.addItem(QCoreApplication.translate("QCoreApplication", "No Device"))
-            usb_devices = []
+            available_devices = []
         self.device_combo.blockSignals(False)
         self.device_combo.view().setMinimumWidth(max(
             self.device_combo.width(), self.device_combo.view().sizeHintForColumn(0) + 64))

@@ -689,14 +689,21 @@ class ProtectiveBackupService(Mobilebackup2Service):
 
     async def connect(self, max_retries: int = 5):
         from src.utils.async_retry import async_retry
+        from src.exceptions.device_errors import is_transient_restore_error
 
         retryable = (_pm3_exc.ConnectionTerminatedError, ConnectionError,
-                     OSError, asyncio.TimeoutError)
+                     OSError, asyncio.TimeoutError, _pm3_exc.StartServiceError)
         base_connect = super().connect
         return await async_retry(
             base_connect,
             max_retries,
-            retry_if=lambda e: isinstance(e, retryable),
+            retry_if=lambda e: (
+                isinstance(e, retryable)
+                and (
+                    not isinstance(e, _pm3_exc.StartServiceError)
+                    or is_transient_restore_error(e)
+                )
+            ),
             exp_cap=15,
             on_retry=lambda attempt, total, e, delay: print(
                 f"[ProtectiveBackup] mobilebackup2 connect failed "

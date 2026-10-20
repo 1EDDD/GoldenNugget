@@ -10,6 +10,7 @@ from tempfile import TemporaryDirectory
 from pathlib import Path
 
 from pymobiledevice3.lockdown import create_using_usbmux
+from src.devicemanagement.session import open_device_session, close_device_session
 from pymobiledevice3.services.mobilebackup2 import Mobilebackup2Service
 from pymobiledevice3.exceptions import PyMobileDevice3Exception
 from pymobiledevice3.services.diagnostics import DiagnosticsService
@@ -40,9 +41,10 @@ async def perform_restore(backup: backup.Backup, reboot: bool = False, lockdown_
                 print(f"[KEEP_SPARSE] sparse backup copy kept at: {keep}")
 
             if own_lockdown:
-                # Without a serial usbmux hands back the first device, which
-                # is not necessarily the one being restored.
-                lockdown_client = await create_using_usbmux(serial=udid)
+                # Reopen through the transport saved for this UDID. A retry
+                # after a dropped restore must retain Pair-on-Device Wi-Fi
+                # routing instead of forcing USB/usbmux.
+                lockdown_client = await open_device_session(serial=udid, autopair=True)
             async with Mobilebackup2Service(lockdown_client) as mb:
                 # PosterBoard (the only tweak using AppDomain-*) must be
                 # registered in Manifest.plist's Applications dict to avoid
@@ -70,6 +72,6 @@ async def perform_restore(backup: backup.Backup, reboot: bool = False, lockdown_
         # "Connection Lost" errors in upstream callers.
         if own_lockdown and lockdown_client is not None:
             try:
-                await lockdown_client.close()
+                await close_device_session(lockdown_client)
             except Exception:
                 pass

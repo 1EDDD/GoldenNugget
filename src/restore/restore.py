@@ -51,6 +51,7 @@ from pymobiledevice3.exceptions import ConnectionTerminatedError, PasswordRequir
 from src.exceptions.nugget_exception import NuggetException
 from src.exceptions.device_errors import is_transient_restore_error, is_find_my_error
 from src.exceptions.device_errors import is_connection_error
+from src.devicemanagement.session import close_device_session, is_remote_pairing_registered, open_remote_pairing_session
 
 def concat_regular_file(file: FileToRestore, files_list: list[FileToRestore], last_domain: str, last_path: str):
     path, name = os.path.split(file.restore_path)
@@ -156,8 +157,8 @@ async def _wait_for_device(udid: str, progress_callback,
                            prompt_choice=None) -> LockdownClient:
     """Wait for the device to return after the iOS 27 security recovery.
 
-    Polls usbmux with capped exponential backoff. Fully async — the caller's
-    event loop (and the GUI) stays responsive for the whole wait.
+    Polls USB/usbmux and, for saved Pair-on-Device records, the RemotePairing
+    tunnel with capped backoff. Fully async, so the GUI stays responsive.
 
     The pairing record SURVIVES a plain tweak-apply wipe (verified: SideStore
     keeps working), so the connect runs WITHOUT autopair — forcing a re-pair
@@ -180,6 +181,7 @@ async def _wait_for_device(udid: str, progress_callback,
         ConnectionFailedError, ConnectionTerminatedError, LockdownError,
         MissingValueError, PairingError, FatalPairingError,
     )
+    remote_pairing_available = is_remote_pairing_registered(udid)
     while True:
         start = time.monotonic()
         deadline = start + timeout
@@ -217,7 +219,8 @@ async def _wait_for_device(udid: str, progress_callback,
                 # pairing genuinely lost — try a full re-pair once, after giving
                 # the device time to finish recovery
                 last_error = e
-                if not autopair_tried and time.monotonic() - start >= 30:
+                if (not remote_pairing_available and not autopair_tried
+                        and time.monotonic() - start >= 30):
                     autopair_tried = True
                     try:
                         ld = await create_using_usbmux(serial=udid, autopair=True)
@@ -249,20 +252,55 @@ async def _wait_for_device(udid: str, progress_callback,
                     progress_callback(OperationStatus(
                         "Your iPhone is locked. Unlock it and enter its passcode to continue.",
                         "authentication"))
+            # Pair-on-Device hosts do not appear in usbmuxd. Once the USB
+            # probe fails, keep a RemotePairing tunnel alive for Phase 3's
+            # backup/media/setup services. Never request USB Trust for this route.
+            if remote_pairing_available:
+                try:
+                    async with asyncio.timeout(12.0):
+                        remote_provider = await open_remote_pairing_session(udid)
+                    log_info("Device reconnected over iOS 27 Pair on Device / RemoteXPC")
+                    return remote_provider
+                except Exception as remote_error:
+                    last_error = remote_error
+
             if time.monotonic() + delay > deadline:
                 break
             await asyncio.sleep(delay)
             delay = min(delay * 1.5, 30.0)
         # inner wait cycle exhausted — offer Abort/Resume instead of aborting
+        transport_hint = (
+            "Pair on Device Wi-Fi (same network, awake and unlocked)"
+            if remote_pairing_available else "USB"
+        )
         err = DeviceNotFoundError(
             f"Device {udid} not reachable after reboot "
             f"({int(timeout // 60)} min timeout). Unlock the device and make "
-            f"sure it is connected via USB. Last error: {last_error}"
+            f"sure it is connected via {transport_hint}. Last error: {last_error}"
         )
         if prompt_choice is None:
             raise err
         title = QCoreApplication.tr("Device took too long to unlock")
-        if saw_password_required:
+        if remote_pairing_available:
+            if saw_password_required:
+                text = QCoreApplication.tr(
+                    "The iPhone has not been unlocked for too long after the "
+                    "security recovery. Unlock it and enter its passcode. Keep "
+                    "both devices on the same Wi-Fi network and the iPhone awake, "
+                    "then choose:\n\n"
+                    "  \u2022 Resume \u2014 keep waiting for Pair on Device Wi-Fi.\n"
+                    "  \u2022 Abort \u2014 stop now. Tweaks may not be applied and "
+                    "data protection stays incomplete.")
+            else:
+                text = QCoreApplication.tr(
+                    "The iPhone has not reappeared over Pair on Device after the "
+                    "security recovery. Unlock it, open Settings > Developer > "
+                    "Paired Macs, and keep both devices on the same Wi-Fi network, "
+                    "then choose:\n\n"
+                    "  \u2022 Resume \u2014 keep waiting for Pair on Device Wi-Fi.\n"
+                    "  \u2022 Abort \u2014 stop now. Tweaks may not be applied and "
+                    "data protection stays incomplete.")
+        elif saw_password_required:
             text = QCoreApplication.tr(
                 "The device has not been unlocked for too long after the "
                 "security recovery \u2014 it keeps asking for your passcode.\n\n"
@@ -404,7 +442,7 @@ async def _restore_protective_backup(lc: LockdownClient, backup_root: str,
                 "Your data is not lost — the protective backup taken before "
                 "the wipe is kept on this computer.\n\n"
                 "This connection error can have several causes. Keep the iPhone "
-                "unlocked with the screen on and connected by USB. If the device "
+                "unlocked with the screen on and connected by USB or Pair on Device Wi-Fi. "
                 "reported a Find My protection error, turn Find My off before retrying.\n\n"
                 "Do not erase the phone or set it up as new — the protective "
                 "backup on this computer is the only copy of your data.")
@@ -652,6 +690,9 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
         progress_callback(100)
 
         # === Phase 2: apply tweaks → reboot (40-60%) ===
+        # Also controls recovery if an RSD sparse retry had to replace the
+        # original provider. Initialize before the zero-file fast path.
+        sparse_retry_reopened_remote = False
         if len(back.files) == 0:
             # Nothing left for the sparse/partial pass: every tweak payload was
             # diverted to inject_files (delivered by Phase 3's protective
@@ -681,6 +722,10 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
             # client — a drop at 0% is that wedge, not a rejection. Cool down and
             # retry once on a fresh connection.
             max_sparse_attempts = 2
+            # If the first RemoteXPC operation drops before any progress, its
+            # process-global userspace tunnel must be released before
+            # perform_restore() opens its own fresh provider for attempt two.
+            # Merged mode then opens one more live provider for Phase 3.
             for sparse_attempt in range(max_sparse_attempts):
                 sparse_progress["last"] = None
                 sparse_progress["calls"] = 0
@@ -704,6 +749,12 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                         log_warn("Phase 2: connection dropped at 0% right after the cache "
                                  "session — cooling down 25s and retrying once on a "
                                  "fresh connection")
+                        if is_remote_pairing_registered(udid):
+                            try:
+                                await close_device_session(lockdown_client)
+                            except Exception:
+                                pass
+                            sparse_retry_reopened_remote = True
                         await asyncio.sleep(25)
                         continue
                     if no_progress:
@@ -724,6 +775,11 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
         # === Phase 3: reconnect + restore protective backup (60-90%) ===
         merge_fallback_done = False
         if merge_phases:
+            if sparse_retry_reopened_remote:
+                # perform_restore() owns and closes its retry tunnel. Reopen a
+                # persistent provider for Phase 3 rather than reuse the closed
+                # original RSD or re-enter an exhausted userspace tunnel.
+                lockdown_client = await open_remote_pairing_session(udid)
             # Merged mode: the sparse restore never rebooted, so there is no
             # security recovery to wait for — the device is still connected and
             # its data was never wiped. Reuse the SAME session for the
@@ -737,6 +793,11 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
             await asyncio.sleep(1)
         else:
             log_info("Phase 3: Waiting for device to reconnect after security recovery")
+            # The input session may still own the process-global userspace tunnel.
+            try:
+                await close_device_session(lockdown_client)
+            except Exception:
+                pass
             lc = await _wait_for_device(udid, progress_callback,
                                         prompt_choice=prompt_choice)
         try:
@@ -784,7 +845,7 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                             raise
                         log_info("Phase 3: user chose resume — reconnecting and retrying")
                         try:
-                            await lc.close()
+                            await close_device_session(lc)
                         except Exception:
                             pass
                         lc = await _wait_for_device(udid, progress_callback,
@@ -806,7 +867,7 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                                  f"({type(cause).__name__}: {cause}) — falling "
                                  "back to the classic reconnect path")
                         try:
-                            await lc.close()
+                            await close_device_session(lc)
                         except Exception:
                             pass
                         lc = await _wait_for_device(udid, progress_callback,
@@ -825,7 +886,7 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                                  f"({type(e).__name__}: {e}) — falling back to "
                                  "the classic reconnect path")
                         try:
-                            await lc.close()
+                            await close_device_session(lc)
                         except Exception:
                             pass
                         lc = await _wait_for_device(udid, progress_callback,
@@ -853,7 +914,7 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
             # === Phase 5: reconnect (if rebooted) + push media + skip setup (95-98%) ===
             if pre_skip_reboot:
                 try:
-                    await lc.close()
+                    await close_device_session(lc)
                 except Exception:
                     pass
                 lc = await _wait_for_device(udid, progress_callback,
@@ -891,7 +952,7 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                             "push your photos and videos back after the "
                             "reboot.\n\n"
                             "Unlock it, enter your passcode, and keep it "
-                            "connected via USB, then choose:\n\n"
+                            "connected via USB or Pair on Device Wi-Fi, then choose:\n\n"
                             "  \u2022 Resume \u2014 keep waiting for the device "
                             "to be unlocked and push your photos.\n"
                             "  \u2022 Abort \u2014 stop now. Your photos are "
@@ -911,8 +972,8 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                 progress_callback("Skipping setup panes...")
                 log_info("Phase 5: Skipping setup panes via MobileConfigService")
                 try:
-                    await skip_all_setup27(lc, udid, supervised=supervised,
-                                           organization_name=organization_name)
+                    lc = await skip_all_setup27(lc, udid, supervised=supervised,
+                                                organization_name=organization_name)
                 except CloudConfigurationAlreadyPresentError:
                     log_info("Phase 5: device already has a cloud configuration "
                              "— setup already handled, nothing to skip")
@@ -931,7 +992,7 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
             progress_callback(100)
         finally:
             try:
-                await lc.close()
+                await close_device_session(lc)
             except Exception:
                 pass
         if sparse_failure is not None:
@@ -1185,10 +1246,17 @@ async def restore_files(files: list[FileToRestore], reboot: bool = False, lockdo
                                             progress_callback,
                                             prompt_choice=prompt_choice)
                 log_info("Raw sparse: skipping setup panes via MobileConfigService")
-                await skip_all_setup27(lc, lockdown_client.udid,
-                                       supervised=supervised,
-                                       organization_name=organization_name)
-                progress_callback(95)
+                try:
+                    lc = await skip_all_setup27(
+                        lc, lockdown_client.udid,
+                        supervised=supervised,
+                        organization_name=organization_name)
+                    progress_callback(95)
+                finally:
+                    try:
+                        await close_device_session(lc)
+                    except Exception:
+                        pass
         else:
             # iOS 27 era: three-phase protective backup + restore
             await _restore_ios27(back, reboot, lockdown_client, progress_callback,

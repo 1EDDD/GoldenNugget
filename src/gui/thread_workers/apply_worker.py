@@ -369,7 +369,7 @@ class RestoreCacheThread(QThread):
                             "The device has not been unlocked long enough to "
                             "push your photos and videos back.\n\n"
                             "Unlock it, enter your passcode, and keep it "
-                            "connected via USB, then choose:\n\n"
+                            "connected via USB or Pair on Device Wi-Fi, then choose:\n\n"
                             "  \u2022 Resume \u2014 keep waiting for the device "
                             "to be unlocked and push your photos.\n"
                             "  \u2022 Abort \u2014 stop now. Your photos are "

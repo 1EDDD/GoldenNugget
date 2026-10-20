@@ -46,7 +46,10 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from PySide6 import QtCore  # noqa: E402  (QStandardPaths used by the cache)
-from pymobiledevice3.lockdown import create_using_usbmux  # noqa: E402
+from src.devicemanagement.session import (  # noqa: E402
+    open_device_session, close_device_session, register_remote_pairing_device,
+    register_network_endpoint,
+)
 from pymobiledevice3 import usbmux  # noqa: E402
 from pymobiledevice3.exceptions import (  # noqa: E402
     PasswordRequiredError, DeviceNotFoundError, NotPairedError,
@@ -234,6 +237,25 @@ def _pick_base(cache_root: str | None, udid: str):
     return None
 
 
+async def _open_restore_session(udid: str):
+    """Open the saved transport, falling back to autopair if a USB record is stale."""
+    try:
+        provider = await open_device_session(serial=udid, autopair=False)
+    except Exception:
+        return await open_device_session(serial=udid, autopair=True)
+
+    # pymobiledevice3 can return a LockdownClient with paired=False instead of
+    # throwing when a local USB record no longer matches the device.
+    if (getattr(provider, "_pair_on_device_tunnel_owner", None) is None
+            and hasattr(provider, "paired") and not provider.paired):
+        try:
+            await close_device_session(provider)
+        except Exception:
+            pass
+        return await open_device_session(serial=udid, autopair=True)
+    return provider
+
+
 async def _restore_with_wait(lc, backup_root: str, udid: str, backup_password: str,
                              unlock_timeout_min: int, progress_callback):
     """Restore, retrying on transient errors and WAITING for the unlock.
@@ -256,42 +278,78 @@ async def _restore_with_wait(lc, backup_root: str, udid: str, backup_password: s
                 ssl.SSLError, OSError)
     while True:
         attempt += 1
+        if lc is None:
+            try:
+                lc = await _open_restore_session(udid)
+            except Exception as error:
+                remaining = int(deadline - time.monotonic())
+                if remaining <= 0:
+                    raise
+                progress_callback(
+                    f"Device not reachable yet ({type(error).__name__}); "
+                    f"reconnecting... ({remaining // 60}:{remaining % 60:02d} remaining)")
+                await asyncio.sleep(3)
+                continue
         try:
             await _restore_protective_backup(
                 lc, backup_root, udid, reboot=False,
                 progress_callback=progress_callback,
                 backup_password=backup_password,
                 skip_apps=True)
-            return
+            return lc
         except PasswordRequiredError:
             remaining = int(deadline - time.monotonic())
             if remaining <= 0:
+                try:
+                    await close_device_session(lc)
+                except Exception:
+                    pass
                 raise
             progress_callback(
                 f"iPhone is LOCKED - unlock it to continue "
                 f"(waiting up to {remaining // 60}:{remaining % 60:02d} remaining)...")
-            # reconnect after unlocking (the lockdown service may drop)
+            # Reopen after unlocking. A Pair-on-Device tunnel can be severed
+            # by the restore, so don't reuse the old provider.
             try:
-                lc.close()
+                await close_device_session(lc)
             except Exception:
                 pass
+            lc = None
             await asyncio.sleep(5)
-            try:
-                lc = await create_using_usbmux(serial=udid, autopair=False)
-            except Exception:
-                lc = await create_using_usbmux(serial=udid, autopair=True)
             continue
         except transmit as e:
             if not is_transient_restore_error(e):
                 progress_callback(f"Restore error ({type(e).__name__}): {e}")
+                try:
+                    await close_device_session(lc)
+                except Exception:
+                    pass
                 raise
             remaining = int(deadline - time.monotonic())
             if remaining <= 0:
+                try:
+                    await close_device_session(lc)
+                except Exception:
+                    pass
                 raise
             progress_callback(
-                f"Device not ready, retrying... ({attempt}) "
+                f"Device not ready, reconnecting... ({attempt}) "
                 f"({remaining // 60}:{remaining % 60:02d} remaining)")
+            try:
+                await close_device_session(lc)
+            except Exception:
+                pass
+            lc = None
             await asyncio.sleep(3)
+        except Exception:
+            # The caller only receives ownership of a provider on success.
+            # Do not leak an RSD userspace tunnel on an unclassified failure.
+            try:
+                if lc is not None:
+                    await close_device_session(lc)
+            except Exception:
+                pass
+            raise
 
 
 async def run(args) -> int:
@@ -349,15 +407,10 @@ async def run(args) -> int:
     print("Waiting for device (unlock it when prompted)...")
     lc = None
     try:
-        print("Connecting to the device...")
-        try:
-            lc = await create_using_usbmux(serial=udid, autopair=False)
-        except Exception:
-            lc = await create_using_usbmux(serial=udid, autopair=True)
-        print("Connected. Restoring protective backup...")
-        await _restore_with_wait(lc, working_root, udid,
-                                 args.password or "", args.timeout,
-                                 progress_cb)
+        print("Connecting to the device and restoring the protective backup...")
+        lc = await _restore_with_wait(None, working_root, udid,
+                                      args.password or "", args.timeout,
+                                      progress_cb)
         if media_dir:
             print("Restoring photos/videos over AFC...")
             pushed = await restore_media_via_afc(lc, media_dir,
@@ -371,7 +424,7 @@ async def run(args) -> int:
         try:
             if not args.no_skip_setup:
                 print("Applying skip setup panes...")
-                await skip_all_setup27(lc, udid)
+                lc = await skip_all_setup27(lc, udid)
                 print("Skip setup applied.")
         except Exception as e:  # noqa: BLE001
             print(f"WARNING: skip setup failed (data is still restored): {type(e).__name__}: {e}")
@@ -386,7 +439,7 @@ async def run(args) -> int:
         return 0
     except DeviceNotFoundError as e:
         print(f"\nERROR: device not reachable: {e}")
-        print("Make sure it is connected via USB and the screen is unlocked.")
+        print("Make sure it is awake/unlocked and connected via USB or Pair on Device Wi-Fi.")
         return 2
     except PasswordRequiredError as e:
         print(f"\nERROR: timed out waiting for unlock: {e}")
@@ -399,7 +452,7 @@ async def run(args) -> int:
     finally:
         if lc is not None:
             try:
-                await lc.close()
+                await close_device_session(lc)
             except Exception:
                 pass  # A reboot can terminate the connection before close.
 
@@ -434,6 +487,19 @@ def main(argv: list = None) -> int:
         QApplication(sys.argv)
     QCoreApplication.setOrganizationDomain("com.leemin")
     QCoreApplication.setApplicationName("GoldenNugget")
+    from src.controllers.settings import Settings, settings_keys
+    settings = Settings("settings")
+    for key in settings_keys(settings):
+        if key.startswith("remote_pairing/"):
+            paired_udid = key.split("/", 1)[1]
+            record_path = str(settings.value(key, "", type=str) or "").strip()
+            if paired_udid and record_path:
+                register_remote_pairing_device(paired_udid)
+        elif key.startswith("network_endpoints/"):
+            paired_udid = key.split("/", 1)[1]
+            hostname = str(settings.value(key, "", type=str) or "").strip()
+            if paired_udid and hostname:
+                register_network_endpoint(paired_udid, hostname)
     try:
         return asyncio.run(run(args))
     except KeyboardInterrupt:

@@ -20,6 +20,7 @@ from typing import Optional
 
 from PySide6.QtWidgets import QMessageBox
 from PySide6.QtCore import QSettings, QCoreApplication
+from src.controllers.settings import settings_keys
 
 from pymobiledevice3 import usbmux
 from pymobiledevice3.services.mobile_config import MobileConfigService
@@ -28,9 +29,13 @@ from pymobiledevice3.services.mobilebackup2 import Mobilebackup2Service
 import pymobiledevice3.service_connection as _sc
 
 
-from src.devicemanagement.session import lockdown_session
+from src.devicemanagement.session import (
+    lockdown_session, register_network_endpoint, register_remote_pairing_device,
+    unregister_remote_pairing_device, is_remote_pairing_registered,
+)
 from src.exceptions.device_errors import (
     is_device_locked_error as _is_device_locked_error,
+    is_device_lock_required_error as _is_device_lock_required_error,
     is_find_my_error,
 )
 from src.controllers.hotload import HotLoad
@@ -103,6 +108,14 @@ def show_apply_error(e: Exception, update_label=lambda x: None, files_list: list
     elif "PasswordRequiredError" in str(e):
         return ApplyAlertMessage(QCoreApplication.tr("Device is password protected! You must trust the computer on your device."),
                        detailed_txt=QCoreApplication.tr("Unlock your device. On the popup, click \"Trust\", enter your password, then try again."))
+    elif _is_device_lock_required_error(e):
+        return ApplyAlertMessage(
+            QCoreApplication.tr("Unlock your iPhone to continue."),
+            detailed_txt=QCoreApplication.tr(
+                "The device rejected a service request because it is locked. "
+                "Unlock it, keep the screen on, and refresh the device list before retrying."
+            ),
+        )
     elif isinstance(e, ConnectionTerminatedError):
         files_str = get_files_list_str(files_list)
         is_setup_config = "skip_setup27.py" in traceback_text
@@ -125,10 +138,31 @@ def show_apply_error(e: Exception, update_label=lambda x: None, files_list: list
                                  backup_path=backup_path)
     else:
         files_str: str = get_files_list_str(files_list)
-        error_msg = type(e).__name__ + ": " + repr(e)
+
+        # pymobiledevice3 11.x StartServiceError keeps the useful device
+        # response in attributes instead of Exception.args, so str(e)/repr(e)
+        # are empty and the normal traceback hides the actual service failure.
+        service_name = getattr(e, "service_name", None)
+        service_message = getattr(e, "message", None)
+        if service_name:
+            service_message = str(service_message or "").strip()
+            if not service_message:
+                service_message = "The device rejected the request without a reason."
+            error_msg = (
+                f"{type(e).__name__}: failed to start device service "
+                f"'{service_name}': {service_message}"
+            )
+            service_details = (
+                f"Device service: {service_name}\n"
+                f"Device response: {service_message}\n\n"
+            )
+        else:
+            error_msg = type(e).__name__ + ": " + repr(e)
+            service_details = ""
+
         return ApplyAlertMessage(
             error_msg,
-            detailed_txt=files_str + "TRACEBACK:\n\n" + traceback_text,
+            detailed_txt=files_str + service_details + "TRACEBACK:\n\n" + traceback_text,
             backup_path=backup_path
         )
 
@@ -196,20 +230,51 @@ class DeviceManager:
         # same UDID is present in the newly enumerated device list.
         selected_udid = self.get_current_device_udid()
         self.devices.clear()
+
+        # Restore device-initiated iOS 27 "Pair on Device" registrations. The
+        # pairing record itself is owned by pymobiledevice3; this setting keeps
+        # the UDID discoverable by GoldenNugget after restarting the app.
+        remote_pairing_devices: dict[str, str] = {}
+        for key in settings_keys(settings):
+            if not key.startswith("remote_pairing/"):
+                continue
+            saved_udid = key.split("/", 1)[1]
+            record_path = str(settings.value(key, "", type=str) or "").strip()
+            if saved_udid and record_path:
+                # Re-evaluate the preferred transport on every scan. If this
+                # device is currently reachable through usbmux, keep that route
+                # preferred; only activate RemoteXPC for devices absent there.
+                unregister_remote_pairing_device(saved_udid)
+                remote_pairing_devices[saved_udid.replace("-", "").casefold()] = saved_udid
+
+        # Legacy manually-paired Wi-Fi endpoints use TCP lockdown directly.
+        for key in settings_keys(settings):
+            if not key.startswith("network_endpoints/"):
+                continue
+            saved_udid = key.split("/", 1)[1]
+            saved_host = str(settings.value(key, "", type=str) or "").strip()
+            if saved_udid and saved_host:
+                register_network_endpoint(saved_udid, saved_host)
         # handle errors when failing to get connected devices
+        has_saved_network_endpoints = (
+            bool(remote_pairing_devices)
+            or any(key.startswith("network_endpoints/") for key in settings_keys(settings))
+        )
         try:
-            connected_devices = [
-                device for device in await usbmux.list_devices() if device.is_usb
-            ]
+            # Include both USB and network/usbmux devices. The previous is_usb-only
+            # filter silently discarded devices that had already been paired over Wi-Fi.
+            connected_devices = await usbmux.list_devices()
         except Exception:
-            sysmsg = QCoreApplication.tr("If you are on Linux, make sure you have usbmuxd and libimobiledevice installed.")
-            if os.name == 'nt':
-                sysmsg = QCoreApplication.tr("Make sure you have the \"Apple Devices\" app from the Microsoft Store or iTunes from Apple's website.")
-            show_alert(ApplyAlertMessage(
-                txt=QCoreApplication.tr("Failed to get device list. Click \"Show Details\" for the traceback.") + f"\n\n{sysmsg}", detailed_txt=str(traceback.format_exc())
-            ))
-            self.set_current_device(index=None)
-            return
+            connected_devices = []
+            if not has_saved_network_endpoints:
+                sysmsg = QCoreApplication.tr("If you are on Linux, make sure you have usbmuxd and libimobiledevice installed.")
+                if os.name == 'nt':
+                    sysmsg = QCoreApplication.tr("Make sure you have the \"Apple Devices\" app from the Microsoft Store or iTunes from Apple's website.")
+                show_alert(ApplyAlertMessage(
+                    txt=QCoreApplication.tr("Failed to get device list. Click \"Show Details\" for the traceback.") + f"\n\n{sysmsg}", detailed_txt=str(traceback.format_exc())
+                ))
+                self.set_current_device(index=None)
+                return
         # Connect via usbmuxd
         seen_udids = set()
         for device in sorted(connected_devices, key=lambda item: not item.is_usb):
@@ -217,7 +282,7 @@ class DeviceManager:
             if normalized_udid in seen_udids:
                 continue
             try:
-                async with lockdown_session(device.serial) as ld:
+                async with lockdown_session(device.serial, use_network=False) as ld:
                     # Check backup encryption status if experimental option not enabled
                     if not self.pref_manager.use_encrypted_backup:
                         try:
@@ -292,6 +357,106 @@ class DeviceManager:
                 show_alert(ApplyAlertMessage(txt=f"{type(e).__name__}: {repr(e)}", detailed_txt=str(traceback.format_exc()),
                                             exc_type=type(e), exc_value=e))
         
+        # Reconnect to hosts explicitly paired by IP. Do not trigger autopair
+        # during background refresh; this path should only reuse saved pairing records.
+        for key in settings_keys(settings):
+            if not key.startswith("network_endpoints/"):
+                continue
+            saved_udid = key.split("/", 1)[1]
+            hostname = str(settings.value(key, "", type=str) or "").strip()
+            normalized_udid = saved_udid.replace("-", "").casefold()
+            if not saved_udid or not hostname or normalized_udid in seen_udids:
+                continue
+            try:
+                register_network_endpoint(saved_udid, hostname)
+                async with asyncio.timeout(8.0):
+                    async with lockdown_session(
+                        saved_udid, autopair=False, pair_timeout=5.0, use_network=True
+                    ) as ld:
+                        vals = ld.all_values
+                        locale = await ld.get_locale()
+                        dev = Device(
+                            udid=saved_udid,
+                            usb=False,
+                            name=vals.get("DeviceName", "iPhone"),
+                            version=vals.get("ProductVersion", ""),
+                            build=vals.get("BuildVersion", ""),
+                            model=vals.get("ProductType", ""),
+                            hardware=vals.get("HardwareModel", ""),
+                            cpu=vals.get("HardwarePlatform", ""),
+                            locale=locale,
+                        )
+                        self.devices.append(dev)
+                        seen_udids.add(normalized_udid)
+    
+            except Exception as e:
+                # A stale IP, sleeping phone, or unavailable local network should
+                # not prevent USB devices from being usable.
+                print(f"Wi-Fi device {saved_udid} at {hostname} is currently unavailable: {e}")
+
+        # Pair-on-Device hosts do not appear in usbmuxd. Open a short-lived,
+        # no-root RSD tunnel for each saved record and treat the resulting RSD
+        # provider as a normal service provider for device metadata and later
+        # operations. Bound each probe so an offline phone does not stall the
+        # whole refresh indefinitely.
+        for normalized_udid, saved_udid in remote_pairing_devices.items():
+            if normalized_udid in seen_udids:
+                continue
+            register_remote_pairing_device(saved_udid)
+            try:
+                async with asyncio.timeout(15.0):
+                    async with lockdown_session(
+                        saved_udid,
+                        autopair=False,
+                        use_remote_pairing=True,
+                    ) as rsd:
+                        values = dict(getattr(rsd, "all_values", {}) or {})
+                        peer_info = getattr(rsd, "peer_info", {}) or {}
+                        properties = peer_info.get("Properties", {}) if isinstance(peer_info, dict) else {}
+
+                        def value(*keys, default=""):
+                            for source in (values, properties):
+                                for key in keys:
+                                    candidate = source.get(key)
+                                    if candidate not in (None, ""):
+                                        return candidate
+                            return default
+
+                        locale = ""
+                        try:
+                            locale = await rsd.get_locale()
+                        except Exception:
+                            locale = value("Locale", "DeviceLocale", default="")
+
+                        version = value("ProductVersion", "OSVersion")
+                        if not version:
+                            raise RuntimeError(
+                                "RemoteXPC tunnel opened, but iOS version metadata was not available"
+                            )
+
+                        dev = Device(
+                            udid=saved_udid,
+                            usb=False,
+                            name=value("DeviceName", "name", default="iPhone"),
+                            version=str(version),
+                            build=str(value("BuildVersion")),
+                            model=str(value("ProductType", "DeviceClass", default="")),
+                            hardware=str(value("HardwareModel", default="")),
+                            cpu=str(value("HardwarePlatform", "CPUArchitecture", default="")),
+                            locale=str(locale or ""),
+                        )
+                        self.devices.append(dev)
+                        seen_udids.add(normalized_udid)
+            except Exception as e:
+                # A saved peer being offline is normal during startup or refresh.
+                # Do not block the GUI with a modal alert for a non-fatal discovery
+                # miss; keep the pairing registration and retry on the next refresh.
+                print(
+                    f"RemoteXPC device {saved_udid} is currently unavailable "
+                    f"(unlock it and check same-Wi-Fi connectivity before retrying): "
+                    f"{type(e).__name__}: {e}"
+                )
+
         if len(self.devices) > 0:
             selected_index = next(
                 (index for index, device in enumerate(self.devices)
@@ -353,10 +518,19 @@ class DeviceManager:
             return False
         
     async def _reset_device_pairing(self):
-        # first, unpair it
-        if self.data_singleton.current_device == None:
+        # iOS 27 Pair-on-Device uses a RemotePairing/RSD provider rather than
+        # classic lockdownd. It has no pair()/unpair() API, so fail clearly
+        # instead of throwing AttributeError from the Settings button.
+        if self.data_singleton.current_device is None:
             return
-        async with lockdown_session(self.data_singleton.current_device.udid) as ld:
+        udid = self.data_singleton.current_device.udid
+        if is_remote_pairing_registered(udid):
+            raise NuggetException(
+                "Reset Device Pairing is not available for iOS 27 Pair on Device. "
+                "Remove this computer from Settings > Developer > Paired Macs on "
+                "the iPhone, then pair it again using GoldenNugget's Pair Wi-Fi button."
+            )
+        async with lockdown_session(udid) as ld:
             await ld.unpair()
             # next, pair it again
             await ld.pair()

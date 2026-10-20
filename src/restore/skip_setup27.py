@@ -23,7 +23,7 @@ from pymobiledevice3.lockdown import LockdownClient
 from src.devicemanagement.session import lockdown_session
 from src.exceptions.nugget_exception import NuggetException
 
-from pymobiledevice3.exceptions import ConnectionTerminatedError
+from pymobiledevice3.exceptions import ConnectionTerminatedError, CloudConfigurationAlreadyPresentError
 from pymobiledevice3.services.mobile_config import MobileConfigService
 
 # Canonical list of setup panes to mark as skipped. This is the single source of
@@ -169,31 +169,56 @@ def build_cloud_config(existing: dict | None, supervised: bool = False,
 async def skip_all_setup27(ld: LockdownClient, udid: str | None = None,
                            supervised: bool = False,
                            organization_name: str = ""):
+    from src.devicemanagement.session import close_device_session, open_device_session
+
     last_error = None
+    active_ld = ld
     for attempt in range(6):
+        if active_ld is None:
+            if not udid:
+                raise RuntimeError("No UDID is available to reconnect for setup configuration")
+            try:
+                active_ld = await open_device_session(udid, autopair=True)
+            except Exception as error:
+                last_error = error
+                if attempt == 5:
+                    break
+                await asyncio.sleep(min(2 + attempt * 3, 15))
+                continue
         try:
-            if attempt == 0:
-                async with MobileConfigService(lockdown=ld) as mcs:
-                    cloud_config = build_cloud_config(
-                        await mcs.get_cloud_configuration(),
-                        supervised=supervised,
-                        organization_name=organization_name)
-                    await mcs.set_cloud_configuration(cloud_config)
-            else:
-                async with lockdown_session(udid) as fresh_ld:
-                    async with MobileConfigService(lockdown=fresh_ld) as mcs:
-                        cloud_config = build_cloud_config(
-                            await mcs.get_cloud_configuration(),
-                            supervised=supervised,
-                            organization_name=organization_name)
-                        await mcs.set_cloud_configuration(cloud_config)
-            return
+            async with MobileConfigService(lockdown=active_ld) as mcs:
+                cloud_config = build_cloud_config(
+                    await mcs.get_cloud_configuration(),
+                    supervised=supervised,
+                    organization_name=organization_name)
+                await mcs.set_cloud_configuration(cloud_config)
+            return active_ld
+        except CloudConfigurationAlreadyPresentError:
+            # The cloud-config operation is complete even though iOS reported
+            # that it was already installed. Return the live provider so callers
+            # do not accidentally keep using a stale session after a retry.
+            return active_ld
         except (ConnectionTerminatedError, ConnectionError, OSError,
                 asyncio.TimeoutError) as error:
             last_error = error
+            try:
+                await close_device_session(active_ld)
+            except Exception:
+                pass
+            active_ld = None
             if attempt == 5 or not udid:
                 break
             await asyncio.sleep(min(2 + attempt * 3, 15))
+        except Exception:
+            # If retries replaced the original provider, the caller has not yet
+            # received the replacement because this call is failing. Release it
+            # here so a userspace tunnel is never orphaned on this error path.
+            if active_ld is not None and active_ld is not ld:
+                try:
+                    await close_device_session(active_ld)
+                except Exception:
+                    pass
+            raise
     raise NuggetException(
         "The restore completed, but the device disconnected while GoldenNugget "
         "was configuring Setup Assistant. Keep the device connected and retry "
