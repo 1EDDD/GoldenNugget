@@ -439,18 +439,14 @@ class DeviceManager:
                         self.devices.append(dev)
                         seen_udids.add(normalized_udid)
             except Exception as e:
-                # Pair records can outlive a device being on the LAN. Keep the
-                # registration so the next explicit refresh can reconnect, but
-                # surface a useful message instead of requiring users to inspect logs.
-                message = QCoreApplication.tr(
-                    "Saved Pair on Device peer is not reachable. Unlock the iPhone, "
-                    "make sure both devices are on the same Wi-Fi, and refresh again."
+                # A saved peer being offline is normal during startup or refresh.
+                # Do not block the GUI with a modal alert for a non-fatal discovery
+                # miss; keep the pairing registration and retry on the next refresh.
+                print(
+                    f"RemoteXPC device {saved_udid} is currently unavailable "
+                    f"(unlock it and check same-Wi-Fi connectivity before retrying): "
+                    f"{type(e).__name__}: {e}"
                 )
-                show_alert(ApplyAlertMessage(
-                    txt=message,
-                    detailed_txt=f"{type(e).__name__}: {e}",
-                ))
-                print(f"RemoteXPC device {saved_udid} is currently unavailable: {e}")
 
         if len(self.devices) > 0:
             selected_index = next(
