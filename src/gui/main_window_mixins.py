@@ -280,7 +280,7 @@ class DeviceBarMixin:
 
 
     @QtCore.Slot()
-    def on_device_connection_changed(self):
+    def _handle_device_connection_changed(self):
         self._device_change_refresh_pending = True
         self._schedule_device_event_refresh()
 
