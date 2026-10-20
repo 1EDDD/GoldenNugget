@@ -214,7 +214,9 @@ class RemotePairingSessionTests(unittest.IsolatedAsyncioTestCase):
                 self.start_service_calls = []
 
             async def connect(self):
-                self.udid = udid
+                # RSD may report the UDID without separators and lowercase;
+                # the session must route local record lookup to the saved spelling.
+                self.udid = udid.replace("-", "").lower()
 
             async def start_lockdown_service(self, name, include_escrow_bag=False):
                 self.start_service_calls.append((name, include_escrow_bag))
