@@ -32,6 +32,8 @@ class WifiPairThread(QThread):
                 # Ignore stale/corrupt old records and try the next saved device.
                 continue
 
+            if not isinstance(record, dict):
+                continue
             identifier = record.get("host_identifier")
             host_alt_irk = record.get("host_alt_irk")
             private_key = record.get("private_key")
