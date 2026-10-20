@@ -690,6 +690,9 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
         progress_callback(100)
 
         # === Phase 2: apply tweaks → reboot (40-60%) ===
+        # Also controls recovery if an RSD sparse retry had to replace the
+        # original provider. Initialize before the zero-file fast path.
+        sparse_retry_reopened_remote = False
         if len(back.files) == 0:
             # Nothing left for the sparse/partial pass: every tweak payload was
             # diverted to inject_files (delivered by Phase 3's protective
@@ -723,7 +726,6 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
             # process-global userspace tunnel must be released before
             # perform_restore() opens its own fresh provider for attempt two.
             # Merged mode then opens one more live provider for Phase 3.
-            sparse_retry_reopened_remote = False
             for sparse_attempt in range(max_sparse_attempts):
                 sparse_progress["last"] = None
                 sparse_progress["calls"] = 0
