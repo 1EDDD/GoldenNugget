@@ -198,9 +198,9 @@ class DeviceManager:
         self.devices.clear()
         # handle errors when failing to get connected devices
         try:
-            connected_devices = [
-                device for device in await usbmux.list_devices() if device.is_usb
-            ]
+            # Include both USB and network/usbmux devices. The previous is_usb-only
+            # filter silently discarded devices that had already been paired over Wi-Fi.
+            connected_devices = await usbmux.list_devices()
         except Exception:
             sysmsg = QCoreApplication.tr("If you are on Linux, make sure you have usbmuxd and libimobiledevice installed.")
             if os.name == 'nt':
