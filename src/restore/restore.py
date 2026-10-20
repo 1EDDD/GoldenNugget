@@ -51,6 +51,7 @@ from pymobiledevice3.exceptions import ConnectionTerminatedError, PasswordRequir
 from src.exceptions.nugget_exception import NuggetException
 from src.exceptions.device_errors import is_transient_restore_error, is_find_my_error
 from src.exceptions.device_errors import is_connection_error
+from src.devicemanagement.session import close_device_session, is_remote_pairing_registered, open_remote_pairing_session
 
 def concat_regular_file(file: FileToRestore, files_list: list[FileToRestore], last_domain: str, last_path: str):
     path, name = os.path.split(file.restore_path)
@@ -180,10 +181,6 @@ async def _wait_for_device(udid: str, progress_callback,
         ConnectionFailedError, ConnectionTerminatedError, LockdownError,
         MissingValueError, PairingError, FatalPairingError,
     )
-    from src.devicemanagement.session import (
-        close_device_session, is_remote_pairing_registered, open_remote_pairing_session,
-    )
-
     remote_pairing_available = is_remote_pairing_registered(udid)
     while True:
         start = time.monotonic()
