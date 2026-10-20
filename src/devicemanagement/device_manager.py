@@ -28,7 +28,9 @@ from pymobiledevice3.services.mobilebackup2 import Mobilebackup2Service
 import pymobiledevice3.service_connection as _sc
 
 
-from src.devicemanagement.session import lockdown_session, register_network_endpoint
+from src.devicemanagement.session import (
+    lockdown_session, register_network_endpoint, register_remote_pairing_device,
+)
 from src.exceptions.device_errors import (
     is_device_locked_error as _is_device_locked_error,
     is_find_my_error,
@@ -196,8 +198,21 @@ class DeviceManager:
         # same UDID is present in the newly enumerated device list.
         selected_udid = self.get_current_device_udid()
         self.devices.clear()
-        # Restore manually-paired Wi-Fi endpoints saved by the Pair over Wi-Fi flow.
-        # These use TCP lockdown directly and are separate from usbmux discovery.
+
+        # Restore device-initiated iOS 27 "Pair on Device" registrations. The
+        # pairing record itself is owned by pymobiledevice3; this setting keeps
+        # the UDID discoverable by GoldenNugget after restarting the app.
+        remote_pairing_devices: dict[str, str] = {}
+        for key in settings.allKeys():
+            if not key.startswith("remote_pairing/"):
+                continue
+            saved_udid = key.split("/", 1)[1]
+            record_path = str(settings.value(key, "", type=str) or "").strip()
+            if saved_udid and record_path:
+                register_remote_pairing_device(saved_udid)
+                remote_pairing_devices[saved_udid.replace("-", "").casefold()] = saved_udid
+
+        # Legacy manually-paired Wi-Fi endpoints use TCP lockdown directly.
         for key in settings.allKeys():
             if not key.startswith("network_endpoints/"):
                 continue
@@ -342,6 +357,63 @@ class DeviceManager:
                 # A stale IP, sleeping phone, or unavailable local network should
                 # not prevent USB devices from being usable.
                 print(f"Wi-Fi device {saved_udid} at {hostname} is currently unavailable: {e}")
+
+        # Pair-on-Device hosts do not appear in usbmuxd. Open a short-lived,
+        # no-root RSD tunnel for each saved record and treat the resulting RSD
+        # provider as a normal service provider for device metadata and later
+        # operations. Bound each probe so an offline phone does not stall the
+        # whole refresh indefinitely.
+        for normalized_udid, saved_udid in remote_pairing_devices.items():
+            if normalized_udid in seen_udids:
+                continue
+            try:
+                async with asyncio.timeout(15.0):
+                    async with lockdown_session(
+                        saved_udid,
+                        autopair=False,
+                        use_remote_pairing=True,
+                    ) as rsd:
+                        values = dict(getattr(rsd, "all_values", {}) or {})
+                        peer_info = getattr(rsd, "peer_info", {}) or {}
+                        properties = peer_info.get("Properties", {}) if isinstance(peer_info, dict) else {}
+
+                        def value(*keys, default=""):
+                            for source in (values, properties):
+                                for key in keys:
+                                    candidate = source.get(key)
+                                    if candidate not in (None, ""):
+                                        return candidate
+                            return default
+
+                        locale = ""
+                        try:
+                            locale = await rsd.get_locale()
+                        except Exception:
+                            locale = value("Locale", "DeviceLocale", default="")
+
+                        version = value("ProductVersion", "OSVersion")
+                        if not version:
+                            raise RuntimeError(
+                                "RemoteXPC tunnel opened, but iOS version metadata was not available"
+                            )
+
+                        dev = Device(
+                            udid=saved_udid,
+                            usb=False,
+                            name=value("DeviceName", "name", default="iPhone"),
+                            version=str(version),
+                            build=str(value("BuildVersion")),
+                            model=str(value("ProductType", "DeviceClass", default="")),
+                            hardware=str(value("HardwareModel", default="")),
+                            cpu=str(value("HardwarePlatform", "CPUArchitecture", default="")),
+                            locale=str(locale or ""),
+                        )
+                        self.devices.append(dev)
+                        seen_udids.add(normalized_udid)
+            except Exception as e:
+                # Pair records can outlive a device being on the LAN. Keep the
+                # registration so the next explicit refresh can reconnect.
+                print(f"RemoteXPC device {saved_udid} is currently unavailable: {e}")
 
         if len(self.devices) > 0:
             selected_index = next(
