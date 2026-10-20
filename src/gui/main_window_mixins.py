@@ -7,6 +7,7 @@ NavigationMixin, ApplyMixin)``.
 """
 
 from typing import Optional
+import ipaddress
 import os
 import time
 
@@ -25,6 +26,7 @@ from src.gui.thread_workers.apply_worker import (
     get_sudo_pwd,
     set_sudo_pwd,
 )
+from src.gui.thread_workers.wifi_pair_worker import WifiPairThread
 from src.gui.version import App_Build, App_Version
 from src.gui.ios.theme_manager import ThemeManager
 from src.gui.ios.tweaks import _hidden_feature_names
@@ -141,6 +143,91 @@ class DeviceBarMixin:
         if reason and self.ios_pages.currentIndex() == 11:
             self.show_ios_page(0)
 
+
+    @QtCore.Slot()
+    def pair_over_wifi(self):
+        """Ask for an iPhone's local IP and pair with it over TCP lockdown."""
+        worker = getattr(self, "_wifi_pair_worker", None)
+        try:
+            if worker is not None and worker.isRunning():
+                return
+        except RuntimeError:
+            pass
+
+        previous_ip = str(self.settings.value("wifi_last_ip", "", type=str) or "")
+        hostname, accepted = QtWidgets.QInputDialog.getText(
+            self,
+            QCoreApplication.translate("Nugget", "Pair over Wi-Fi"),
+            QCoreApplication.translate(
+                "Nugget",
+                "Enter the iPhone's IP address from Settings > Wi-Fi > (i).\n"
+                "Keep the iPhone unlocked and accept the Trust prompt if it appears."
+            ),
+            text=previous_ip,
+        )
+        if not accepted:
+            return
+        hostname = hostname.strip()
+        try:
+            # Accept literal IPv4/IPv6 addresses only; this is a local-device
+            # connection feature, not a general-purpose remote host connector.
+            hostname = str(ipaddress.ip_address(hostname))
+        except ValueError:
+            QtWidgets.QMessageBox.warning(
+                self,
+                QCoreApplication.translate("Nugget", "Invalid IP address"),
+                QCoreApplication.translate("Nugget", "Enter a valid IPv4 or IPv6 address.")
+            )
+            return
+
+        self.wifiPairBtn.setEnabled(False)
+        self.wifiPairBtn.setToolTip(
+            QCoreApplication.translate("Nugget", "Waiting for the iPhone to accept pairing…"))
+        self._wifi_pair_worker = WifiPairThread(hostname, self)
+        self._wifi_pair_worker.succeeded.connect(self._wifi_pair_succeeded)
+        self._wifi_pair_worker.failed.connect(self._wifi_pair_failed)
+        self._wifi_pair_worker.finished.connect(self._wifi_pair_worker_finished)
+        self._wifi_pair_worker.start()
+
+    @QtCore.Slot(object)
+    def _wifi_pair_succeeded(self, result):
+        hostname = str(result["hostname"])
+        udid = str(result["udid"])
+        from src.devicemanagement.session import register_network_endpoint
+        register_network_endpoint(udid, hostname)
+        self.settings.setValue(f"network_endpoints/{udid}", hostname)
+        self.settings.setValue("wifi_last_ip", hostname)
+        self.settings.sync()
+        QtWidgets.QMessageBox.information(
+            self,
+            QCoreApplication.translate("Nugget", "Wi-Fi pairing complete"),
+            QCoreApplication.translate("Nugget", "Paired with {0}. Refreshing the device list.").format(
+                result.get("name", "iPhone"))
+        )
+        if not self.refresh_in_progress and not self.apply_in_progress:
+            self.refresh_devices()
+        else:
+            self._device_change_refresh_pending = True
+
+    @QtCore.Slot(str)
+    def _wifi_pair_failed(self, error):
+        QtWidgets.QMessageBox.warning(
+            self,
+            QCoreApplication.translate("Nugget", "Wi-Fi pairing failed"),
+            QCoreApplication.translate(
+                "Nugget",
+                "Could not pair with this IP address. Confirm the iPhone and computer are on the same Wi-Fi, "
+                "the IP is current, and the iPhone is unlocked. Some setups require one initial USB trust or "
+                "Wi-Fi sync to be enabled first.\n\nDetails: {0}"
+            ).format(error)
+        )
+
+    @QtCore.Slot()
+    def _wifi_pair_worker_finished(self):
+        self.wifiPairBtn.setEnabled(True)
+        self.wifiPairBtn.setToolTip(
+            QCoreApplication.translate("Nugget", "Pair an iPhone by Wi-Fi IP address"))
+        self._wifi_pair_worker = None
 
     @QtCore.Slot()
     def refresh_devices(self):
