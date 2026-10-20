@@ -236,8 +236,8 @@ class Repairs(unittest.TestCase):
                 patch.object(restore_cache, 'make_protective_working_copy', return_value=str(self.root)), \
                 patch.object(restore_cache, 'clean_backup_for_restore', return_value=(0, 0)) as prune, \
                 patch.object(restore_cache, 'verify_backup_payloads', return_value=[]), \
-                patch.object(restore_cache, 'create_using_usbmux', AsyncMock(return_value=ld)), \
-                patch.object(restore_cache, '_restore_with_wait', AsyncMock()), \
+                patch.object(restore_cache, 'open_device_session', AsyncMock(return_value=ld)), \
+                patch.object(restore_cache, '_restore_with_wait', AsyncMock(return_value=ld)), \
                 patch.object(restore_cache, 'restore_media_via_afc', AsyncMock(return_value={'files': 1, 'failed': ['DCIM/photo.jpg']})), \
                 redirect_stdout(output):
             self.assertEqual(asyncio.run(restore_cache.run(args)), 4)
