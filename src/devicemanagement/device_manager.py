@@ -129,10 +129,31 @@ def show_apply_error(e: Exception, update_label=lambda x: None, files_list: list
                                  backup_path=backup_path)
     else:
         files_str: str = get_files_list_str(files_list)
-        error_msg = type(e).__name__ + ": " + repr(e)
+
+        # pymobiledevice3 11.x StartServiceError keeps the useful device
+        # response in attributes instead of Exception.args, so str(e)/repr(e)
+        # are empty and the normal traceback hides the actual service failure.
+        service_name = getattr(e, "service_name", None)
+        service_message = getattr(e, "message", None)
+        if service_name:
+            service_message = str(service_message or "").strip()
+            if not service_message:
+                service_message = "The device rejected the request without a reason."
+            error_msg = (
+                f"{type(e).__name__}: failed to start device service "
+                f"'{service_name}': {service_message}"
+            )
+            service_details = (
+                f"Device service: {service_name}\n"
+                f"Device response: {service_message}\n\n"
+            )
+        else:
+            error_msg = type(e).__name__ + ": " + repr(e)
+            service_details = ""
+
         return ApplyAlertMessage(
             error_msg,
-            detailed_txt=files_str + "TRACEBACK:\n\n" + traceback_text,
+            detailed_txt=files_str + service_details + "TRACEBACK:\n\n" + traceback_text,
             backup_path=backup_path
         )
 
