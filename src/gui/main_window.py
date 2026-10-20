@@ -119,7 +119,7 @@ class MainWindow(QtWidgets.QMainWindow, DeviceBarMixin, SettingsMixin,
         self.wifiPairBtn.setToolButtonStyle(QtCore.Qt.ToolButtonStyle.ToolButtonTextOnly)
         self.wifiPairBtn.setProperty("cls", "btn")
         self.wifiPairBtn.setToolTip(
-            QCoreApplication.translate("Nugget", "Pair an iPhone by Wi-Fi IP address"))
+            QCoreApplication.translate("Nugget", "Start iOS 27 Pair on Device using this computer's advertised host"))
         self.ui.horizontalLayout_19.insertWidget(
             self.ui.horizontalLayout_19.indexOf(self.ui.refreshBtn), self.wifiPairBtn)
 
