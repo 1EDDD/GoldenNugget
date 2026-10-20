@@ -31,7 +31,7 @@ import pymobiledevice3.service_connection as _sc
 
 from src.devicemanagement.session import (
     lockdown_session, register_network_endpoint, register_remote_pairing_device,
-    unregister_remote_pairing_device,
+    unregister_remote_pairing_device, is_remote_pairing_registered,
 )
 from src.exceptions.device_errors import (
     is_device_locked_error as _is_device_locked_error,
@@ -509,10 +509,19 @@ class DeviceManager:
             return False
         
     async def _reset_device_pairing(self):
-        # first, unpair it
-        if self.data_singleton.current_device == None:
+        # iOS 27 Pair-on-Device uses a RemotePairing/RSD provider rather than
+        # classic lockdownd. It has no pair()/unpair() API, so fail clearly
+        # instead of throwing AttributeError from the Settings button.
+        if self.data_singleton.current_device is None:
             return
-        async with lockdown_session(self.data_singleton.current_device.udid) as ld:
+        udid = self.data_singleton.current_device.udid
+        if is_remote_pairing_registered(udid):
+            raise NuggetException(
+                "Reset Device Pairing is not available for iOS 27 Pair on Device. "
+                "Remove this computer from Settings > Developer > Paired Macs on "
+                "the iPhone, then pair it again using GoldenNugget's Pair Wi-Fi button."
+            )
+        async with lockdown_session(udid) as ld:
             await ld.unpair()
             # next, pair it again
             await ld.pair()
