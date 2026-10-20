@@ -206,19 +206,24 @@ class DeviceManager:
             if saved_udid and saved_host:
                 register_network_endpoint(saved_udid, saved_host)
         # handle errors when failing to get connected devices
+        has_saved_network_endpoints = any(
+            key.startswith("network_endpoints/") for key in settings.allKeys()
+        )
         try:
             # Include both USB and network/usbmux devices. The previous is_usb-only
             # filter silently discarded devices that had already been paired over Wi-Fi.
             connected_devices = await usbmux.list_devices()
         except Exception:
-            sysmsg = QCoreApplication.tr("If you are on Linux, make sure you have usbmuxd and libimobiledevice installed.")
-            if os.name == 'nt':
-                sysmsg = QCoreApplication.tr("Make sure you have the \"Apple Devices\" app from the Microsoft Store or iTunes from Apple's website.")
-            show_alert(ApplyAlertMessage(
-                txt=QCoreApplication.tr("Failed to get device list. Click \"Show Details\" for the traceback.") + f"\n\n{sysmsg}", detailed_txt=str(traceback.format_exc())
-            ))
-            self.set_current_device(index=None)
-            return
+            connected_devices = []
+            if not has_saved_network_endpoints:
+                sysmsg = QCoreApplication.tr("If you are on Linux, make sure you have usbmuxd and libimobiledevice installed.")
+                if os.name == 'nt':
+                    sysmsg = QCoreApplication.tr("Make sure you have the \"Apple Devices\" app from the Microsoft Store or iTunes from Apple's website.")
+                show_alert(ApplyAlertMessage(
+                    txt=QCoreApplication.tr("Failed to get device list. Click \"Show Details\" for the traceback.") + f"\n\n{sysmsg}", detailed_txt=str(traceback.format_exc())
+                ))
+                self.set_current_device(index=None)
+                return
         # Connect via usbmuxd
         seen_udids = set()
         for device in sorted(connected_devices, key=lambda item: not item.is_usb):
