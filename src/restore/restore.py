@@ -180,6 +180,11 @@ async def _wait_for_device(udid: str, progress_callback,
         ConnectionFailedError, ConnectionTerminatedError, LockdownError,
         MissingValueError, PairingError, FatalPairingError,
     )
+    from src.devicemanagement.session import (
+        close_device_session, is_remote_pairing_registered, open_remote_pairing_session,
+    )
+
+    remote_pairing_available = is_remote_pairing_registered(udid)
     while True:
         start = time.monotonic()
         deadline = start + timeout
@@ -217,7 +222,8 @@ async def _wait_for_device(udid: str, progress_callback,
                 # pairing genuinely lost — try a full re-pair once, after giving
                 # the device time to finish recovery
                 last_error = e
-                if not autopair_tried and time.monotonic() - start >= 30:
+                if (not remote_pairing_available and not autopair_tried
+                        and time.monotonic() - start >= 30):
                     autopair_tried = True
                     try:
                         ld = await create_using_usbmux(serial=udid, autopair=True)
@@ -249,15 +255,31 @@ async def _wait_for_device(udid: str, progress_callback,
                     progress_callback(OperationStatus(
                         "Your iPhone is locked. Unlock it and enter its passcode to continue.",
                         "authentication"))
+            # Pair-on-Device hosts do not appear in usbmuxd. Once the USB
+            # probe fails, keep a RemotePairing tunnel alive for Phase 3's
+            # backup/media/setup services. Never request USB Trust for this route.
+            if remote_pairing_available:
+                try:
+                    async with asyncio.timeout(12.0):
+                        remote_provider = await open_remote_pairing_session(udid)
+                    log_info("Device reconnected over iOS 27 Pair on Device / RemoteXPC")
+                    return remote_provider
+                except Exception as remote_error:
+                    last_error = remote_error
+
             if time.monotonic() + delay > deadline:
                 break
             await asyncio.sleep(delay)
             delay = min(delay * 1.5, 30.0)
         # inner wait cycle exhausted — offer Abort/Resume instead of aborting
+        transport_hint = (
+            "Pair on Device Wi-Fi (same network, awake and unlocked)"
+            if remote_pairing_available else "USB"
+        )
         err = DeviceNotFoundError(
             f"Device {udid} not reachable after reboot "
             f"({int(timeout // 60)} min timeout). Unlock the device and make "
-            f"sure it is connected via USB. Last error: {last_error}"
+            f"sure it is connected via {transport_hint}. Last error: {last_error}"
         )
         if prompt_choice is None:
             raise err
@@ -737,6 +759,11 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
             await asyncio.sleep(1)
         else:
             log_info("Phase 3: Waiting for device to reconnect after security recovery")
+            # The input session may still own the process-global userspace tunnel.
+            try:
+                await close_device_session(lockdown_client)
+            except Exception:
+                pass
             lc = await _wait_for_device(udid, progress_callback,
                                         prompt_choice=prompt_choice)
         try:
@@ -784,7 +811,7 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                             raise
                         log_info("Phase 3: user chose resume — reconnecting and retrying")
                         try:
-                            await lc.close()
+                            await close_device_session(lc)
                         except Exception:
                             pass
                         lc = await _wait_for_device(udid, progress_callback,
@@ -806,7 +833,7 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                                  f"({type(cause).__name__}: {cause}) — falling "
                                  "back to the classic reconnect path")
                         try:
-                            await lc.close()
+                            await close_device_session(lc)
                         except Exception:
                             pass
                         lc = await _wait_for_device(udid, progress_callback,
@@ -825,7 +852,7 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                                  f"({type(e).__name__}: {e}) — falling back to "
                                  "the classic reconnect path")
                         try:
-                            await lc.close()
+                            await close_device_session(lc)
                         except Exception:
                             pass
                         lc = await _wait_for_device(udid, progress_callback,
@@ -853,7 +880,7 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
             # === Phase 5: reconnect (if rebooted) + push media + skip setup (95-98%) ===
             if pre_skip_reboot:
                 try:
-                    await lc.close()
+                    await close_device_session(lc)
                 except Exception:
                     pass
                 lc = await _wait_for_device(udid, progress_callback,
@@ -931,7 +958,7 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
             progress_callback(100)
         finally:
             try:
-                await lc.close()
+                await close_device_session(lc)
             except Exception:
                 pass
         if sparse_failure is not None:
