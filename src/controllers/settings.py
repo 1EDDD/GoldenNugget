@@ -2,8 +2,8 @@ from PySide6.QtCore import QSettings
 
 # Settings are stored under the "GoldenNugget" organization. Keys that are not
 # present there fall back to the legacy "Nugget" organization so existing users
-# keep their settings after the rename. Everything written goes to
-# "GoldenNugget", which always takes priority when read back.
+# keep their settings after the rename. Everything written goes to "GoldenNugget",
+# which always takes priority when read back.
 
 NEW_ORG = "GoldenNugget"
 LEGACY_ORG = "Nugget"
@@ -16,13 +16,21 @@ class Settings:
         self._primary = QSettings(NEW_ORG, app)
         self._legacy = QSettings(LEGACY_ORG, app)
 
+    def allKeys(self) -> list[str]:
+        """Return all known keys, including settings left in the legacy store.
+
+        Keep the Qt QSettings-compatible spelling because callers use this
+        wrapper in place of QSettings. Primary-store keys take precedence.
+        """
+        return sorted(set(self._legacy.allKeys()) | set(self._primary.allKeys()))
+
     def contains(self, key: str) -> bool:
         return self._primary.contains(key) or self._legacy.contains(key)
 
     def value(self, key: str, defaultValue=None, type=None):
         # PySide6 6.11's QSettings.value crashes (SIGBUS in shiboken's
-        # checkType) when None is passed positionally for the `type`
-        # argument, so only forward it when an actual type is given.
+        # checkType) when None is passed positionally for the `type` argument,
+        # so only forward it when an actual type is given.
         store = self._primary if self._primary.contains(key) else self._legacy
         if type is None:
             return store.value(key, defaultValue)
