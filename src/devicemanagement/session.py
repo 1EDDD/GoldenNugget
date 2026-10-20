@@ -197,6 +197,11 @@ def _preferred_rsd_tunnel(serial: str):
                     raise RuntimeError(
                         "RemotePairing reached a different device than the saved pairing record."
                     )
+                # pymobiledevice3 resolves the local pairing record from rsd.udid.
+                # Use the exact saved spelling after normalized identity validation so
+                # lowercase/uppercase or dashed/undashed variants cannot point it at
+                # a different filename.
+                rsd.udid = self.serial
             except BaseException:
                 await stack.aclose()
                 tunnel_service.USE_USERSPACE_TUNNEL = False
