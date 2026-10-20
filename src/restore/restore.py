@@ -157,8 +157,8 @@ async def _wait_for_device(udid: str, progress_callback,
                            prompt_choice=None) -> LockdownClient:
     """Wait for the device to return after the iOS 27 security recovery.
 
-    Polls usbmux with capped exponential backoff. Fully async — the caller's
-    event loop (and the GUI) stays responsive for the whole wait.
+    Polls USB/usbmux and, for saved Pair-on-Device records, the RemotePairing
+    tunnel with capped backoff. Fully async, so the GUI stays responsive.
 
     The pairing record SURVIVES a plain tweak-apply wipe (verified: SideStore
     keeps working), so the connect runs WITHOUT autopair — forcing a re-pair
@@ -442,7 +442,7 @@ async def _restore_protective_backup(lc: LockdownClient, backup_root: str,
                 "Your data is not lost — the protective backup taken before "
                 "the wipe is kept on this computer.\n\n"
                 "This connection error can have several causes. Keep the iPhone "
-                "unlocked with the screen on and connected by USB. If the device "
+                "unlocked with the screen on and connected by USB or Pair on Device Wi-Fi. "
                 "reported a Find My protection error, turn Find My off before retrying.\n\n"
                 "Do not erase the phone or set it up as new — the protective "
                 "backup on this computer is the only copy of your data.")
@@ -934,7 +934,7 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                             "push your photos and videos back after the "
                             "reboot.\n\n"
                             "Unlock it, enter your passcode, and keep it "
-                            "connected via USB, then choose:\n\n"
+                            "connected via USB or Pair on Device Wi-Fi, then choose:\n\n"
                             "  \u2022 Resume \u2014 keep waiting for the device "
                             "to be unlocked and push your photos.\n"
                             "  \u2022 Abort \u2014 stop now. Your photos are "
