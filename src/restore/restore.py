@@ -719,6 +719,11 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
             # client — a drop at 0% is that wedge, not a rejection. Cool down and
             # retry once on a fresh connection.
             max_sparse_attempts = 2
+            # If the first RemoteXPC operation drops before any progress, its
+            # process-global userspace tunnel must be released before
+            # perform_restore() opens its own fresh provider for attempt two.
+            # Merged mode then opens one more live provider for Phase 3.
+            sparse_retry_reopened_remote = False
             for sparse_attempt in range(max_sparse_attempts):
                 sparse_progress["last"] = None
                 sparse_progress["calls"] = 0
@@ -742,6 +747,12 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
                         log_warn("Phase 2: connection dropped at 0% right after the cache "
                                  "session — cooling down 25s and retrying once on a "
                                  "fresh connection")
+                        if is_remote_pairing_registered(udid):
+                            try:
+                                await close_device_session(lockdown_client)
+                            except Exception:
+                                pass
+                            sparse_retry_reopened_remote = True
                         await asyncio.sleep(25)
                         continue
                     if no_progress:
@@ -762,6 +773,11 @@ async def _restore_ios27(back: backup.Backup, reboot: bool,
         # === Phase 3: reconnect + restore protective backup (60-90%) ===
         merge_fallback_done = False
         if merge_phases:
+            if sparse_retry_reopened_remote:
+                # perform_restore() owns and closes its retry tunnel. Reopen a
+                # persistent provider for Phase 3 rather than reuse the closed
+                # original RSD or re-enter an exhausted userspace tunnel.
+                lockdown_client = await open_remote_pairing_session(udid)
             # Merged mode: the sparse restore never rebooted, so there is no
             # security recovery to wait for — the device is still connected and
             # its data was never wiped. Reuse the SAME session for the
