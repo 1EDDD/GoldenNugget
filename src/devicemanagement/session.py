@@ -246,6 +246,52 @@ async def close_device_session(provider) -> None:
         await close()
 
 
+async def open_device_session(serial: Optional[str] = None, *, autopair: bool = True,
+                              pair_timeout: Optional[float] = 120.0,
+                              use_network: Optional[bool] = None,
+                              use_remote_pairing: Optional[bool] = None):
+    """Open a provider that the caller owns and must close with close_device_session."""
+    normalized = _normalise_udid(serial)
+    hostname = _NETWORK_ENDPOINTS.get(normalized) if use_network is not False else None
+    if use_network is True and not hostname:
+        raise ValueError(f"No saved Wi-Fi endpoint for device {serial!r}")
+    should_use_remote = (
+        use_remote_pairing is True
+        or (use_remote_pairing is None and use_network is not False
+            and normalized in _REMOTE_PAIRING_DEVICES and not hostname)
+    )
+    if should_use_remote:
+        if not serial:
+            raise ValueError("A device UDID is required for RemoteXPC pairing")
+        rsd = await open_remote_pairing_session(str(serial))
+        actual_udid = getattr(rsd, "udid", None)
+        if actual_udid and _normalise_udid(actual_udid) != normalized:
+            await close_device_session(rsd)
+            raise RuntimeError(
+                "RemoteXPC connected to a different device than requested "
+                f"(expected {serial}, received {actual_udid})"
+            )
+        return rsd
+    if hostname:
+        provider = await create_using_tcp(
+            hostname=hostname, autopair=autopair, pair_timeout=pair_timeout, keep_alive=True,
+        )
+    else:
+        provider = await create_using_usbmux(
+            serial=serial, autopair=autopair, pair_timeout=pair_timeout,
+        )
+    try:
+        if autopair and not getattr(provider, "paired", False):
+            raise NotPairedError("device did not confirm trust")
+    except BaseException:
+        try:
+            await provider.close()
+        except Exception:
+            pass
+        raise
+    return provider
+
+
 @asynccontextmanager
 async def lockdown_session(serial: Optional[str] = None, *,
                            autopair: bool = True,
