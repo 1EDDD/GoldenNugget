@@ -279,7 +279,17 @@ async def _restore_with_wait(lc, backup_root: str, udid: str, backup_password: s
     while True:
         attempt += 1
         if lc is None:
-            lc = await _open_restore_session(udid)
+            try:
+                lc = await _open_restore_session(udid)
+            except Exception as error:
+                remaining = int(deadline - time.monotonic())
+                if remaining <= 0:
+                    raise
+                progress_callback(
+                    f"Device not reachable yet ({type(error).__name__}); "
+                    f"reconnecting... ({remaining // 60}:{remaining % 60:02d} remaining)")
+                await asyncio.sleep(3)
+                continue
         try:
             await _restore_protective_backup(
                 lc, backup_root, udid, reboot=False,
