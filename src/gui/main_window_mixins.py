@@ -172,7 +172,15 @@ class DeviceBarMixin:
         self.wifiPairBtn.setEnabled(False)
         self.wifiPairBtn.setText("Waiting for iPhone…")
         self.wifiPairBtn.setToolTip("Open Settings > Developer > Paired Macs on your iPhone")
-        self._wifi_pair_worker = WifiPairThread(self)
+        existing_record_paths = []
+        for key in self.settings.allKeys():
+            if not key.startswith("remote_pairing/"):
+                continue
+            saved_udid = key.split("/", 1)[1]
+            saved_path = str(self.settings.value(key, "", type=str) or "").strip()
+            if saved_udid and saved_udid != "host_identity" and saved_path:
+                existing_record_paths.append(saved_path)
+        self._wifi_pair_worker = WifiPairThread(self, existing_record_paths)
         self._wifi_pair_worker.pin_ready.connect(self._wifi_pair_pin_ready)
         self._wifi_pair_worker.status.connect(self._wifi_pair_status)
         self._wifi_pair_worker.succeeded.connect(self._wifi_pair_succeeded)
