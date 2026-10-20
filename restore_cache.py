@@ -279,8 +279,7 @@ async def _restore_with_wait(lc, backup_root: str, udid: str, backup_password: s
     while True:
         attempt += 1
         if lc is None:
-            try:
-                lc = await _open_restore_session(udid)
+            lc = await _open_restore_session(udid)
         try:
             await _restore_protective_backup(
                 lc, backup_root, udid, reboot=False,
@@ -378,8 +377,7 @@ async def run(args) -> int:
     lc = None
     try:
         print("Connecting to the device...")
-        try:
-            lc = await _open_restore_session(udid)
+        lc = await _open_restore_session(udid)
         print("Connected. Restoring protective backup...")
         lc = await _restore_with_wait(lc, working_root, udid,
                                       args.password or "", args.timeout,
@@ -425,7 +423,7 @@ async def run(args) -> int:
     finally:
         if lc is not None:
             try:
-                await lc.close()
+                await close_device_session(lc)
             except Exception:
                 pass  # A reboot can terminate the connection before close.
 
